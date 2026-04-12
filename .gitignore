@@ -1,0 +1,20 @@
+# ViralTrim Production Ignore
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.DS_Store
+# Local Database Files
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+migrations/*.sql
+!migrations/0000_initial.sql
+# Environment Variables
+.env
+.env.local
+.env.*.local
+# Build Artifacts
+.github/workflows/deploy.yml.tmp
+tsconfig.tsbuildinfo

@@ -1,0 +1,43 @@
+--card: 240 10% 4%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 4%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 12%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 4% 12%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 12%;
+    --input: 240 4% 12%;
+    --ring: 221 83% 53%;
+    --radius: 1rem;
+  }
+  * {
+    @apply border-border selection:bg-primary/20 selection:text-primary;
+  }
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+  body {
+    @apply bg-background text-foreground leading-relaxed;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Syne', sans-serif;
+  }
+}
+@layer components {
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+  :root {
+    --background: 240 10% 2%;
+    --foreground: 0 0% 98%;
