@@ -1,43 +1,23 @@
-interface BaseErrorData {
-  url: string;
-  timestamp: string;
+/**
+ * Global client error hooks — extend to POST /api/client-error when needed.
+ */
+if (typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (event) => {
+    console.error("[unhandledrejection]", event.reason);
+  });
 }
 
-interface ErrorReport extends BaseErrorData {
-  message: string;
-  stack?: string;
-  componentStack?: string;
-  errorBoundary?: boolean;
-  errorBoundaryProps?: Record<string, unknown>;
-  source?: string;
-  lineno?: number;
-  colno?: number;
-  error?: unknown;
-  level: "error" | "warning" | "info";
-  parsedStack?: string;
-  category?: "react" | "javascript" | "network" | "user" | "unknown";
-}
+export type ClientErrorPayload = {
+  message: string;
+  stack: string;
+  componentStack?: string | null | undefined;
+  errorBoundary?: boolean;
+  errorBoundaryProps?: Record<string, unknown>;
+  componentName?: string;
+};
 
-// Removed legacy ErrorSignature and related internal dedup logic in favor of GlobalErrorDeduplication
-
-type ConsoleMethod = "warn" | "error";
-type ConsoleArgs = unknown[];
-
-interface ErrorFilterResult {
-  shouldReport: boolean;
-  reason?: string;
-}
-
-interface ErrorContext {
-  message: string;
-  stack?: string;
-  source?: string;
-  url?: string;
-  level: "error" | "warning" | "info";
-}
-
-// Shared categorization utility (used by both class and immediate interceptors)
-const categorize = (message: string): ErrorReport["category"] => {
-  if (message.includes("Warning:") || message.includes("React")) return "react";
-  if (
-    message.includes("fetch") ||
+export const errorReporter = {
+  report(payload: ClientErrorPayload): void {
+    console.error("[client-error]", payload);
+  },
+};

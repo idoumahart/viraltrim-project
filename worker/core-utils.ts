@@ -1,30 +1,29 @@
 /**
- * Core Utilities and Types - DO NOT MODIFY
- *
- * Environment bindings and shared types for the worker.
- */
+ * Cloudflare Worker bindings and environment variables.
+ */
+export interface Env {
+  DB: D1Database;
+  SESSIONS: KVNamespace;
+  CACHE: KVNamespace;
+  MEDIA: R2Bucket;
+  ASSETS: Fetcher;
 
-// ========================================
-// ENVIRONMENT BINDINGS
-// ========================================
+  JWT_SECRET: string;
+  SESSION_TTL: string;
+  APP_URL: string;
+  ALLOWED_ORIGINS: string;
 
-export interface Env {
-    // D1 Database
-    DB: D1Database;
+  STRIPE_SECRET_KEY: string;
+  STRIPE_WEBHOOK_SECRET: string;
+  STRIPE_PRO_PRICE_ID: string;
+  STRIPE_AGENCY_PRICE_ID: string;
 
-    // KV Namespaces
-    SESSIONS: KVNamespace;
-    CACHE: KVNamespace;
+  GEMINI_API_KEY: string;
+  GEMINI_MODEL: string;
 
-    // Assets
-    ASSETS: Fetcher;
+  RESEND_API_KEY: string;
+  RESEND_FROM_EMAIL: string;
+  RESEND_ADMIN_EMAIL: string;
 
-    // Environment Variables
-    JWT_SECRET: string;
-    SESSION_TTL: string;
-
-    // Stripe Configuration
-    STRIPE_SECRET_KEY: string;
-    STRIPE_WEBHOOK_SECRET: string;
-    APP_URL: string;
+  INTERNAL_WEBHOOK_SECRET: string;
 }

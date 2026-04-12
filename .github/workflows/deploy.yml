@@ -1,10 +1,12 @@
-name: Deploy ViralTrim
+# Full-stack on Cloudflare (Vite client + Worker). For Vercel-only frontend, build with
+# VITE_API_BASE_URL=https://<your-worker-host> and deploy the dist/client output separately.
+name: Deploy ViralTrim
 on:
-  push:
-    branches:
-      - main
+  push:
+    branches:
+      - main
 jobs:
-  deploy:
+  deploy:
     runs-on: ubuntu-latest
     name: Build & Deploy
     steps:
