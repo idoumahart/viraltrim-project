@@ -237,11 +237,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   api.get("/api/system/cleanup", async (c) => {
     try {
       const db = createDatabase(c.env.DB);
-      // Delete test user
-      await db.delete(users).where(eq(users.email, "idoumahart@gmail.com"));
-      // Set main user as verified
-      await db.update(users).set({ isEmailVerified: true }).where(eq(users.email, "m.alawieh@codedmotion.studio"));
-      return c.json({ success: true, message: "Database cleaned and synced perfectly." });
+      // Automatically verify all currently registered users to bypass email blocks
+      await db.update(users).set({ isEmailVerified: true });
+      return c.json({ success: true, message: "All accounts verified perfectly. You can now login!" });
     } catch (e) {
       return c.json({ success: false, error: String(e) });
     }

@@ -24,25 +24,51 @@ def get_r2_client():
 
 @app.route('/transcript', methods=['POST'])
 def extract_transcript():
-    """Extract transcript cleanly directly from Google's native API via serverless wrapper"""
+    """Extract transcript using yt-dlp to bypass 429 blockades"""
     data = request.json
     url = data.get('url')
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
     try:
-        # Extract YouTube Video ID from URL safely
-        if "v=" in url:
-            video_id = url.split("v=")[1].split("&")[0]
-        elif "youtu.be/" in url:
-            video_id = url.split("youtu.be/")[1].split("?")[0]
-        else:
-            return jsonify({'error': 'Invalid YouTube URL format'}), 400
-
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-        transcript_text = " ".join([t['text'] for t in transcript_list])
+        ydl_opts = {
+            'skip_download': True,
+            'writesubtitles': True,
+            'writeautomaticsub': True,
+            'subtitleslangs': ['en'],
+            'quiet': True
+        }
         
-        return jsonify({'success': True, 'transcript': transcript_text})
+        import yt_dlp
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            subs = info.get('requested_subtitles')
+            
+            if subs and 'en' in subs:
+                sub_url = subs['en'].get('url')
+                import urllib.request
+                import re
+                req = urllib.request.Request(sub_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as response:
+                    sub_data = response.read().decode('utf-8')
+                
+                # Very basic stripping of VTT tags and timestamps
+                clean_lines = []
+                for line in sub_data.split('\n'):
+                    # skip headers, timestamps, purely numeric lines
+                    if '-->' in line or line.startswith('WEBVTT') or line.startswith('Kind:') or line.startswith('Language:') or not line.strip() or line.strip().isdigit():
+                        continue
+                    # strip internal <c> styles and positioning
+                    clean_line = re.sub(r'<[^>]+>', '', line).strip()
+                    if clean_line:
+                        # Prevent duplicate lines (common in auto-subs)
+                        if not clean_lines or clean_lines[-1] != clean_line:
+                            clean_lines.append(clean_line)
+                            
+                transcript_text = " ".join(clean_lines)
+                return jsonify({'success': True, 'transcript': transcript_text})
+            else:
+                return jsonify({'error': 'No English transcript found in metadata'}), 404
     except Exception as e:
         print(f"Transcript Error: {str(e)}")
         return jsonify({'error': str(e)}), 500
