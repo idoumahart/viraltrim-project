@@ -54,6 +54,25 @@ export default function MyVideosPage() {
     },
   });
 
+  const generateHookMutation = useMutation({
+    mutationFn: () => api.generateClip({
+      source_url: activeVideo?.url || "",
+      source_channel: activeVideo?.title || "Imported Video",
+      requested_start_seconds: 0,
+      requested_end_seconds: 60,
+    }),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success("Viral hook generated successfully!");
+        // Force the tab state to switch to clips if needed, or simply let the user navigate
+        document.querySelector<HTMLButtonElement>('[data-state="inactive"][value="clips"]')?.click();
+      } else {
+        toast.error(data.error || "Failed to generate hook");
+      }
+    },
+    onError: () => toast.error("Failed to generate hook"),
+  });
+
   const handleImport = (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
@@ -212,8 +231,12 @@ export default function MyVideosPage() {
                                <h4 className="font-medium mb-1">AI Viral Hooks</h4>
                                <p className="text-sm text-muted-foreground mb-4">Click below to let AI scan the video and suggest the best viral crop sections.</p>
                             </div>
-                            <Button className="w-full" disabled={!activeVideo.transcript}>
-                              Generate Viral Hooks
+                            <Button 
+                              className="w-full" 
+                              disabled={!activeVideo.transcript || generateHookMutation.isPending}
+                              onClick={() => generateHookMutation.mutate()}
+                            >
+                              {generateHookMutation.isPending ? "Generating Hooks..." : "Generate Viral Hooks"}
                             </Button>
                             {!activeVideo.transcript && (
                               <p className="text-xs text-center text-muted-foreground mt-2">Cannot generate hooks without a transcript.</p>
