@@ -68,10 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (email: string, password: string, displayName?: string, username?: string): Promise<boolean> => {
+    async (email: string, password: string, displayName?: string, companyName?: string, phoneNumber?: string): Promise<boolean> => {
       setState((prev) => ({ ...prev, loading: true, error: null }));
       try {
-        const response = await api.register(email, password, displayName, username);
+        const response = await api.register(email, password, displayName, companyName, phoneNumber);
         if (response.success && response.data) {
           setState({ user: response.data.user, loading: false, error: null });
           return true;

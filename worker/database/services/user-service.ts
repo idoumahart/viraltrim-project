@@ -7,6 +7,8 @@ export interface RegisterData {
   email: string;
   password: string;
   displayName?: string;
+  companyName?: string;
+  phoneNumber?: string;
   agreeToTerms?: boolean;
   referralCode?: string;
   ipAddress?: string | null;
@@ -59,6 +61,8 @@ export class UserService {
         id: userId,
         email: normalizedEmail,
         displayName: data.displayName?.trim() || normalizedEmail.split("@")[0] || "Creator",
+        companyName: data.companyName?.trim() || null,
+        phoneNumber: data.phoneNumber?.trim() || null,
         passwordHash,
         provider: "email",
         providerId: userId,

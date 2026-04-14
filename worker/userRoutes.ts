@@ -107,6 +107,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         email: String(body.email ?? ""),
         password: String(body.password ?? ""),
         displayName: body.displayName ? String(body.displayName) : undefined,
+        companyName: body.companyName ? String(body.companyName) : undefined,
+        phoneNumber: body.phoneNumber ? String(body.phoneNumber) : undefined,
         agreeToTerms: body.agreeToTerms === true || body.agreeToTerms === "true",
         referralCode: body.referralCode ? String(body.referralCode) : undefined,
         ipAddress:

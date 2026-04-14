@@ -183,7 +183,8 @@ export const api = {
     email: string,
     password: string,
     displayName?: string,
-    _username?: string,
+    companyName?: string,
+    phoneNumber?: string,
   ): Promise<ApiResponse<{ user: User; token: string }>> {
     let referralCode: string | undefined;
     try {
@@ -197,6 +198,8 @@ export const api = {
         email,
         password,
         displayName,
+        companyName,
+        phoneNumber,
         agreeToTerms: true,
         referralCode,
       }),

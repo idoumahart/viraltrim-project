@@ -15,6 +15,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [agree, setAgree] = useState(false);
   const { register, loading } = useAuth();
   const navigate = useNavigate();
@@ -41,7 +43,7 @@ export default function RegisterPage() {
       });
       return;
     }
-    const success = await register(email, password, displayName);
+    const success = await register(email, password, displayName, companyName, phoneNumber);
     if (success) {
       toast.success("Account created", { description: "Welcome to viraltrim." });
       navigate("/dashboard");
@@ -69,7 +71,7 @@ export default function RegisterPage() {
           <form onSubmit={(e) => void handleSubmit(e)}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Display name</Label>
+                <Label htmlFor="name">Name</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -77,6 +79,31 @@ export default function RegisterPage() {
                     className="pl-9"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Company Name (Optional)</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="companyName"
+                    className="pl-9"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number (Optional)</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="phoneNumber"
+                    type="tel"
+                    className="pl-9"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
                   />
                 </div>
               </div>

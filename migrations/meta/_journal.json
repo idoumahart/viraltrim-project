@@ -8,6 +8,13 @@
       "when": 1776139583656,
       "tag": "0000_eminent_harpoon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1776143455419,
+      "tag": "0001_flippant_moira_mactaggert",
+      "breakpoints": true
     }
   ]
 }
