@@ -4,6 +4,7 @@ import os
 import subprocess
 import tempfile
 import boto3
+        
 
 app = Flask(__name__)
 
@@ -12,6 +13,7 @@ R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID", "")
 R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY", "")
 R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY", "")
 R2_BUCKET = os.environ.get("R2_BUCKET", "viraltrim-media")
+WEBSHARE_PROXY_URL = os.environ.get("WEBSHARE_PROXY_URL", "")
 
 def get_r2_client():
     return boto3.client(
@@ -39,6 +41,10 @@ def extract_transcript():
             'quiet': True
         }
         
+        if WEBSHARE_PROXY_URL:
+            ydl_opts['proxy'] = WEBSHARE_PROXY_URL
+            print(f"Using proxy for transcript extraction...")
+
         import yt_dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -99,9 +105,14 @@ def process_video():
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "--download-sections", f"*{start_time}-{end_time}",
             "--force-keyframes-at-cuts",
-            "-o", raw_path,
-            url
+            "-o", raw_path
         ]
+        
+        if WEBSHARE_PROXY_URL:
+            download_cmd.extend(["--proxy", WEBSHARE_PROXY_URL])
+            print(f"Using proxy for video download...")
+            
+        download_cmd.append(url)
         subprocess.run(download_cmd, check=True, capture_output=True)
         
         # 2. Add sub-processing FFmpeg effects (Standard burn-in logic)
