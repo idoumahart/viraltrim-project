@@ -423,19 +423,43 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     else if (body.url.includes("facebook.com")) platform = "facebook";
     
     let transcriptText = "";
+    let videoTitle = body.title || "Imported Video";
+    let videoThumbnail = body.thumbnail || null;
     
     try {
       if (platform === "youtube") {
-        const renderResp = await fetch("https://viraltrim-renderer-734039841201.us-central1.run.app/transcript", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: body.url })
-        });
-        const rendererData = await renderResp.json() as { success?: boolean; transcript?: string; error?: string };
-        if (rendererData.success && rendererData.transcript) {
-          transcriptText = rendererData.transcript;
+        if (!c.env.RAPID_API_KEY) {
+          console.error("[transcript-fetch-failed] Missing RAPID_API_KEY environment variable. Have you run 'npx wrangler secret put RAPID_API_KEY'?");
         } else {
-          console.error("Renderer failed to extract:", rendererData.error);
+          const apiResp = await fetch("https://video-transcript-scraper.p.rapidapi.com/transcript/youtube", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-rapidapi-host": "video-transcript-scraper.p.rapidapi.com",
+              "x-rapidapi-key": c.env.RAPID_API_KEY
+            },
+            body: JSON.stringify({ 
+              video_url: body.url,
+              transcript_text: true
+            })
+          });
+          
+          if (!apiResp.ok) {
+            console.error(`[transcript-fetch-failed] RapidAPI status ${apiResp.status}:`, await apiResp.text());
+          } else {
+            const data = await apiResp.json() as any;
+            if (data.status === "success" && data.data) {
+              transcriptText = typeof data.data.transcript === "string" ? data.data.transcript : JSON.stringify(data.data.transcript);
+              
+              // We also get ultra high-quality metadata from this API for free
+              if (data.data.video_info) {
+                if (data.data.video_info.title) videoTitle = data.data.video_info.title;
+                if (data.data.video_info.thumbnail) videoThumbnail = data.data.video_info.thumbnail;
+              }
+            } else {
+              console.error("[transcript-fetch-failed] Unknown RapidAPI Response format:", data);
+            }
+          }
         }
       }
     } catch (e) {
@@ -449,9 +473,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       userId: user.id,
       url: body.url,
       platform,
-      title: body.title || "Imported Video",
+      title: videoTitle,
       transcript: transcriptText || null,
-      thumbnail: body.thumbnail || null
+      thumbnail: videoThumbnail
     });
 
     return c.json({ success: true, data: { id, platform, hasTranscript: !!transcriptText } });
