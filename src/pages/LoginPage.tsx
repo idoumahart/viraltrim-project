@@ -12,13 +12,15 @@ import { toast } from "sonner";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const { login, loading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage("");
     if (!email || !password) {
-      toast.error("Please fill in all fields");
+      setErrorMessage("Please fill in both email and password.");
       return;
     }
     const success = await login(email, password);
@@ -26,7 +28,7 @@ export default function LoginPage() {
       toast.success("Welcome back", { description: "Redirecting to your workspace." });
       navigate("/dashboard");
     } else {
-      toast.error("Sign-in failed", { description: "Check your email and password." });
+      setErrorMessage("Incorrect email or password. Please try again or create an account.");
     }
   };
 
@@ -49,6 +51,11 @@ export default function LoginPage() {
           </CardHeader>
           <form onSubmit={(e) => void handleSubmit(e)}>
             <CardContent className="space-y-4">
+              {errorMessage && (
+                <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-3 py-2 rounded-md">
+                  {errorMessage}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">

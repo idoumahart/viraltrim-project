@@ -22,6 +22,7 @@ const LoginPage = React.lazy(() => import("@/pages/LoginPage"));
 const RegisterPage = React.lazy(() => import("@/pages/RegisterPage"));
 const VerifyEmailPage = React.lazy(() => import("@/pages/VerifyEmailPage"));
 const DiscoveryPage = React.lazy(() => import("@/pages/DiscoveryPage"));
+const MyVideosPage = React.lazy(() => import("@/pages/MyVideosPage"));
 const BillingPage = React.lazy(() => import("@/pages/BillingPage"));
 const EditorPage = React.lazy(() => import("@/pages/EditorPage"));
 const ClipsPage = React.lazy(() => import("@/pages/ClipsPage"));
@@ -73,6 +74,14 @@ root.render(
                       element={
                         <ProtectedRoute>
                           <DiscoveryPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/videos"
+                      element={
+                        <ProtectedRoute>
+                          <MyVideosPage />
                         </ProtectedRoute>
                       }
                     />

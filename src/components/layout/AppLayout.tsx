@@ -28,9 +28,8 @@ type AppLayoutProps = {
 
 const MAIN_NAV = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  { label: "My Videos", icon: Video, path: "/videos" },
   { label: "Discovery", icon: TrendingUp, path: "/discovery" },
-  { label: "Studio", icon: Video, path: "/editor/new" },
-  { label: "Library", icon: Scissors, path: "/clips" },
   { label: "Schedule", icon: Calendar, path: "/schedule" },
 ] as const;
 

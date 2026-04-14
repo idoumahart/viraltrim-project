@@ -251,6 +251,28 @@ export const api = {
     return res as ApiResponse<Clip[]>;
   },
 
+  async getImportedLinks(): Promise<ApiResponse<Array<{ id: string; title: string; url: string; platform: string; transcript: string | null; thumbnail: string | null; createdAt: Date }>>> {
+    const res = await requestJson<Array<any>>("/api/links", { method: "GET" });
+    if (res.success && res.data) {
+      res.data = res.data.map(row => ({
+        ...row,
+        createdAt: parseDate(row.createdAt),
+      }));
+    }
+    return res;
+  },
+
+  async importLink(url: string, title?: string, thumbnail?: string): Promise<ApiResponse<{ id: string; platform: string; hasTranscript: boolean }>> {
+    return requestJson("/api/links", {
+      method: "POST",
+      body: JSON.stringify({ url, title, thumbnail }),
+    });
+  },
+
+  async deleteImportedLink(id: string): Promise<ApiResponse> {
+    return requestJson(`/api/links/${id}`, { method: "DELETE" });
+  },
+
   async getScheduledPosts(): Promise<ApiResponse<ScheduledPost[]>> {
     const res = await requestJson<Record<string, unknown>[]>("/api/scheduled-posts", {
       method: "GET",

@@ -4,7 +4,7 @@ import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { and, count, eq } from "drizzle-orm";
 import { createSession, extractBearerToken, generateId, revokeSession, validateSession } from "./auth";
 import { createDatabase } from "./database";
-import { affiliateReferrals, affiliates, dmcaReports, users, processedWebhookEvents } from "./database/schema";
+import { affiliateReferrals, affiliates, dmcaReports, users, processedWebhookEvents, importedLinks } from "./database/schema";
 import { checkAuthRateLimit } from "./middleware/rate-limiter";
 import { createClipService } from "./database/services/clip-service";
 import { createSubscriptionService, syncUserPlanFromSubscription } from "./database/services/subscription-service";
@@ -401,6 +401,69 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       console.error("[generate-clip]", e);
       return c.json({ success: false, error: "AI generation failed" }, 502);
     }
+  });
+
+  api.get("/api/links", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const userId = c.get("user").id;
+    const links = await db.select().from(importedLinks).where(eq(importedLinks.userId, userId)).orderBy(importedLinks.createdAt);
+    return c.json({ success: true, data: links });
+  });
+
+  api.post("/api/links", authMiddleware, async (c) => {
+    const user = c.get("user");
+    const body = await c.req.json().catch(() => ({}));
+    if (!body.url) return c.json({ success: false, error: "URL is required" }, 400);
+    
+    const db = createDatabase(c.env.DB);
+    
+    // Determine platform
+    let platform = "other";
+    if (body.url.includes("youtube.com") || body.url.includes("youtu.be")) platform = "youtube";
+    else if (body.url.includes("tiktok.com")) platform = "tiktok";
+    else if (body.url.includes("instagram.com")) platform = "instagram";
+    else if (body.url.includes("facebook.com")) platform = "facebook";
+    
+    let transcriptText = "";
+    
+    try {
+      if (platform === "youtube") {
+        const renderResp = await fetch("https://viraltrim-renderer-734039841201.us-central1.run.app/transcript", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: body.url })
+        });
+        const rendererData = await renderResp.json() as { success?: boolean; transcript?: string; error?: string };
+        if (rendererData.success && rendererData.transcript) {
+          transcriptText = rendererData.transcript;
+        } else {
+          console.error("Renderer failed to extract:", rendererData.error);
+        }
+      }
+    } catch (e) {
+      console.error("[transcript-fetch-failed]", e);
+      // We still save the link even if transcript generation fails
+    }
+
+    const id = generateId();
+    await db.insert(importedLinks).values({
+      id,
+      userId: user.id,
+      url: body.url,
+      platform,
+      title: body.title || "Imported Video",
+      transcript: transcriptText || null,
+      thumbnail: body.thumbnail || null
+    });
+
+    return c.json({ success: true, data: { id, platform, hasTranscript: !!transcriptText } });
+  });
+
+  api.delete("/api/links/:id", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const id = c.req.param("id");
+    await db.delete(importedLinks).where(and(eq(importedLinks.id, id), eq(importedLinks.userId, c.get("user").id)));
+    return c.json({ success: true });
   });
 
   api.get("/api/clips", authMiddleware, async (c) => {

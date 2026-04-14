@@ -136,6 +136,19 @@ export const usageLogs = sqliteTable("usage_logs", {
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const importedLinks = sqliteTable("imported_links", {
+  id: text("id").primaryKey().notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  title: text("title"),
+  url: text("url").notNull(),
+  platform: text("platform").notNull(),
+  transcript: text("transcript"),
+  thumbnail: text("thumbnail"),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const tosAgreements = sqliteTable("tos_agreements", {
   id: text("id").primaryKey().notNull(),
   userId: text("user_id")
