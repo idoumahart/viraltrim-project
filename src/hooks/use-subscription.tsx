@@ -42,10 +42,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   });
 
   const loadData = useCallback(async () => {
-    if (!api.isAuthenticated()) {
-      setState((prev) => ({ ...prev, loading: false, subscription: null, payments: [] }));
-      return;
-    }
     try {
       const [subResponse, pricesResponse] = await Promise.allSettled([
         api.getSubscription(),
@@ -54,11 +50,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       const subResult = subResponse.status === "fulfilled" ? subResponse.value : null;
       const pricesResult = pricesResponse.status === "fulfilled" ? pricesResponse.value : null;
       let payments: Payment[] = [];
-      if (api.isAuthenticated()) {
-        const payRes = await api.getPayments();
-        if (payRes.success && payRes.data) {
-          payments = payRes.data;
-        }
+      
+      const payRes = await api.getPayments();
+      if (payRes.success && payRes.data) {
+         payments = payRes.data;
       }
       setState({
         subscription: subResult?.success ? (subResult.data ?? null) : null,

@@ -188,6 +188,12 @@ export const items = sqliteTable("items", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const processedWebhookEvents = sqliteTable("processed_webhook_events", {
+  id: text("id").primaryKey().notNull(),
+  eventId: text("event_id").notNull().unique(),
+  processedAt: integer("processed_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;

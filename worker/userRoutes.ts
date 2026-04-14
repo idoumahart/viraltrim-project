@@ -1,9 +1,11 @@
 import type Stripe from "stripe";
 import { Context, Hono } from "hono";
+import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { and, count, eq } from "drizzle-orm";
 import { createSession, extractBearerToken, generateId, revokeSession, validateSession } from "./auth";
 import { createDatabase } from "./database";
-import { affiliateReferrals, affiliates, dmcaReports, users } from "./database/schema";
+import { affiliateReferrals, affiliates, dmcaReports, users, processedWebhookEvents } from "./database/schema";
+import { checkAuthRateLimit } from "./middleware/rate-limiter";
 import { createClipService } from "./database/services/clip-service";
 import { createSubscriptionService, syncUserPlanFromSubscription } from "./database/services/subscription-service";
 import { createUserService } from "./database/services/user-service";
@@ -60,7 +62,7 @@ function jwtSecret(env: Env, req: Request): string {
 }
 
 const authMiddleware = async (c: Context<AppEnv>, next: () => Promise<void>) => {
-  const token = extractBearerToken(c.req.raw);
+  const token = getCookie(c, "vt_session") || extractBearerToken(c.req.raw);
   if (!token) {
     return c.json({ success: false, error: "Authorization required" }, 401);
   }
@@ -88,6 +90,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
   api.post("/api/auth/register", async (c) => {
     try {
+      const ip =
+        c.req.raw.headers.get("cf-connecting-ip") ||
+        c.req.raw.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        "unknown";
+      const ok = await checkAuthRateLimit(c.env.CACHE, ip);
+      if (!ok) return c.json({ success: false, error: "Too many attempts, please try again later" }, 429);
       const secret = jwtSecret(c.env, c.req.raw);
       if (!secret) {
         return c.json({ success: false, error: "Server misconfigured" }, 500);
@@ -109,7 +117,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       if (error || !user) {
         return c.json({ success: false, error: error || "Registration failed" }, 400);
       }
-      const { token } = await createSession(db, user.id, c.req.raw, secret, sessionTtlSeconds(c.env));
+      const ttl = sessionTtlSeconds(c.env);
+      const { token } = await createSession(db, user.id, c.req.raw, secret, ttl);
+      setCookie(c, "vt_session", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "Lax",
+        path: "/",
+        maxAge: ttl,
+      });
       const welcome = sendResendEmail(
         c.env,
         user.email,
@@ -126,6 +142,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
   api.post("/api/auth/login", async (c) => {
     try {
+      const ip =
+        c.req.raw.headers.get("cf-connecting-ip") ||
+        c.req.raw.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        "unknown";
+      const ok = await checkAuthRateLimit(c.env.CACHE, ip);
+      if (!ok) return c.json({ success: false, error: "Too many attempts, please try again later" }, 429);
       const secret = jwtSecret(c.env, c.req.raw);
       if (!secret) {
         return c.json({ success: false, error: "Server misconfigured" }, 500);
@@ -140,7 +162,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       if (error || !user) {
         return c.json({ success: false, error: error || "Login failed" }, 401);
       }
-      const { token } = await createSession(db, user.id, c.req.raw, secret, sessionTtlSeconds(c.env));
+      const ttl = sessionTtlSeconds(c.env);
+      const { token } = await createSession(db, user.id, c.req.raw, secret, ttl);
+      setCookie(c, "vt_session", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "Lax",
+        path: "/",
+        maxAge: ttl,
+      });
       return c.json({ success: true, data: { user: publicUser(user), token } });
     } catch (error) {
       console.error("[API] Login", error);
@@ -154,8 +184,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: "Server misconfigured" }, 500);
     }
     const db = createDatabase(c.env.DB);
-    const token = c.get("token");
-    await revokeSession(db, token, secret);
+    const token = getCookie(c, "vt_session") || c.get("token");
+    if (token) await revokeSession(db, token, secret);
+    deleteCookie(c, "vt_session", { path: "/" });
     return c.json({ success: true });
   });
 
@@ -186,6 +217,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const file = form.get("file");
     if (!(file instanceof File)) {
       return c.json({ success: false, error: "file required" }, 400);
+    }
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedMimeTypes.includes(file.type)) {
+      return c.json({ success: false, error: "Invalid file type. Only JPEG, PNG, WEBP, and GIF are allowed." }, 400);
     }
     if (file.size > 5 * 1024 * 1024) {
       return c.json({ success: false, error: "File too large (max 5MB)" }, 400);
@@ -467,8 +502,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       await createUserService(db).setStripeCustomerId(user.id, customerId);
     }
     const appUrl = String(c.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
-    const trialDays = typeof body.trialDays === "number" ? body.trialDays : undefined;
-    const quantity = typeof body.quantity === "number" ? body.quantity : undefined;
+    
+    // SECURITY FIX: Never trust client for trial days or quantity
+    // Define them server-side based on the price ID if necessary.
+    const trialDays = undefined;
+    const quantity = 1;
     const url = await createCheckoutSession(stripe, {
       customerId,
       priceId,
@@ -508,6 +546,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ received: true });
     }
     const db = createDatabase(c.env.DB);
+
+    // SECURITY FIX: Idempotency check to prevent replays
+    const [alreadyProcessed] = await db
+      .select()
+      .from(processedWebhookEvents)
+      .where(eq(processedWebhookEvents.eventId, event.id))
+      .limit(1);
+    if (alreadyProcessed) return c.json({ received: true });
+    await db.insert(processedWebhookEvents).values({ id: generateId(), eventId: event.id });
+
     const stripe = getStripe(c.env.STRIPE_SECRET_KEY);
     const subSvc = createSubscriptionService(db);
     try {

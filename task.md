@@ -1,0 +1,24 @@
+# Task Progress: Viral Trim Updates
+
+- [ ] 1. **Phase 1: Critical Security Fixes**
+  - [ ] 1.1 Replace bcryptjs with WebCrypto PBKDF2
+  - [ ] 1.2 Add Security Headers Middleware
+  - [ ] 1.3 Move JWT to HttpOnly Cookie
+  - [ ] 1.4 Restrict Avatar Uploads to Images
+- [ ] 2. **Phase 2: High Severity Fixes**
+  - [ ] 2.1 Add Rate Limiting on Auth Endpoints
+  - [ ] 2.2 Fix Checkout – Remove Client‑trusted trialDays/quantity
+  - [ ] 2.3 Add Stripe Webhook Idempotency
+  - [ ] 2.4 Add Logout Endpoint with Session Revocation
+  - [ ] 2.5 Lazy‑load Routes and React Player
+- [ ] 3. **Phase 3: Medium Severity Fixes**
+  - [ ] 3.1 Prompt Sanitization / Gemini Protect
+  - [ ] 3.2 Add SEO Metadata and Structured Data
+  - [ ] 3.3 Enable TypeScript Strict Mode and Fix Errors
+  - [ ] 3.4 Password Complexity Validation
+  - [ ] 3.5 Add Session Cleanup Job
+- [ ] 4. **Phase 4: Low Severity / Nice to Have**
+  - [ ] 4.1 Add Structured Logging
+- [ ] 5. **Phase 5: Verification & Testing**
+  - [ ] 5.1 Run Full Test Suite
+  - [ ] 5.2 Dry-run Deploy

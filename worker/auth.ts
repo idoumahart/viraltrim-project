@@ -1,22 +1,31 @@
-import bcrypt from "bcryptjs";
 import * as jose from "jose";
 import { and, eq, gt } from "drizzle-orm";
 import type { Database } from "./database";
 import { sessions, users, type User } from "./database/schema";
-
-const SALT_ROUNDS = 10;
 
 export function generateId(): string {
   return crypto.randomUUID();
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, SALT_ROUNDS);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]);
+  const hash = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" }, key, 256);
+  return `${Buffer.from(salt).toString("hex")}:${Buffer.from(hash).toString("hex")}`;
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+export async function verifyPassword(password: string, hashStr: string): Promise<boolean> {
   try {
-    return await bcrypt.compare(password, hash);
+    const [saltHex, originalHashHex] = hashStr.split(":");
+    if (!saltHex || !originalHashHex) return false;
+    
+    const salt = new Uint8Array(Buffer.from(saltHex, "hex"));
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]);
+    const hash = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" }, key, 256);
+    const newHashHex = Buffer.from(hash).toString("hex");
+    return newHashHex === originalHashHex;
   } catch {
     return false;
   }

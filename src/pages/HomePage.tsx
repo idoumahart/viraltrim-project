@@ -150,7 +150,7 @@ export function HomePage() {
           </div>
         </section>
 
-        <section id="features" className="border-t border-border py-24 px-4 sm:px-6 lg:px-8">
+        <section id="features" className="content-auto border-t border-border py-24 px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { icon: TrendingUp, title: "Viral discovery", desc: "Gemini-curated trends for short-form." },
@@ -172,7 +172,7 @@ export function HomePage() {
           </div>
         </section>
 
-        <section id="pricing" className="border-t border-border py-24 px-4 sm:px-6 lg:px-8">
+        <section id="pricing" className="content-auto border-t border-border py-24 px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl text-center mb-12 space-y-4">
             <h2 className="font-display text-3xl sm:text-4xl font-bold">Pricing</h2>
             <p className="text-muted-foreground">Simple tiers. Annual toggle is UI-only for now.</p>

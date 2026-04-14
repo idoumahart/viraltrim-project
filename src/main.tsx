@@ -3,7 +3,7 @@ import { enableMapSet } from "immer";
 
 enableMapSet();
 
-import React, { StrictMode } from "react";
+import React, { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -17,16 +17,16 @@ import { SubscriptionProvider } from "@/hooks/use-subscription";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 import { HomePage } from "@/pages/HomePage";
-import { DashboardPage } from "@/pages/DashboardPage";
-import LoginPage from "@/pages/LoginPage";
-import RegisterPage from "@/pages/RegisterPage";
-import DiscoveryPage from "@/pages/DiscoveryPage";
-import BillingPage from "@/pages/BillingPage";
-import EditorPage from "@/pages/EditorPage";
-import ClipsPage from "@/pages/ClipsPage";
-import SchedulePage from "@/pages/SchedulePage";
-import SettingsPage from "@/pages/SettingsPage";
-import AffiliatePage from "@/pages/AffiliatePage";
+const DashboardPage = React.lazy(() => import("@/pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
+const LoginPage = React.lazy(() => import("@/pages/LoginPage"));
+const RegisterPage = React.lazy(() => import("@/pages/RegisterPage"));
+const DiscoveryPage = React.lazy(() => import("@/pages/DiscoveryPage"));
+const BillingPage = React.lazy(() => import("@/pages/BillingPage"));
+const EditorPage = React.lazy(() => import("@/pages/EditorPage"));
+const ClipsPage = React.lazy(() => import("@/pages/ClipsPage"));
+const SchedulePage = React.lazy(() => import("@/pages/SchedulePage"));
+const SettingsPage = React.lazy(() => import("@/pages/SettingsPage"));
+const AffiliatePage = React.lazy(() => import("@/pages/AffiliatePage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,76 +53,78 @@ root.render(
           <BrowserRouter>
             <AuthProvider>
               <SubscriptionProvider>
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <ProtectedRoute>
-                        <DashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/discovery"
-                    element={
-                      <ProtectedRoute>
-                        <DiscoveryPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/editor/:videoId"
-                    element={
-                      <ProtectedRoute>
-                        <EditorPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/clips"
-                    element={
-                      <ProtectedRoute>
-                        <ClipsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/schedule"
-                    element={
-                      <ProtectedRoute>
-                        <SchedulePage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/settings"
-                    element={
-                      <ProtectedRoute>
-                        <SettingsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/billing"
-                    element={
-                      <ProtectedRoute>
-                        <BillingPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/affiliate"
-                    element={
-                      <ProtectedRoute>
-                        <AffiliatePage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="animate-pulse">Loading...</div></div>}>
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <ProtectedRoute>
+                          <DashboardPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/discovery"
+                      element={
+                        <ProtectedRoute>
+                          <DiscoveryPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/editor/:videoId"
+                      element={
+                        <ProtectedRoute>
+                          <EditorPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/clips"
+                      element={
+                        <ProtectedRoute>
+                          <ClipsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/schedule"
+                      element={
+                        <ProtectedRoute>
+                          <SchedulePage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/settings"
+                      element={
+                        <ProtectedRoute>
+                          <SettingsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/billing"
+                      element={
+                        <ProtectedRoute>
+                          <BillingPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/affiliate"
+                      element={
+                        <ProtectedRoute>
+                          <AffiliatePage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Suspense>
                 <Toaster richColors position="top-right" />
               </SubscriptionProvider>
             </AuthProvider>

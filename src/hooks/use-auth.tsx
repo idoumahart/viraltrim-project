@@ -22,12 +22,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     const initAuth = async () => {
-      if (!api.isAuthenticated()) {
-        if (isMounted) {
-          setState({ user: null, loading: false, error: null });
-        }
-        return;
-      }
       try {
         const response = await api.getCurrentUser();
         if (!isMounted) {
@@ -36,14 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (response?.success && response.data) {
           setState({ user: response.data, loading: false, error: null });
         } else {
-          api.setToken(null);
           setState({ user: null, loading: false, error: null });
         }
       } catch (err) {
         if (!isMounted) {
           return;
         }
-        api.setToken(null);
         setState({ user: null, loading: false, error: null });
         console.error("[AUTH INIT ERROR]", err);
       }
@@ -104,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api.logout();
     } catch {
-      api.setToken(null);
+      // Intentionally bypassed on local error
     }
     setState({ user: null, loading: false, error: null });
   }, []);
@@ -123,9 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshUser = useCallback(async () => {
-    if (!api.isAuthenticated()) {
-      return;
-    }
     const res = await api.getCurrentUser();
     if (res.success && res.data) {
       setState((prev) => ({ ...prev, user: res.data ?? prev.user }));

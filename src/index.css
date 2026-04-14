@@ -48,3 +48,9 @@
     @apply font-display;
   }
 }
+
+@layer utilities {
+  .content-auto {
+    content-visibility: auto;
+  }
+}

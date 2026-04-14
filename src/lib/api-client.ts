@@ -2,8 +2,6 @@
  * ViralTrim API client — talks to Cloudflare Worker `/api/*`.
  */
 
-const TOKEN_KEY = "viraltrim_token";
-
 function getBaseUrl(): string {
   const raw = import.meta.env.VITE_API_BASE_URL;
   if (typeof raw === "string" && raw.trim().length > 0) {
@@ -128,12 +126,8 @@ async function requestJson<T>(
   if (!headers.has("Content-Type") && init.body && typeof init.body === "string") {
     headers.set("Content-Type", "application/json");
   }
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
   try {
-    const res = await fetch(url, { ...init, headers });
+    const res = await fetch(url, { ...init, headers, credentials: "include" });
     const text = await res.text();
     let parsed: unknown = null;
     try {
@@ -172,17 +166,6 @@ function parseDate(value: unknown): Date {
 }
 
 export const api = {
-  isAuthenticated(): boolean {
-    return Boolean(localStorage.getItem(TOKEN_KEY));
-  },
-
-  setToken(token: string | null): void {
-    if (token) {
-      localStorage.setItem(TOKEN_KEY, token);
-    } else {
-      localStorage.removeItem(TOKEN_KEY);
-    }
-  },
 
   async getCurrentUser(): Promise<ApiResponse<User>> {
     return requestJson<User>("/api/auth/me", { method: "GET" });
@@ -193,9 +176,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-    if (res.success && res.data?.token) {
-      api.setToken(res.data.token);
-    }
     return res;
   },
 
@@ -221,15 +201,11 @@ export const api = {
         referralCode,
       }),
     });
-    if (res.success && res.data?.token) {
-      api.setToken(res.data.token);
-    }
     return res;
   },
 
   async logout(): Promise<void> {
     await requestJson("/api/auth/logout", { method: "POST" });
-    api.setToken(null);
   },
 
   async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {

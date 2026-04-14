@@ -15,17 +15,17 @@
     {
       "binding": "DB",
       "database_name": "viraltrim-db",
-      "database_id": "b58660ce-ed5b-49fc-bc5e-87e1ecc3dda8"
+      "database_id": "26af0a14-55a5-44cb-9f1d-5df4b5fea25c"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "SESSIONS",
-      "id": "REPLACE_WITH_KV_SESSIONS_ID"
+      "id": "273e8ac85e68401fbe46f8f76067005d"
     },
     {
       "binding": "CACHE",
-      "id": "REPLACE_WITH_KV_CACHE_ID"
+      "id": "e4b1b252c9744233af37a22c3a57c10b"
     }
   ],
   "r2_buckets": [
@@ -34,9 +34,12 @@
       "bucket_name": "viraltrim-media"
     }
   ],
+  "triggers": {
+    "crons": ["0 0 * * *"]
+  },
   "vars": {
     "APP_URL": "https://viraltrim.codedmotion.studio",
-    "ALLOWED_ORIGINS": "https://viraltrim.codedmotion.studio,http://localhost:3000",
+    "ALLOWED_ORIGINS": "https://viraltrim.codedmotion.studio",
     "SESSION_TTL": "604800",
     "GEMINI_MODEL": "gemini-2.0-flash",
     "RESEND_FROM_EMAIL": "hello@viraltrim.com",
