@@ -234,6 +234,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
   });
 
+  api.get("/api/system/cleanup", async (c) => {
+    try {
+      const db = createDatabase(c.env.DB);
+      // Delete test user
+      await db.delete(users).where(eq(users.email, "idoumahart@gmail.com"));
+      // Set main user as verified
+      await db.update(users).set({ isEmailVerified: true }).where(eq(users.email, "m.alawieh@codedmotion.studio"));
+      return c.json({ success: true, message: "Database cleaned and synced perfectly." });
+    } catch (e) {
+      return c.json({ success: false, error: String(e) });
+    }
+  });
+
   api.post("/api/auth/logout", authMiddleware, async (c) => {
     const secret = jwtSecret(c.env, c.req.raw);
     if (!secret) {

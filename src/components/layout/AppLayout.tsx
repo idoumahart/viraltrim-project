@@ -118,6 +118,7 @@ export function AppLayout({
               size="sm"
               className="hidden sm:inline-flex"
               onClick={() => {
+                navigate("/");
                 void logout().catch(() => undefined);
               }}
             >
@@ -130,6 +131,7 @@ export function AppLayout({
               size="icon"
               className="sm:hidden"
               onClick={() => {
+                navigate("/");
                 void logout().catch(() => undefined);
               }}
               aria-label="Sign out"

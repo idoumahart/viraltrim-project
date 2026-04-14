@@ -179,7 +179,7 @@ export default function VerifyEmailPage() {
                       });
                     }}
                   >
-                    Use a different account
+                    Back to Sign In (Log Out)
                   </Button>
                 )}
               </CardFooter>
