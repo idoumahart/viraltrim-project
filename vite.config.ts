@@ -4,7 +4,11 @@ import { defineConfig } from "vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig({
-  plugins: [cloudflare(), react()],  resolve: {
+  plugins: [
+    ...(process.env.VERCEL ? [] : [cloudflare()]),
+    react()
+  ],
+  resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
@@ -14,7 +18,7 @@ export default defineConfig({
     port: 3000,
   },
   build: {
-    outDir: "dist/client",
+    outDir: process.env.VERCEL ? "dist" : "dist/client",
     emptyOutDir: true,
   },
 });

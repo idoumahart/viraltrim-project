@@ -1,9 +1,12 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
-  "headers": [
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://viraltrim.idoumahart.workers.dev/api/:match*"
+    },
     {
       "source": "/(.*)",
-      "headers": [{ "key": "X-Frame-Options", "value": "DENY" }]
+      "destination": "/index.html"
     }
   ]
 }
