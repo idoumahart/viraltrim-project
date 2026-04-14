@@ -19,6 +19,7 @@ export const users = sqliteTable("users", {
   plan: text("plan", { enum: ["free", "pro", "agency"] }).notNull().default("free"),
   clipsUsedThisMonth: integer("clips_used_this_month").notNull().default(0),
   isBanned: integer("is_banned", { mode: "boolean" }).notNull().default(false),
+  isEmailVerified: integer("is_email_verified", { mode: "boolean" }).notNull().default(false),
   theme: text("theme", { enum: ["light", "dark", "system"] }).default("dark"),
   isActive: integer("is_active", { mode: "boolean" }).default(true),
   lockedUntil: integer("locked_until", { mode: "timestamp" }),
@@ -41,6 +42,16 @@ export const sessions = sqliteTable("sessions", {
   isRevoked: integer("is_revoked", { mode: "boolean" }).default(false),
   revokedAt: integer("revoked_at", { mode: "timestamp" }),
   revokedReason: text("revoked_reason"),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const emailVerificationTokens = sqliteTable("email_verification_tokens", {
+  id: text("id").primaryKey().notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
   expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });

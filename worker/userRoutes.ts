@@ -10,7 +10,7 @@ import { createClipService } from "./database/services/clip-service";
 import { createSubscriptionService, syncUserPlanFromSubscription } from "./database/services/subscription-service";
 import { createUserService } from "./database/services/user-service";
 import type { Env } from "./core-utils";
-import { dmcaAdminHtml, sendResendEmail, welcomeEmailHtml } from "./email";
+import { dmcaAdminHtml, sendResendEmail, welcomeEmailHtml, verifyEmailHtml } from "./email";
 import { chatbotReply, fetchViralDiscoveryJson, generateClipMetadata } from "./gemini";
 import { checkChatbotRateLimit } from "./rate-limit";
 import {
@@ -32,6 +32,7 @@ function publicUser(u: {
   avatarUrl: string | null;
   stripeCustomerId: string | null;
   plan: string;
+  isEmailVerified?: boolean;
 }) {
   return {
     id: u.id,
@@ -41,6 +42,7 @@ function publicUser(u: {
     avatarUrl: u.avatarUrl,
     stripeCustomerId: u.stripeCustomerId,
     plan: u.plan,
+    isEmailVerified: u.isEmailVerified ?? false,
   };
 }
 
@@ -128,16 +130,68 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         path: "/",
         maxAge: ttl,
       });
+      const vToken = await userService.createVerificationToken(user.id);
+      const verifyUrl = `${c.env.APP_URL || "https://viraltrim.codedmotion.studio"}/verify-email?token=${vToken}`;
+
       const welcome = sendResendEmail(
         c.env,
         user.email,
-        "Welcome to viraltrim!",
-        welcomeEmailHtml(user.displayName),
+        "Verify your email - viraltrim",
+        verifyEmailHtml(user.displayName, verifyUrl),
       );
       c.executionCtx?.waitUntil(welcome.then(() => undefined));
       return c.json({ success: true, data: { user: publicUser(user), token } });
     } catch (error) {
       console.error("[API] Register", error);
+      return c.json({ success: false, error: "System error" }, 500);
+    }
+  });
+
+  api.post("/api/auth/verify-email", async (c) => {
+    try {
+      const body = (await c.req.json().catch(() => ({}))) as { token?: string };
+      if (!body.token) {
+        return c.json({ success: false, error: "Token is required" }, 400);
+      }
+      const db = createDatabase(c.env.DB);
+      const userService = createUserService(db);
+      
+      const ok = await userService.verifyEmailToken(body.token);
+      if (!ok) {
+        return c.json({ success: false, error: "Invalid or expired token" }, 400);
+      }
+      return c.json({ success: true });
+    } catch (error) {
+      console.error("[API] Verify Email", error);
+      return c.json({ success: false, error: "System error" }, 500);
+    }
+  });
+
+  api.post("/api/auth/resend-verification", authMiddleware, async (c) => {
+    try {
+      const user = c.get("user");
+      // Double check just in case
+      if (user.isEmailVerified) {
+        return c.json({ success: false, error: "Already verified" }, 400);
+      }
+      const db = createDatabase(c.env.DB);
+      const userService = createUserService(db);
+      
+      // We don't bother strictly rate limiting this custom route initially, but standard CF protections apply
+      const vToken = await userService.createVerificationToken(user.id);
+      const verifyUrl = `${c.env.APP_URL || "https://viraltrim.codedmotion.studio"}/verify-email?token=${vToken}`;
+      
+      const welcome = sendResendEmail(
+        c.env,
+        user.email,
+        "Verify your email - viraltrim",
+        verifyEmailHtml(user.displayName, verifyUrl),
+      );
+      c.executionCtx?.waitUntil(welcome.then(() => undefined));
+      
+      return c.json({ success: true });
+    } catch (error) {
+      console.error("[API] Resend Verification", error);
       return c.json({ success: false, error: "System error" }, 500);
     }
   });

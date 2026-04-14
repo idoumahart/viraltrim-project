@@ -35,6 +35,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     // Redirection to login if unauthorized
     return <Navigate to="/login" replace />;
   }
+
+  if (!user.isEmailVerified) {
+    // Require email verification
+    return <Navigate to="/verify-email" replace />;
+  }
+
   // Access granted to the workspace
   return <>{children}</>;
 }

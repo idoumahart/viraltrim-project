@@ -20,6 +20,7 @@ import { HomePage } from "@/pages/HomePage";
 const DashboardPage = React.lazy(() => import("@/pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const LoginPage = React.lazy(() => import("@/pages/LoginPage"));
 const RegisterPage = React.lazy(() => import("@/pages/RegisterPage"));
+const VerifyEmailPage = React.lazy(() => import("@/pages/VerifyEmailPage"));
 const DiscoveryPage = React.lazy(() => import("@/pages/DiscoveryPage"));
 const BillingPage = React.lazy(() => import("@/pages/BillingPage"));
 const EditorPage = React.lazy(() => import("@/pages/EditorPage"));
@@ -58,6 +59,7 @@ root.render(
                     <Route path="/" element={<HomePage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/verify-email" element={<VerifyEmailPage />} />
                     <Route
                       path="/dashboard"
                       element={

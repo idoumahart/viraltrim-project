@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { Database } from "../index";
-import { affiliateReferrals, affiliates, tosAgreements, users, type User } from "../schema";
+import { affiliateReferrals, affiliates, tosAgreements, users, emailVerificationTokens, type User } from "../schema";
 import { generateId, hashPassword, verifyPassword } from "../../auth";
 
 export interface RegisterData {
@@ -168,6 +168,33 @@ export class UserService {
 
   async setAvatarUrl(userId: string, url: string): Promise<void> {
     await this.db.update(users).set({ avatarUrl: url, updatedAt: new Date() }).where(eq(users.id, userId));
+  }
+
+  async createVerificationToken(userId: string): Promise<string> {
+    const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await this.db.insert(emailVerificationTokens).values({
+      id: generateId(),
+      userId,
+      token,
+      expiresAt,
+      createdAt: new Date(),
+    });
+    return token;
+  }
+
+  async verifyEmailToken(token: string): Promise<boolean> {
+    const [row] = await this.db.select().from(emailVerificationTokens).where(eq(emailVerificationTokens.token, token)).limit(1);
+    if (!row) return false;
+    
+    if (row.expiresAt.getTime() < Date.now()) {
+      await this.db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.id, row.id));
+      return false;
+    }
+
+    await this.db.update(users).set({ isEmailVerified: true, updatedAt: new Date() }).where(eq(users.id, row.userId));
+    await this.db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, row.userId));
+    return true;
   }
 }
 

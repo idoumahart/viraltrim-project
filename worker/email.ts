@@ -47,6 +47,20 @@ export function welcomeEmailHtml(displayName: string): string {
   </div>`;
 }
 
+export function verifyEmailHtml(displayName: string, verifyUrl: string): string {
+  const name = displayName || "there";
+  return `
+  <div style="font-family:system-ui,sans-serif;background:#09090b;color:#fafafa;padding:24px;border-radius:8px;">
+    <h1 style="font-size:24px;color:#10b981;">Verify your email address</h1>
+    <p>Hi ${name},</p>
+    <p>Welcome to viraltrim! Please click the secure button below to verify your email address and unlock your dashboard.</p>
+    <div style="margin: 32px 0;">
+      <a href="${verifyUrl}" style="background-color:#10b981;color:#09090b;padding:12px 24px;text-decoration:none;font-weight:bold;border-radius:6px;display:inline-block;">Verify Email</a>
+    </div>
+    <p style="font-size:12px;color:#a1a1aa;">If you didn't create an account, you can safely ignore this email.</p>
+  </div>`;
+}
+
 export function dmcaAdminHtml(report: Record<string, string>): string {
   return `<pre style="font-family:monospace">${JSON.stringify(report, null, 2)}</pre>`;
 }

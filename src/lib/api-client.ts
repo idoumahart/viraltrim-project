@@ -24,6 +24,7 @@ export interface User {
   avatarUrl?: string | null;
   stripeCustomerId?: string | null;
   plan?: string;
+  isEmailVerified?: boolean;
 }
 
 export interface Subscription {
@@ -209,6 +210,17 @@ export const api = {
 
   async logout(): Promise<void> {
     await requestJson("/api/auth/logout", { method: "POST" });
+  },
+
+  async verifyEmail(token: string): Promise<ApiResponse> {
+    return requestJson("/api/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+  },
+
+  async resendVerificationEmail(): Promise<ApiResponse> {
+    return requestJson("/api/auth/resend-verification", { method: "POST" });
   },
 
   async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
