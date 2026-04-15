@@ -64,6 +64,54 @@ Return JSON only: { "caption": string (engaging, under 400 chars, no credit line
   return parsed;
 }
 
+export interface HookSuggestion {
+  concept: string;
+  startSec: number;
+  endSec: number;
+  viral_score: number;
+  caption: string;
+}
+
+export async function generateHookSuggestions(
+  apiKey: string,
+  modelId: string | undefined,
+  transcript: string,
+  targetDuration: number,
+): Promise<HookSuggestion[]> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: modelId || DEFAULT_MODEL });
+  
+  // Truncate transcript to prevent context overflow. roughly 40,000 chars is safe for Gemini flash
+  const truncatedTranscript = transcript.slice(0, 40000);
+  
+  const prompt = `You are a viral social media manager. I am giving you a raw video transcript. I need you to identify exactly 3 distinct concepts/segments that would make highly viral, engaging standalone short-form clips.
+The requested length per clip is approximately ${targetDuration} seconds. Keep the start and end timestamps strictly within what you find in the context. If timestamps aren't strictly numbered, estimate them logically.
+
+Transcript:
+"""
+${truncatedTranscript}
+"""
+
+Return a raw JSON array of 3 objects containing the fields: "concept" (a catchy 3-4 word title), "startSec" (integer), "endSec" (integer), "viral_score" (0-100), and "caption" (engaging and under 200 chars).
+Return JSON ONLY, without markdown fences or additional explanation.`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text().trim();
+  const cleaned = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+  const parsed = JSON.parse(cleaned) as HookSuggestion[];
+  
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error("Invalid hook suggestion response");
+  }
+  return parsed.map((p) => ({
+    ...p,
+    // ensure strings are converted if gemini hallucinates strings
+    startSec: Number(p.startSec) || 0,
+    endSec: Number(p.endSec) || targetDuration,
+    viral_score: Number(p.viral_score) || 85,
+  }));
+}
+
 export async function chatbotReply(
   apiKey: string,
   modelId: string | undefined,

@@ -11,7 +11,7 @@ import { createSubscriptionService, syncUserPlanFromSubscription } from "./datab
 import { createUserService } from "./database/services/user-service";
 import type { Env } from "./core-utils";
 import { dmcaAdminHtml, sendResendEmail, welcomeEmailHtml, verifyEmailHtml } from "./email";
-import { chatbotReply, fetchViralDiscoveryJson, generateClipMetadata } from "./gemini";
+import { chatbotReply, fetchViralDiscoveryJson, generateClipMetadata, generateHookSuggestions } from "./gemini";
 import { checkChatbotRateLimit } from "./rate-limit";
 import {
   createCheckoutSession,
@@ -398,6 +398,28 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     } catch (e) {
       console.error("[generate-clip]", e);
       return c.json({ success: false, error: "AI generation failed" }, 502);
+    }
+  });
+
+  api.post("/api/clips/suggest-hooks", authMiddleware, async (c) => {
+    const key = c.env.GEMINI_API_KEY;
+    if (!key) {
+      return c.json({ success: false, error: "AI not configured" }, 503);
+    }
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const transcript = String(body.transcript ?? "");
+    const targetLength = Number(body.targetLength ?? 30);
+    
+    if (!transcript) {
+      return c.json({ success: false, error: "Transcript is required to generate hooks" }, 400);
+    }
+
+    try {
+      const hooks = await generateHookSuggestions(key, c.env.GEMINI_MODEL, transcript, targetLength);
+      return c.json({ success: true, data: hooks });
+    } catch (e) {
+      console.error("[suggest-hooks]", e);
+      return c.json({ success: false, error: "Failed to generate hook suggestions" }, 502);
     }
   });
 

@@ -27,12 +27,12 @@ export default function EditorPage() {
   const videoUrl = stateVideo?.url ?? "";
   const channel = stateVideo?.title?.split("—")[0]?.trim() ?? "Trending topic";
 
+  // No strict redirect on missing videoId anymore to allow sidebar navigation
   useEffect(() => {
-    if (!videoId) {
-      toast.error("Project identifier missing");
-      navigate("/discovery");
+    if (!videoId && !stateVideo) {
+      // Just visually show empty state, no aggressive routing
     }
-  }, [videoId, navigate]);
+  }, [videoId, stateVideo]);
 
   const handleGenerate = useCallback(async () => {
     if (!videoUrl) {

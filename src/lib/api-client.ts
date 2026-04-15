@@ -382,6 +382,16 @@ export const api = {
     return res as ApiResponse<Clip>;
   },
 
+  async suggestHooks(body: {
+    transcript: string;
+    targetLength: number;
+  }): Promise<ApiResponse<Array<{ concept: string; startSec: number; endSec: number; viral_score: number; caption: string }>>> {
+    return requestJson<Array<{ concept: string; startSec: number; endSec: number; viral_score: number; caption: string }>>("/api/clips/suggest-hooks", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
   async chatbot(message: string, history: { role: string; content: string }[]): Promise<ApiResponse<{ reply: string }>> {
     return requestJson<{ reply: string }>("/api/chatbot", {
       method: "POST",
