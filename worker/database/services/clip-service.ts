@@ -84,8 +84,10 @@ export class ClipService {
       videoUrl?: string | null;
     },
   ): Promise<{ clip: Clip | null; error?: string }> {
-    if (data.durationSeconds > 90) {
-      return { clip: null, error: "Clip exceeds 90 second maximum" };
+    const isAgency = ["agency", "unlimited"].includes((user.plan ?? "").toLowerCase());
+    const maxDuration = isAgency ? 600 : 90;
+    if (data.durationSeconds > maxDuration) {
+      return { clip: null, error: `Clip exceeds ${maxDuration} second maximum for ${user.plan} tier` };
     }
     const limit = clipQuotaForPlan(user.plan);
     if ((user.clipsUsedThisMonth ?? 0) >= limit) {
@@ -101,6 +103,8 @@ export class ClipService {
         title: data.title,
         platform: data.platform,
         duration: `${Math.round(data.durationSeconds)}s`,
+        durationSeconds: Math.round(data.durationSeconds),
+        editCount: 0,
         status: "draft",
         views: "—",
         engagement: "—",
@@ -128,8 +132,54 @@ export class ClipService {
     await this.logActivity(user.id, "clip_generated", { clipId: clip.id });
     return { clip };
   }
-}
+  async getClipById(clipId: string, userId: string): Promise<Clip | null> {
+    const [clip] = await this.db
+      .select()
+      .from(clips)
+      .where(eq(clips.id, clipId));
+    if (clip && clip.userId !== userId) {
+      return null;
+    }
+    return clip ?? null;
+  }
 
+  async updateClip(
+    clipId: string,
+    userId: string,
+    updates: Partial<Clip>,
+    userPlan: string,
+  ): Promise<{ clip: Clip | null; error?: string }> {
+    const clip = await this.getClipById(clipId, userId);
+    if (!clip) {
+      return { clip: null, error: "Clip not found" };
+    }
+
+    let editLimit = 3;
+    if (userPlan === "pro") editLimit = 10;
+    if (userPlan === "agency" || userPlan === "unlimited") editLimit = 20;
+    
+    if ((clip.editCount ?? 0) >= editLimit) {
+      return { clip: null, error: `Edit limit reached (${editLimit} max for ${userPlan} tier)` };
+    }
+
+    const [updated] = await this.db
+      .update(clips)
+      .set({
+        ...updates,
+        editCount: (clip.editCount ?? 0) + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(clips.id, clipId))
+      .returning();
+
+    if (!updated) {
+      return { clip: null, error: "Failed to update clip" };
+    }
+
+    await this.logActivity(userId, "clip_updated", { clipId });
+    return { clip: updated };
+  }
+}
 export function createClipService(db: Database): ClipService {
   return new ClipService(db);
 }

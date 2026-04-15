@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Plus, Trash2, Video, FileText, Sparkles, Loader2, Play } from "lucide-react";
+import { Plus, Trash2, Video, FileText, Sparkles, Loader2, Play, Lock } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { QuirkyLoader } from "@/components/ui/QuirkyLoader";
+import { useAuth } from "@/hooks/use-auth";
 
 // Provide some funny loading states
 const LOADING_MESSAGES = [
@@ -19,12 +22,15 @@ const LOADING_MESSAGES = [
 ];
 
 export default function MyVideosPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [url, setUrl] = useState("");
   const [activeVideo, setActiveVideo] = useState<any>(null);
   
   // Phase 2 hook flow state
-  const [targetLength, setTargetLength] = useState<number>(30); // 30, 60, 90
+  const [targetLength, setTargetLength] = useState<number>(30); // 30, 60, 90, 180, 300, 600
   const [suggestedHooks, setSuggestedHooks] = useState<any[]>([]);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -87,12 +93,29 @@ export default function MyVideosPage() {
     }),
     onSuccess: (data) => {
       if (data.success) {
-        toast.success("Clip rendered and saved to your studio!");
+        toast.success("Clip generation queued! Redirecting...");
+        navigate("/studio/clips");
       } else {
         toast.error(data.error || "Failed to finalize clip.");
       }
     },
   });
+
+  const handleTargetLengthChange = (length: number) => {
+    if (length > 90 && user?.plan !== "agency") {
+      setShowUpgradeModal(true);
+      return;
+    }
+    setTargetLength(length);
+  };
+
+  const handleSaveAll = () => {
+    if (user?.plan !== "agency") {
+      setShowUpgradeModal(true);
+      return;
+    }
+    suggestedHooks.forEach(hook => createClipMutation.mutate(hook));
+  };
 
   const handleImport = (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,13 +194,17 @@ export default function MyVideosPage() {
                       <Video className="w-10 h-10 text-muted-foreground opacity-50" />
                     )}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                      <Button variant="secondary" size="sm" className="rounded-full">
-                        <Play className="w-4 h-4 mr-2" />
-                        Extract Clips
+                      <Button variant="secondary" size="sm" className="rounded-full shadow-lg">
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Extract video and generate viral clip
                       </Button>
                     </div>
                   </div>
-                  <div className="p-4">
+                  <div className="p-4 bg-muted/10 border-t border-border/50">
+                    <p className="text-xs font-semibold text-primary/80 mb-2 uppercase tracking-wide flex items-center"><Sparkles className="w-3 h-3 mr-1"/> Action Required</p>
+                    <p className="text-sm font-medium">Extract video and generate viral clip</p>
+                  </div>
+                  <div className="p-4 pt-0">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         <p className="font-medium truncate" title={link.title || link.url}>
@@ -253,27 +280,15 @@ export default function MyVideosPage() {
                       <CardContent className="p-4 space-y-4">
                         <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Find Viral Moments</h3>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-4">
                           <p className="text-xs text-muted-foreground">Target Clip Length</p>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant={targetLength === 30 ? "default" : "outline"} 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => setTargetLength(30)}
-                            >Short (&lt;30s)</Button>
-                            <Button 
-                              variant={targetLength === 60 ? "default" : "outline"} 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => setTargetLength(60)}
-                            >Med (30-60s)</Button>
-                            <Button 
-                              variant={targetLength === 90 ? "default" : "outline"} 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => setTargetLength(90)}
-                            >Long (60s+)</Button>
+                          <div className="grid grid-cols-3 gap-2">
+                            <Button variant={targetLength === 30 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(30)}>&lt;30s</Button>
+                            <Button variant={targetLength === 60 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(60)}>60s</Button>
+                            <Button variant={targetLength === 90 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(90)}>90s</Button>
+                            <Button variant={targetLength === 180 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(180)}>3 min {user?.plan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
+                            <Button variant={targetLength === 300 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(300)}>5 min {user?.plan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
+                            <Button variant={targetLength === 600 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(600)}>10 min {user?.plan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
                           </div>
                         </div>
 
@@ -291,9 +306,8 @@ export default function MyVideosPage() {
                     <ScrollArea className="flex-1">
                       <div className="space-y-3 pb-4">
                         {suggestHooksMutation.isPending && (
-                          <div className="p-6 rounded-lg border border-primary/20 bg-primary/5 flex flex-col items-center justify-center text-center space-y-3">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                            <p className="text-sm font-medium animate-pulse text-primary">{getFunnyLoadingMessage()}</p>
+                          <div className="p-6 rounded-lg border border-primary/20 bg-primary/5">
+                            <QuirkyLoader />
                           </div>
                         )}
 
@@ -325,6 +339,17 @@ export default function MyVideosPage() {
                              </div>
                            </div>
                         ))}
+                        {!suggestHooksMutation.isPending && suggestedHooks.length > 0 && (
+                          <Button 
+                            className="w-full mt-4 border border-dashed hover:border-solid hover:bg-primary/10 hover:text-primary transition-all" 
+                            variant="outline"
+                            onClick={handleSaveAll}
+                            disabled={createClipMutation.isPending}
+                          >
+                            <Video className="w-4 h-4 mr-2" />
+                            Save All 3 Clips {user?.plan !== 'agency' && <Lock className="w-4 h-4 ml-2 opacity-50"/>}
+                          </Button>
+                        )}
                       </div>
                     </ScrollArea>
                   </div>
@@ -332,6 +357,22 @@ export default function MyVideosPage() {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* UPGRADE MODAL */}
+        <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl text-primary"><Sparkles /> Unlimited Agency Tiers required</DialogTitle>
+              <DialogDescription className="pt-4 text-base">
+                Creating clips longer than 90 seconds, and bulk-saving operations are strictly reserved for Unlimited Agency accounts.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-6">
+              <Button variant="outline" onClick={() => setShowUpgradeModal(false)}>Cancel</Button>
+              <Button asChild><a href="/settings?tab=billing">Upgrade to Agency</a></Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 

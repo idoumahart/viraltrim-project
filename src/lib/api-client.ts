@@ -60,11 +60,14 @@ export interface Clip {
   title: string;
   platform: string;
   duration?: string;
+  durationSeconds?: number;
   status: string;
   views?: string;
   engagement?: string;
   thumbnail?: string;
   videoUrl?: string;
+  caption?: string;
+  editCount: number;
   createdAt: Date;
 }
 
@@ -397,5 +400,29 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ message, history }),
     });
+  },
+
+  async getClip(id: string): Promise<ApiResponse<Clip>> {
+    const res = await requestJson<Record<string, unknown>>(`/api/clips/${id}`, { method: "GET" });
+    if (res.success && res.data) {
+      const row = res.data as Record<string, unknown>;
+      res.data = { ...row, createdAt: parseDate(row.createdAt), editCount: Number(row.editCount ?? 0) } as unknown as Clip;
+    }
+    return res as ApiResponse<Clip>;
+  },
+
+  async updateClip(
+    id: string,
+    updates: { title?: string; caption?: string; platform?: string; status?: string },
+  ): Promise<ApiResponse<Clip>> {
+    const res = await requestJson<Record<string, unknown>>(`/api/clips/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    });
+    if (res.success && res.data) {
+      const row = res.data as Record<string, unknown>;
+      res.data = { ...row, createdAt: parseDate(row.createdAt), editCount: Number(row.editCount ?? 0) } as unknown as Clip;
+    }
+    return res as ApiResponse<Clip>;
   },
 };

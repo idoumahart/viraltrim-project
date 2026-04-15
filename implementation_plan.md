@@ -142,6 +142,32 @@ const key = `avatars/${user.id}/${generateId()}.${ext}`;
 
 ---
 
+## Phase 2 (Extension): Studio AI Hooks & Editor Constraints
+
+### AI Hook Generation & Tiers
+1. **Quirky Loaders**: Create a rotating `QuirkyLoader` component (displays rotating funny text strings changing every 3s) and drop it anywhere loading exceeds >5 seconds.
+2. **AI Length Constraints**: Enforce Gemini to strictly respect the target times (30s, 60s, 90s) generated. 
+3. **Advanced Hooks Target Sizes**: Add `3 min`, `5 min`, and `10 min` duration toggles strictly gated for `agency` plan users. Show to all, but trigger upgrade UI if disabled.
+4. **My Videos Upgrade Prompt**: 
+   - Add explicit text underneath the original video: "Extract video and generate viral clip".
+   - Restrict the "Save all 3 clips" bulk-action explicitly to the `agency` tier (show an upgrade popup for Free/Pro).
+5. **Background Process Generation (Fire & Forget)**: 
+   - Shift the video generation / hook extraction to a background execution (`ctx.waitUntil` or Cloudflare Queues). This ensures if a user closes the browser or navigates away during generation, the API continues processing, saves the clip to the database, and marks it 'completed'. They will receive an email/in-app notification upon completion, so generations are never "lost".
+6. **Post-generation Redirect**: Ensure that immediately after a clip generates and saves, instead of reverting to `/studio/videos`, redirect naturally right into the `/studio/clips` page.
+
+### Editor & Database Updates
+1. **Clip Edit Limits (Storage Abuse Prevention)**: 
+   - Add `editCount` to the `clips` schema tracking how many times they save edits. 
+   - Limit `free` tier to 1 saved edit. Limit `pro` tier to 3 saved edits. 
+   - Limit `agency` tier to a soft-cap of 10 saved edits per video. If an agency user exceeds 10, prompt them to contact support for large-volume storage solutions.
+2. **Thumbnail Fix for Generated Clips**: Fix the missing thumbnail on saved clip cards.
+3. **Clip Edit Navigation**: Fix "Edit" button on the clip card so it successfully pushes logic state to the `/studio/editor` with that targeted clip data.
+4. **Remove Unused Components & Text in Editor**: 
+   - Remove the "Generate Clip" action box heavily embedded in the Editor since they already chose their clip. 
+   - Drop the "Captions will include required credit line" string.
+
+---
+
 ## Phase 2: High Severity Fixes
 
 ### 2.1 Add Rate Limiting on Auth Endpoints

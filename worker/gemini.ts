@@ -85,7 +85,9 @@ export async function generateHookSuggestions(
   const truncatedTranscript = transcript.slice(0, 40000);
   
   const prompt = `You are a viral social media manager. I am giving you a raw video transcript. I need you to identify exactly 3 distinct concepts/segments that would make highly viral, engaging standalone short-form clips.
-The requested length per clip is approximately ${targetDuration} seconds. Keep the start and end timestamps strictly within what you find in the context. If timestamps aren't strictly numbered, estimate them logically.
+CRITICAL REQUIREMENT: The length of each clip must be STRICTLY AROUND ${targetDuration} seconds. 
+Ensure that (endSec - startSec) is approximately ${targetDuration}. DO NOT make it wildly longer or shorter.
+Keep the start and end timestamps strictly within what you find in the context. If timestamps aren't strictly numbered, estimate them logically.
 
 Transcript:
 """
