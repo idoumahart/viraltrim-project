@@ -41,7 +41,7 @@
     "APP_URL": "https://viraltrim.codedmotion.studio",
     "ALLOWED_ORIGINS": "https://viraltrim.codedmotion.studio",
     "SESSION_TTL": "604800",
-    "GEMINI_MODEL": "gemini-1.5-flash",
+    "GEMINI_MODEL": "gemini-2.5-flash",
     "RESEND_FROM_EMAIL": "hello@viraltrim.com",
     "RESEND_ADMIN_EMAIL": "admin@viraltrim.com",
     "STRIPE_PRO_PRICE_ID": "",
