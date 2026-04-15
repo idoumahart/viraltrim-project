@@ -78,7 +78,7 @@ root.render(
                       }
                     />
                     <Route
-                      path="/videos"
+                      path="/studio/videos"
                       element={
                         <ProtectedRoute>
                           <MyVideosPage />
@@ -86,7 +86,7 @@ root.render(
                       }
                     />
                     <Route
-                      path="/editor/:videoId"
+                      path="/studio/editor"
                       element={
                         <ProtectedRoute>
                           <EditorPage />
@@ -94,7 +94,7 @@ root.render(
                       }
                     />
                     <Route
-                      path="/clips"
+                      path="/studio/clips"
                       element={
                         <ProtectedRoute>
                           <ClipsPage />
