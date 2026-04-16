@@ -25,7 +25,9 @@ export interface User {
   stripeCustomerId?: string | null;
   plan?: string;
   isEmailVerified?: boolean;
+  isOwner?: boolean;
 }
+
 
 export interface Subscription {
   id: string;
@@ -68,8 +70,17 @@ export interface Clip {
   videoUrl?: string;
   caption?: string;
   editCount: number;
+  // Editor fields
+  startSec?: number | null;
+  endSec?: number | null;
+  captionLines?: string[] | null;
+  combinedClipIds?: string[] | null;
+  textStyle?: string | null;
+  mediaUrls?: string[] | null;
+  viralScore?: number;
   createdAt: Date;
 }
+
 
 export interface ScheduledPost {
   id: string;
@@ -106,7 +117,10 @@ export interface ViralVideo {
   category: string;
   thumbnail: string;
   duration: string;
+  platform?: string; // youtube | tiktok | instagram | x | facebook | rumble | dailymotion | vimeo | loom | reddit
+  isCreativeCommons?: boolean;
 }
+
 
 export interface ClipSuggestion {
   id: string;
@@ -233,15 +247,15 @@ export const api = {
     });
   },
 
-  async getViralDiscovery(category: string): Promise<ApiResponse<ViralVideo[]>> {
+  async getViralDiscovery(category: string, platform = "all"): Promise<ApiResponse<ViralVideo[]>> {
     const q = new URLSearchParams();
-    if (category.trim()) {
-      q.set("category", category.trim());
-    }
+    if (category.trim()) q.set("category", category.trim());
+    if (platform && platform !== "all") q.set("platform", platform);
     return requestJson<ViralVideo[]>(`/api/viral-discovery?${q.toString()}`, {
       method: "GET",
     });
   },
+
 
   async getClips(): Promise<ApiResponse<Clip[]>> {
     const res = await requestJson<Record<string, unknown>[]>("/api/clips", { method: "GET" });
@@ -413,7 +427,18 @@ export const api = {
 
   async updateClip(
     id: string,
-    updates: { title?: string; caption?: string; platform?: string; status?: string },
+    updates: {
+      title?: string;
+      caption?: string;
+      platform?: string;
+      status?: string;
+      startSec?: number;
+      endSec?: number;
+      captionLines?: string[];
+      combinedClipIds?: string[];
+      textStyle?: string;
+      mediaUrls?: string[];
+    },
   ): Promise<ApiResponse<Clip>> {
     const res = await requestJson<Record<string, unknown>>(`/api/clips/${id}`, {
       method: "PATCH",
@@ -425,6 +450,28 @@ export const api = {
     }
     return res as ApiResponse<Clip>;
   },
+
+  async uploadMedia(file: File): Promise<ApiResponse<{ url: string }>> {
+    const form = new FormData();
+    form.append("file", file);
+    const base = getBaseUrl();
+    try {
+      const res = await fetch(`${base}/api/media/upload`, {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      const text = await res.text();
+      let parsed: unknown = null;
+      try { parsed = text ? JSON.parse(text) : null; } catch { /* noop */ }
+      const obj = parsed as ApiResponse<{ url: string }>;
+      if (!res.ok) return { success: false, error: obj?.error ?? `HTTP ${res.status}` };
+      return obj ?? { success: false, error: "Empty response" };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : "Upload failed" };
+    }
+  },
+
 
   async deleteClip(id: string): Promise<ApiResponse<null>> {
     return requestJson<null>(`/api/clips/${id}`, { method: "DELETE" });

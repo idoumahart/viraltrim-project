@@ -21,6 +21,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { TierSwitcher } from "@/components/ui/TierSwitcher";
+import { ChatbotWidget } from "@/components/ui/ChatbotWidget";
+import { TipsTour } from "@/components/ui/TipsTour";
+
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -31,7 +35,8 @@ type AppLayoutProps = {
 
 const MAIN_NAV = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-  { label: "Discovery", icon: TrendingUp, path: "/discovery" },
+  { label: "Viral Search", icon: TrendingUp, path: "/discovery" },
+
   { label: "Schedule", icon: Calendar, path: "/schedule" },
 ] as const;
 
@@ -134,7 +139,8 @@ export function AppLayout({
         </div>
       </div>
 
-      <div className="mt-auto pt-6 pb-2">
+      <div className="mt-auto pt-4 pb-2">
+        <TierSwitcher />
         <Button
           variant="outline"
           className="w-full justify-start gap-3 border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-all font-medium py-6"
@@ -144,6 +150,7 @@ export function AppLayout({
           Sign out
         </Button>
       </div>
+
     </div>
   );
 
@@ -197,6 +204,10 @@ export function AppLayout({
           <div className={cn("flex-1", contentClassName)}>{children}</div>
         )}
       </main>
+
+      {/* Global Widgets */}
+      <TipsTour />
+      <ChatbotWidget />
     </div>
   );
 }

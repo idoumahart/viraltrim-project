@@ -5,6 +5,18 @@
   - [x] 1.2 Add Security Headers Middleware (Verified in worker/index.ts)
   - [x] 1.3 Move JWT to HttpOnly Cookie (Verified in worker/userRoutes.ts)
   - [x] 1.4 Restrict Avatar Uploads to Images (Verified in worker/userRoutes.ts)
+- [x] 2. **Phase 8: Security Audit & Cleanup**
+  - [x] Run D1 migration for owner testing array.
+  - [x] Verify rate limit on /register.
+  - [x] Verify password length minimum (12 chars).
+  - [x] Add prompt sanitization to gemini.ts.
+  - [x] Verify checkout removes client-trusted trialDays.
+  - [x] Verify Stripe webhook idempotency.
+  - [x] Verify POST /api/auth/logout + session revocation.
+  - [x] Add robots.txt + sitemap.xml to public/.
+  - [x] Add OG meta to index.html.
+  - [x] Enable TypeScript strict mode.
+  - [x] Verify session cleanup cron in wrangler.jsonc.
 - [/] 2. **Phase 2: High Severity & Studio Overhaul**
   - [x] 2.1 Add Rate Limiting on Auth Endpoints (Verified in worker/userRoutes.ts)
   - [x] 2.2 Fix Checkout – Remove Client‑trusted trialDays/quantity (Verified in worker/userRoutes.ts)
@@ -14,11 +26,11 @@
   - [x] 2.6 Dedicated Editor Page (Implemented in EditorPage.tsx)
   - [x] 2.7 Tier-based Edit Limits (Free/Pro/Agency constraints live)
   - [x] 2.8 Clip Deletion (Implemented in ClipsPage.tsx)
-- [/] 3. **Phase 3: Medium Severity Fixes**
-  - [ ] 3.1 Prompt Sanitization / Gemini Protect
-  - [ ] 3.2 Add SEO Metadata and Structured Data
-  - [ ] 3.3 Enable TypeScript Strict Mode and Fix Errors
-  - [ ] 3.4 Password Complexity Validation
+- [x] 3. **Phase 3: Medium Severity Fixes**
+  - [x] 3.1 Prompt Sanitization / Gemini Protect
+  - [x] 3.2 Add SEO Metadata and Structured Data
+  - [x] 3.3 Enable TypeScript Strict Mode and Fix Errors
+  - [x] 3.4 Password Complexity Validation
   - [x] 3.5 Add Session Cleanup Job (Verified cron in worker/index.ts)
 - [ ] 4. **Phase 4: Low Severity / Nice to Have**
   - [ ] 4.1 Add Structured Logging

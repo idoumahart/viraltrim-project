@@ -26,9 +26,11 @@ export const users = sqliteTable("users", {
   failedLoginAttempts: integer("failed_login_attempts").default(0),
   lastActiveAt: integer("last_active_at", { mode: "timestamp" }),
   preferences: text("preferences", { mode: "json" }).default(sql`'{}'`),
+  isOwner: integer("is_owner").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
+
 
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey().notNull(),
@@ -111,9 +113,17 @@ export const clips = sqliteTable("clips", {
   requiredCredit: text("required_credit"),
   sourceUrl: text("source_url"),
   sourceChannel: text("source_channel"),
+  // Editor columns
+  startSec: real("start_sec"),
+  endSec: real("end_sec"),
+  captionLines: text("caption_lines", { mode: "json" }).$type<string[]>(),
+  combinedClipIds: text("combined_clip_ids", { mode: "json" }).$type<string[]>(),
+  textStyle: text("text_style"),
+  mediaUrls: text("media_urls", { mode: "json" }).$type<string[]>(),
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
+
 
 export const scheduledPosts = sqliteTable("scheduled_posts", {
   id: text("id").primaryKey().notNull(),

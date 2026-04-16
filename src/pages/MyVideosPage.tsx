@@ -23,7 +23,8 @@ const LOADING_MESSAGES = [
 ];
 
 export default function MyVideosPage() {
-  const { user } = useAuth();
+  const { user, effectivePlan } = useAuth();
+
   const navigate = useNavigate();
   const [url, setUrl] = useState("");
   const [activeVideo, setActiveVideo] = useState<any>(null);
@@ -103,7 +104,7 @@ export default function MyVideosPage() {
   });
 
   const handleTargetLengthChange = (length: number) => {
-    if (length > 90 && user?.plan !== "agency") {
+    if (length > 90 && effectivePlan !== "agency") {
       setShowUpgradeModal(true);
       return;
     }
@@ -111,7 +112,7 @@ export default function MyVideosPage() {
   };
 
   const handleSaveAll = () => {
-    if (user?.plan !== "agency") {
+    if (effectivePlan !== "agency") {
       setShowUpgradeModal(true);
       return;
     }
@@ -287,9 +288,9 @@ export default function MyVideosPage() {
                             <Button variant={targetLength === 30 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(30)}>&lt;30s</Button>
                             <Button variant={targetLength === 60 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(60)}>60s</Button>
                             <Button variant={targetLength === 90 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(90)}>90s</Button>
-                            <Button variant={targetLength === 180 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(180)}>3 min {user?.plan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
-                            <Button variant={targetLength === 300 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(300)}>5 min {user?.plan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
-                            <Button variant={targetLength === 600 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(600)}>10 min {user?.plan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
+                            <Button variant={targetLength === 180 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(180)}>3 min {effectivePlan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
+                            <Button variant={targetLength === 300 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(300)}>5 min {effectivePlan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
+                            <Button variant={targetLength === 600 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(600)}>10 min {effectivePlan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
                           </div>
                         </div>
 

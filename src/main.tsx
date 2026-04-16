@@ -15,6 +15,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/hooks/use-auth";
 import { SubscriptionProvider } from "@/hooks/use-subscription";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { VerifiedRoute } from "@/components/VerifiedRoute";
+
 
 import { HomePage } from "@/pages/HomePage";
 const DashboardPage = React.lazy(() => import("@/pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
@@ -81,15 +83,20 @@ root.render(
                       path="/studio/videos"
                       element={
                         <ProtectedRoute>
-                          <MyVideosPage />
+                          <VerifiedRoute>
+                            <MyVideosPage />
+                          </VerifiedRoute>
                         </ProtectedRoute>
                       }
                     />
+
                     <Route
                       path="/studio/editor"
                       element={
                         <ProtectedRoute>
-                          <EditorPage />
+                          <VerifiedRoute>
+                            <EditorPage />
+                          </VerifiedRoute>
                         </ProtectedRoute>
                       }
                     />
@@ -97,10 +104,13 @@ root.render(
                       path="/studio/clips"
                       element={
                         <ProtectedRoute>
-                          <ClipsPage />
+                          <VerifiedRoute>
+                            <ClipsPage />
+                          </VerifiedRoute>
                         </ProtectedRoute>
                       }
                     />
+
                     <Route
                       path="/schedule"
                       element={

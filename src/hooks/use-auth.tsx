@@ -19,6 +19,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error: null,
   });
 
+  // Owner-only dev plan override — sessionStorage only, never touches DB
+  const [devPlan, setDevPlanState] = useState<string | null>(() => {
+    try { return sessionStorage.getItem("vt_dev_plan"); } catch { return null; }
+  });
+
+  const setDevPlan = useCallback((plan: string | null) => {
+    try {
+      if (plan) sessionStorage.setItem("vt_dev_plan", plan);
+      else sessionStorage.removeItem("vt_dev_plan");
+    } catch { /* noop */ }
+    setDevPlanState(plan);
+  }, []);
+
+  const effectivePlan = devPlan ?? state.user?.plan ?? "free";
+
+
   useEffect(() => {
     let isMounted = true;
     const initAuth = async () => {
@@ -98,8 +114,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Intentionally bypassed on local error
     }
+    try { sessionStorage.removeItem("vt_dev_plan"); } catch { /* noop */ }
+    setDevPlanState(null);
     setState({ user: null, loading: false, error: null });
   }, []);
+
 
   const updateProfile = useCallback(async (data: Partial<User>): Promise<boolean> => {
     try {
@@ -133,7 +152,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateProfile,
     refreshUser,
     clearError,
+    effectivePlan,
+    setDevPlan,
   };
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

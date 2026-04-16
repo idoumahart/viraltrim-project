@@ -46,6 +46,9 @@ export class UserService {
     if (!normalizedEmail || !data.password) {
       return { user: null, error: "Email and password are required" };
     }
+    if (data.password.length < 12) {
+      return { user: null, error: "Password must be at least 12 characters long" };
+    }
     if (data.agreeToTerms !== true) {
       return { user: null, error: "You must accept the Terms of Service" };
     }

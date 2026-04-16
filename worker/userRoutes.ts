@@ -11,7 +11,7 @@ import { createSubscriptionService, syncUserPlanFromSubscription } from "./datab
 import { createUserService } from "./database/services/user-service";
 import type { Env } from "./core-utils";
 import { dmcaAdminHtml, sendResendEmail, welcomeEmailHtml, verifyEmailHtml } from "./email";
-import { chatbotReply, fetchViralDiscoveryJson, generateClipMetadata, generateHookSuggestions } from "./gemini";
+import { chatbotReply, fetchYouTubeVideos, fetchRedditVideos, fetchRapidApiVideos, generateClipMetadata, generateHookSuggestions } from "./gemini";
 import { checkChatbotRateLimit } from "./rate-limit";
 import {
   createCheckoutSession,
@@ -33,6 +33,7 @@ function publicUser(u: {
   stripeCustomerId: string | null;
   plan: string;
   isEmailVerified?: boolean;
+  isOwner?: number | boolean | null;
 }) {
   return {
     id: u.id,
@@ -43,8 +44,10 @@ function publicUser(u: {
     stripeCustomerId: u.stripeCustomerId,
     plan: u.plan,
     isEmailVerified: u.isEmailVerified ?? false,
+    isOwner: u.isOwner === 1 || u.isOwner === true,
   };
 }
+
 
 function sessionTtlSeconds(env: Env): number {
   const n = Number.parseInt(String(env.SESSION_TTL || "604800"), 10);
@@ -322,25 +325,57 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
 
   api.get("/api/viral-discovery", authMiddleware, async (c) => {
-    const key = c.env.GEMINI_API_KEY;
-    if (!key) {
-      return c.json({ success: false, error: "Discovery service not configured" }, 503);
+    const youtubeKey = c.env.YOUTUBE_API_KEY as string | undefined;
+    const rapidKey = c.env.RAPID_API_KEY as string | undefined;
+    const category = (c.req.query("category") || "").slice(0, 100).replace(/[\n\r`]/g, "");
+    const platform = (c.req.query("platform") || "all").toLowerCase();
+
+    if (!category.trim()) {
+      return c.json({ success: false, error: "Search query required" }, 400);
     }
-    const category = c.req.query("category") || "";
+
     try {
-      const rows = await fetchViralDiscoveryJson(key, c.env.GEMINI_MODEL, category);
-      const data = rows.map((r, i) => ({
-        id: `vd-${i}-${r.title.slice(0, 8)}`,
-        title: r.title,
-        url: r.youtube_search_url,
-        views: r.estimated_views,
-        engagement: `${r.viral_score}%`,
-        viralScore: r.viral_score,
-        category: category || "trending",
-        thumbnail: `https://img.youtube.com/vi/${extractYoutubeId(r.youtube_search_url)}/hqdefault.jpg`,
-        duration: "—",
-      }));
-      return c.json({ success: true, data });
+      let results: import("./gemini").ViralVideoResult[] = [];
+
+      if (platform === "youtube" || platform === "all") {
+        if (!youtubeKey) return c.json({ success: false, error: "YouTube API not configured" }, 503);
+        const yt = await fetchYouTubeVideos(category, youtubeKey);
+        results = results.concat(yt);
+      }
+
+      if (platform === "reddit" || platform === "all") {
+        try {
+          const reddit = await fetchRedditVideos(category);
+          results = results.concat(reddit);
+        } catch {
+          // Reddit is optional — don't fail the whole request
+        }
+      }
+
+      if (
+        platform !== "youtube" &&
+        platform !== "reddit" &&
+        platform !== "all" &&
+        rapidKey
+      ) {
+        // Specific platform requested (tiktok, instagram, x, facebook, etc.)
+        const rapid = await fetchRapidApiVideos(category, platform, rapidKey);
+        results = results.concat(rapid);
+      } else if (platform === "all" && rapidKey) {
+        // "all" also includes trending RapidAPI results
+        try {
+          const rapid = await fetchRapidApiVideos(category, "trending", rapidKey);
+          results = results.concat(rapid);
+        } catch {
+          // RapidAPI is supplemental — don't fail
+        }
+      }
+
+      if (!results.length) {
+        return c.json({ success: true, data: [] });
+      }
+
+      return c.json({ success: true, data: results });
     } catch (e) {
       console.error("[viral-discovery]", e);
       return c.json({ success: false, error: "Discovery failed" }, 502);
@@ -554,13 +589,27 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const user = c.get("user");
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     const updates: Record<string, unknown> = {};
-    if (typeof body.title === "string") updates.title = body.title;
+
+    if (typeof body.title === "string") updates.title = body.title.slice(0, 200);
     if (typeof body.caption === "string") updates.caption = body.caption;
     if (typeof body.platform === "string") updates.platform = body.platform;
     if (typeof body.status === "string") updates.status = body.status;
 
+    // ── Editor fields ──────────────────────────────────────────────────────
+    if (typeof body.startSec === "number") updates.startSec = body.startSec;
+    if (typeof body.endSec === "number") updates.endSec = body.endSec;
+    if (typeof body.textStyle === "string") updates.textStyle = body.textStyle;
+    if (Array.isArray(body.captionLines)) {
+      updates.captionLines = JSON.stringify(body.captionLines.slice(0, 20));
+    }
+    if (Array.isArray(body.combinedClipIds)) {
+      updates.combinedClipIds = JSON.stringify(body.combinedClipIds.slice(0, 20));
+    }
+    if (Array.isArray(body.mediaUrls)) {
+      updates.mediaUrls = JSON.stringify(body.mediaUrls.slice(0, 10));
+    }
+
     const clipSvc = createClipService(db);
-    // Re-fetch full user row for plan
     const [fullUser] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
     if (!fullUser) {
       return c.json({ success: false, error: "User not found" }, 404);
@@ -577,6 +626,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true, data: clip });
   });
 
+
   api.delete("/api/clips/:id", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const user = c.get("user");
@@ -590,6 +640,50 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await clipSvc.logActivity(user.id, "clip_deleted", { clipId });
     return c.json({ success: true, data: null });
   });
+
+  // ── Media upload → R2 ────────────────────────────────────────────────────
+  api.post("/api/media/upload", authMiddleware, async (c) => {
+    const bucket = (c.env as any).MEDIA_BUCKET;
+    if (!bucket) {
+      return c.json({ success: false, error: "Media storage not configured" }, 503);
+    }
+    const contentType = c.req.header("content-type") ?? "";
+    if (!contentType.includes("multipart/form-data")) {
+      return c.json({ success: false, error: "Multipart form required" }, 400);
+    }
+    let formData: FormData;
+    try {
+      formData = await c.req.formData();
+    } catch {
+      return c.json({ success: false, error: "Invalid form data" }, 400);
+    }
+    const file = formData.get("file") as File | null;
+    if (!file) {
+      return c.json({ success: false, error: "No file provided" }, 400);
+    }
+
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+    if (!isVideo && !isImage) {
+      return c.json({ success: false, error: "Only image and video uploads are allowed" }, 415);
+    }
+
+    const maxBytes = isVideo ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      const max = isVideo ? "100MB" : "5MB";
+      return c.json({ success: false, error: `File exceeds ${max} limit` }, 413);
+    }
+
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const key = `media/${c.get("user").id}/${Date.now()}.${ext}`;
+    await bucket.put(key, file.stream(), {
+      httpMetadata: { contentType: file.type },
+    });
+
+    const publicUrl = `/r2/${key}`;
+    return c.json({ success: true, data: { url: publicUrl } });
+  });
+
 
   api.get("/api/scheduled-posts", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
