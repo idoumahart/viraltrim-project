@@ -24,34 +24,35 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
-        [UI.Root]: "w-fit",
-        [UI.Months]: "flex flex-col gap-4 sm:flex-row sm:gap-4",
-        [UI.Month]: "flex flex-col gap-4",
-        [UI.MonthCaption]: "flex justify-center pt-1 relative items-center min-h-8",
+        [UI.Root]: "w-full sm:w-fit mx-auto",
+        [UI.Months]: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+        [UI.Month]: "space-y-4 w-full",
+        [UI.MonthCaption]: "flex justify-center pt-1 relative items-center",
         [UI.CaptionLabel]: "text-sm font-medium",
-        [UI.Nav]: "flex items-center gap-1",
+        [UI.Nav]: "space-x-1 flex items-center",
         [UI.PreviousMonthButton]: cn(
           buttonVariants({ variant: "outline" }),
-          "absolute left-1 h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100"
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1 z-10"
         ),
         [UI.NextMonthButton]: cn(
           buttonVariants({ variant: "outline" }),
-          "absolute right-1 h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100"
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1 z-10"
         ),
-        [UI.MonthGrid]: "w-full border-collapse",
-        [UI.Weekdays]: "flex",
+        [UI.MonthGrid]: "w-full border-collapse space-y-1",
+        [UI.Weekdays]: "flex w-full",
         [UI.Weekday]:
-          "text-muted-foreground w-9 font-normal text-[0.8rem] flex items-center justify-center",
+          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] text-center flex-1 sm:flex-none sm:w-9",
         [UI.Week]: "flex w-full mt-2",
-        [UI.Day]: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
+        [UI.Day]: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 flex-1 sm:flex-none sm:w-9",
         [UI.DayButton]: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+          "h-9 w-9 mx-auto p-0 font-normal aria-selected:opacity-100"
         ),
         [SelectionState.selected]:
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md",
         [DayFlag.today]: "bg-accent text-accent-foreground rounded-md",
-        [DayFlag.outside]: "text-muted-foreground opacity-50",
+        [DayFlag.outside]:
+          "day-outside text-muted-foreground opacity-50  aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
         [DayFlag.disabled]: "text-muted-foreground opacity-50",
         [DayFlag.hidden]: "invisible",
         ...classNames,

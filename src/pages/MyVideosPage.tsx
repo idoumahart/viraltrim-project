@@ -111,14 +111,6 @@ export default function MyVideosPage() {
     setTargetLength(length);
   };
 
-  const handleSaveAll = () => {
-    if (effectivePlan !== "agency") {
-      setShowUpgradeModal(true);
-      return;
-    }
-    suggestedHooks.forEach(hook => createClipMutation.mutate(hook));
-  };
-
   const handleImport = (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
@@ -341,17 +333,7 @@ export default function MyVideosPage() {
                              </div>
                            </div>
                         ))}
-                        {!suggestHooksMutation.isPending && suggestedHooks.length > 0 && (
-                          <Button 
-                            className="w-full mt-4 border border-dashed hover:border-solid hover:bg-primary/10 hover:text-primary transition-all" 
-                            variant="outline"
-                            onClick={handleSaveAll}
-                            disabled={createClipMutation.isPending}
-                          >
-                            <Video className="w-4 h-4 mr-2" />
-                            Save All 3 Clips {user?.plan !== 'agency' && <Lock className="w-4 h-4 ml-2 opacity-50"/>}
-                          </Button>
-                        )}
+
                       </div>
                     </ScrollArea>
                   </div>

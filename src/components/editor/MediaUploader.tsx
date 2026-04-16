@@ -1,17 +1,18 @@
 import React, { useRef, useState } from "react";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
-import { Upload, X, ImageIcon, Film, Loader2 } from "lucide-react";
+import { Upload, X, ImageIcon, Film, Music, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const VIDEO_MAX_MB = 100;
 const IMAGE_MAX_MB = 5;
+const AUDIO_MAX_MB = 50;
 
 interface UploadedMedia {
   url: string;
   name: string;
-  type: "image" | "video";
+  type: "image" | "video" | "audio";
 }
 
 interface MediaUploaderProps {
@@ -30,16 +31,17 @@ export function MediaUploader({ onChange }: MediaUploaderProps) {
 
     const isVideo = file.type.startsWith("video/");
     const isImage = file.type.startsWith("image/");
+    const isAudio = file.type.startsWith("audio/");
 
-    if (!isVideo && !isImage) {
-      toast.error("Only image and video files are supported.");
+    if (!isVideo && !isImage && !isAudio) {
+      toast.error("Only image, video, and audio files are supported.");
       return;
     }
 
-    const maxMB = isVideo ? VIDEO_MAX_MB : IMAGE_MAX_MB;
+    const maxMB = isVideo ? VIDEO_MAX_MB : isAudio ? AUDIO_MAX_MB : IMAGE_MAX_MB;
     const fileMB = file.size / (1024 * 1024);
     if (fileMB > maxMB) {
-      toast.error(`File too large. Max size: ${maxMB}MB for ${isVideo ? "video" : "image"} files.`);
+      toast.error(`File too large. Max size: ${maxMB}MB for ${isVideo ? "video" : isAudio ? "audio" : "image"} files.`);
       return;
     }
 
@@ -60,7 +62,7 @@ export function MediaUploader({ onChange }: MediaUploaderProps) {
         const item: UploadedMedia = {
           url: res.data.url,
           name: file.name,
-          type: isVideo ? "video" : "image",
+          type: isVideo ? "video" : isAudio ? "audio" : "image",
         };
         const next = [...media, item];
         setMedia(next);
@@ -109,16 +111,16 @@ export function MediaUploader({ onChange }: MediaUploaderProps) {
         ) : (
           <div className="flex flex-col items-center gap-2">
             <Upload className="h-6 w-6 text-muted-foreground/50" />
-            <p className="text-xs font-medium">Upload image or video</p>
+            <p className="text-xs font-medium">Upload image, internal video, or audio</p>
             <p className="text-[11px] text-muted-foreground">
-              Video ≤ {VIDEO_MAX_MB}MB · Image ≤ {IMAGE_MAX_MB}MB
+              Video ≤ {VIDEO_MAX_MB}MB · Audio ≤ {AUDIO_MAX_MB}MB · Image ≤ {IMAGE_MAX_MB}MB
             </p>
           </div>
         )}
         <input
           ref={inputRef}
           type="file"
-          accept="image/*,video/*"
+          accept="image/*,video/*,audio/*"
           className="hidden"
           onChange={handleFile}
         />
@@ -138,6 +140,10 @@ export function MediaUploader({ onChange }: MediaUploaderProps) {
                   alt={item.name}
                   className="w-10 h-7 object-cover rounded shrink-0"
                 />
+              ) : item.type === "audio" ? (
+                <div className="w-10 h-7 bg-muted rounded shrink-0 flex items-center justify-center">
+                  <Music className="h-4 w-4 text-muted-foreground" />
+                </div>
               ) : (
                 <div className="w-10 h-7 bg-muted rounded shrink-0 flex items-center justify-center">
                   <Film className="h-4 w-4 text-muted-foreground" />

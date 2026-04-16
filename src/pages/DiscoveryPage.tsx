@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,6 @@ import {
   Play,
   Scissors,
   Search,
-  Loader2,
   TrendingUp,
   ExternalLink,
   Youtube,
@@ -57,6 +56,39 @@ const PRESETS = [
   { label: "💪 Fitness tips", query: "fitness tips workout" },
 ];
 
+const FUNNY_COMMENTS = [
+  "Reticulating splines...",
+  "Warming up the AI Hamsters...",
+  "Searching the depths of the algorithm...",
+  "Bribing the YouTube gods...",
+  "Analyzing 10,000 cat videos...",
+  "Checking TikTok for new dances...",
+  "Downloading more RAM...",
+];
+
+function QuirkyLoader() {
+  const [msgIdx, setMsgIdx] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMsgIdx((i) => (i + 1) % FUNNY_COMMENTS.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4 col-span-full">
+      <div className="relative flex h-16 w-16 items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="absolute animate-ping h-8 w-8 rounded-full bg-primary/20"></div>
+      </div>
+      <p className="text-sm text-muted-foreground animate-pulse font-medium">
+        {FUNNY_COMMENTS[msgIdx]}
+      </p>
+    </div>
+  );
+}
+
 export default function DiscoveryPage() {
   const navigate = useNavigate();
   const [trends, setTrends] = useState<ViralVideo[]>([]);
@@ -78,7 +110,13 @@ export default function DiscoveryPage() {
     try {
       const res = await api.getViralDiscovery(query, platform);
       if (res.success && res.data) {
-        setTrends(res.data);
+        const fixedTrends = res.data.map(v => {
+          // Only generate YouTube thumbnail fallback for YouTube URLs
+          const ytId = v.url.match(/[?&]v=([^&]+)/)?.[1];
+          const thumb = v.thumbnail || (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : "");
+          return { ...v, thumbnail: thumb };
+        });
+        setTrends(fixedTrends);
         if (res.data.length === 0) {
           toast.info("No results found. Try broader keywords or a different platform.");
         }
@@ -137,11 +175,7 @@ export default function DiscoveryPage() {
             className="flex-1"
           />
           <Button type="submit" disabled={loading} className="btn-gradient gap-2 shrink-0">
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
+            <Search className="h-4 w-4" />
             Search
           </Button>
         </div>
@@ -167,21 +201,33 @@ export default function DiscoveryPage() {
 
       {/* Results grid */}
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {loading
-          ? Array.from({ length: 9 }).map((_, i) => (
-              <Skeleton key={i} className="h-64 rounded-xl" />
-            ))
-          : trends.map((t) => (
+        {loading ? (
+          <QuirkyLoader />
+        ) : (
+          trends.map((t) => (
               <Card
                 key={t.id}
                 className="overflow-hidden border-border/80 bg-card/80 hover:border-primary/40 transition-all group"
               >
                 {/* Thumbnail */}
-                <div
-                  className="relative h-36 bg-muted/30 bg-cover bg-center overflow-hidden"
-                  style={t.thumbnail ? { backgroundImage: `url(${t.thumbnail})` } : undefined}
-                >
-                  {!t.thumbnail && (
+                <div className="relative h-36 bg-muted/30 overflow-hidden">
+                  {t.thumbnail ? (
+                    <img
+                      src={t.thumbnail}
+                      alt={t.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Try hqdefault if maxresdefault fails
+                        const img = e.currentTarget;
+                        const ytId = t.url.match(/[?&]v=([^&]+)/)?.[1];
+                        if (ytId && img.src.includes("maxresdefault")) {
+                          img.src = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+                        } else {
+                          img.style.display = "none";
+                        }
+                      }}
+                    />
+                  ) : (
                     <div className="flex h-full items-center justify-center text-muted-foreground/30">
                       <Play className="h-8 w-8" />
                     </div>
@@ -254,7 +300,8 @@ export default function DiscoveryPage() {
                   </Button>
                 </CardFooter>
               </Card>
-            ))}
+            ))
+        )}
       </div>
 
       {/* Empty state after search */}

@@ -102,18 +102,31 @@ export function CaptionEditor({ initialCaption = "", onChange }: CaptionEditorPr
   );
 }
 
-// ─── Caption preview overlay ──────────────────────────────────────────────────
-// Renders caption lines as absolute-positioned text at the bottom of the player.
-export function CaptionOverlay({ lines }: { lines: string[] }) {
+export function CaptionOverlay({ lines, textStyle = "classic" }: { lines: string[], textStyle?: string }) {
   const text = lines.filter(Boolean).join(" ");
   if (!text) return null;
+
+  let styles: React.CSSProperties = {
+    textShadow: "0 0 8px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8)",
+  };
+  let className = "text-center text-white font-bold text-[15px] leading-snug max-w-[80%]";
+
+  if (textStyle === "glow") {
+    styles.textShadow = "0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(59, 130, 246, 0.4)";
+    className = "text-center text-white font-bold text-lg leading-snug max-w-[80%] uppercase tracking-wide";
+  } else if (textStyle === "bold") {
+    styles.textShadow = "0 3px 0px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.5)";
+    className = "text-center text-[#ffcc00] font-black text-xl leading-none max-w-[80%] uppercase tracking-tighter";
+  } else if (textStyle === "neon") {
+    styles.textShadow = "0 0 5px #fff, 0 0 10px #fff, 0 0 20px #ff00de, 0 0 30px #ff00de";
+    className = "text-center text-white font-black text-xl leading-snug max-w-[80%] italic";
+  }
+
   return (
-    <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none px-4">
+    <div className="absolute bottom-12 left-0 right-0 flex justify-center pointer-events-none px-4">
       <div
-        className="text-center text-white font-bold text-sm leading-snug max-w-xs"
-        style={{
-          textShadow: "0 0 8px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8)",
-        }}
+        className={className}
+        style={styles}
       >
         {text}
       </div>

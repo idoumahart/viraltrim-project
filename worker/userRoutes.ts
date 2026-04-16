@@ -664,13 +664,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
     const isVideo = file.type.startsWith("video/");
     const isImage = file.type.startsWith("image/");
-    if (!isVideo && !isImage) {
-      return c.json({ success: false, error: "Only image and video uploads are allowed" }, 415);
+    const isAudio = file.type.startsWith("audio/");
+    if (!isVideo && !isImage && !isAudio) {
+      return c.json({ success: false, error: "Only image, video, and audio uploads are allowed" }, 415);
     }
 
-    const maxBytes = isVideo ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
+    const maxBytes = isVideo ? 100 * 1024 * 1024 : isAudio ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > maxBytes) {
-      const max = isVideo ? "100MB" : "5MB";
+      const max = isVideo ? "100MB" : isAudio ? "50MB" : "5MB";
       return c.json({ success: false, error: `File exceeds ${max} limit` }, 413);
     }
 

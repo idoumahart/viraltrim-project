@@ -82,6 +82,7 @@ export default function EditorPage() {
   // ── UI state
   const [saving, setSaving] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // ── Sync duration to endSec once video loads
   const handleDuration = (d: number) => {
@@ -130,6 +131,41 @@ export default function EditorPage() {
     }
   }, [clip, userPlan, title, startSec, endSec, captionLines, combinedClipIds, textStyle, mediaUrls]);
 
+  const handleGenerateHooks = async () => {
+    if (!videoUrl) return;
+    setIsGenerating(true);
+    try {
+      toast.info("Generating AI hooks... this may take a minute.");
+      const res = await api.generateClip({
+        source_url: videoUrl,
+        source_channel: incomingVideo?.platform || clip?.platform || "youtube",
+        requested_start_seconds: startSec,
+        requested_end_seconds: endSec,
+      });
+
+      if (res.success && res.data) {
+        toast.success("AI generated new hook & captions!");
+        if (res.data.captionLines && res.data.captionLines.length > 0) {
+          setCaptionLines(res.data.captionLines);
+        } else if (res.data.caption) {
+          setCaptionLines([res.data.caption]);
+        }
+        
+        if (res.data.startSec !== undefined) setStartSec(res.data.startSec);
+        if (res.data.endSec !== undefined) setEndSec(res.data.endSec);
+        
+        playerRef.current?.seekTo(res.data.startSec || startSec, "seconds");
+        setPlaying(true);
+      } else {
+        throw new Error(res.error || "Generation failed.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate hooks.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // ── Empty state — no clip or video
   if (!clip && !incomingVideo && !videoUrl) {
     return (
@@ -138,11 +174,14 @@ export default function EditorPage() {
           <Film className="h-12 w-12 text-muted-foreground/20" />
           <h2 className="text-xl font-semibold">No clip loaded</h2>
           <p className="text-sm text-muted-foreground max-w-xs">
-            Open a clip from My Videos or use Viral Search to send a video here.
+            Open a clip from My Videos, your Clips, or use Viral Search.
           </p>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => navigate("/studio/videos")}>
               My Videos
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/studio/clips")}>
+              My Clips
             </Button>
             <Button className="btn-gradient" onClick={() => navigate("/discovery")}>
               Viral Search
@@ -191,7 +230,7 @@ export default function EditorPage() {
         </div>
 
         {/* ── Main area */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden min-w-0">
           {/* ─── Left: Preview + Timeline ─────────────────────────────────── */}
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             {/* Video preview */}
@@ -206,20 +245,22 @@ export default function EditorPage() {
                     onProgress={handleProgress}
                     width="100%"
                     height="100%"
-                    style={{ position: "absolute", inset: 0 }}
-                    config={{ youtube: { playerVars: { modestbranding: 1 } } }}
+                    style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+                    config={{ youtube: { playerVars: { modestbranding: 1, autoplay: 1 } } }}
                   />
                   {/* Caption overlay */}
-                  <CaptionOverlay lines={captionLines} />
+                  <div className="pointer-events-none absolute inset-0 z-20">
+                     <CaptionOverlay lines={captionLines} textStyle={textStyle} />
+                  </div>
                   {/* Play/Pause overlay button */}
                   <button
-                    className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity z-10"
-                    onClick={togglePlay}
+                    className="absolute inset-0 flex items-center justify-center bg-black/10 hover:bg-black/30 transition-colors z-30"
+                    onClick={() => setPlaying(!playing)}
                   >
-                    <div className="w-14 h-14 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+                    <div className={cn("w-16 h-16 rounded-full bg-black/60 backdrop-blur flex items-center justify-center transition-opacity shadow-2xl", playing ? "opacity-0 hover:opacity-100" : "opacity-100")}>
                       {playing
-                        ? <Pause className="h-6 w-6 text-white" />
-                        : <Play className="h-6 w-6 text-white ml-1" />}
+                        ? <Pause className="h-8 w-8 text-white" />
+                        : <Play className="h-8 w-8 text-white ml-1.5" />}
                     </div>
                   </button>
                 </>
@@ -238,8 +279,14 @@ export default function EditorPage() {
                 startSec={startSec}
                 endSec={endSec}
                 currentTime={currentTime}
-                onStartChange={setStartSec}
-                onEndChange={setEndSec}
+                onStartChange={(s) => {
+                  setStartSec(s);
+                  playerRef.current?.seekTo(s, "seconds");
+                }}
+                onEndChange={(e) => {
+                  setEndSec(e);
+                  playerRef.current?.seekTo(e, "seconds");
+                }}
               />
               <AudioTimeline />
               {/* Sequence strip */}
@@ -314,6 +361,24 @@ export default function EditorPage() {
 
                 {/* Enhance */}
                 <TabsContent value="enhance" className="p-3 m-0 space-y-3">
+                  <Button
+                    className="w-full btn-gradient gap-2 group"
+                    onClick={handleGenerateHooks}
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating Hooks...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 group-hover:fill-current" />
+                        Auto-Enhance & Generate Hooks
+                      </>
+                    )}
+                  </Button>
+                  
                   {clip && (
                     <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-1.5">
                       <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">
