@@ -92,11 +92,14 @@ export default function MyVideosPage() {
       source_channel: activeVideo?.title || "Imported Video",
       requested_start_seconds: hook.startSec,
       requested_end_seconds: hook.endSec,
+      caption: hook.caption,
+      title: hook.concept,
+      viralScore: hook.viral_score,
     }),
     onSuccess: (data) => {
       if (data.success) {
-        toast.success("Clip generation queued! Redirecting...");
-        navigate("/studio/clips");
+        toast.success("Clip generated successfully! Redirecting...");
+        navigate("/studio/clips", { state: { clip: data.data } });
       } else {
         toast.error(data.error || "Failed to finalize clip.");
       }

@@ -414,12 +414,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
     // Run synchronously so the caller gets the created clip back
     try {
-      const ai = await generateClipMetadata(key, c.env.GEMINI_MODEL, {
-        sourceUrl,
-        sourceChannel,
-        startSec: start,
-        endSec: end,
-      });
+      const passedCaption = body.caption ? String(body.caption) : null;
+      const passedTitle = body.title ? String(body.title) : null;
+      const passedScore = body.viralScore ? Number(body.viralScore) : 85;
+
+      let ai;
+      if (passedCaption && passedCaption !== "") {
+        ai = {
+          caption: passedCaption,
+          hashtags: [passedTitle || "ViralClip"],
+          viral_score: passedScore,
+        };
+      } else {
+        ai = await generateClipMetadata(key, c.env.GEMINI_MODEL, {
+          sourceUrl,
+          sourceChannel,
+          startSec: start,
+          endSec: end,
+        });
+      }
       const credit = `Original video by ${sourceChannel}`;
       const { clip: created, error: createErr } = await clipService.createGeneratedClip(fresh, {
         title: ai.hashtags[0] ? String(ai.hashtags[0]) : "New clip",
@@ -436,14 +449,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       if (createErr || !created) {
         return c.json({ success: false, error: createErr ?? "Failed to create clip" }, 400);
       }
+      // Auto-edit subtitle sequence
+      const words = ai.caption.split(/[\s\n]+/);
+      const generatedCaptionLines = [];
+      for (let i = 0; i < words.length; i += 4) {
+        generatedCaptionLines.push(words.slice(i, i + 4).join(" "));
+      }
+
       return c.json({
         success: true,
         data: {
           ...created,
           startSec: start,
           endSec: end,
-          captionLines: [ai.caption],
-          textStyle: "bold",
+          captionLines: generatedCaptionLines.length ? generatedCaptionLines : [ai.caption],
+          textStyle: "gradient",
         },
       });
     } catch (e) {
@@ -581,10 +601,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       // Editor fields
       startSec: row.startSec ?? undefined,
       endSec: row.endSec ?? undefined,
-      captionLines: row.captionLines ? JSON.parse(String(row.captionLines)) : undefined,
-      combinedClipIds: row.combinedClipIds ? JSON.parse(String(row.combinedClipIds)) : undefined,
+      captionLines: Array.isArray(row.captionLines) ? row.captionLines : undefined,
+      combinedClipIds: Array.isArray(row.combinedClipIds) ? row.combinedClipIds : undefined,
       textStyle: row.textStyle ?? undefined,
-      mediaUrls: row.mediaUrls ? JSON.parse(String(row.mediaUrls)) : undefined,
+      mediaUrls: Array.isArray(row.mediaUrls) ? row.mediaUrls : undefined,
       viralScore: row.viralScore ?? undefined,
     }));
     return c.json({ success: true, data });

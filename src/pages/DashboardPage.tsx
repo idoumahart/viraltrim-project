@@ -134,7 +134,7 @@ export function DashboardPage() {
                 <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/schedule")}>
                   Schedule
                 </Button>
-                <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/studio")}>
+                <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/studio/videos")}>
                   Studio
                 </Button>
               </CardContent>
@@ -179,7 +179,7 @@ export function DashboardPage() {
                         <p className="font-medium truncate">{c.title || "Untitled clip"}</p>
                         <p className="text-xs text-muted-foreground">Score: {c.viralScore || "—"}</p>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => navigate("/studio", { state: { clip: c } })}>
+                      <Button variant="ghost" size="sm" onClick={() => navigate("/studio/editor", { state: { clip: c } })}>
                         Edit
                       </Button>
                     </div>

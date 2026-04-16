@@ -142,6 +142,9 @@ export default function DiscoveryPage() {
         <p className="text-muted-foreground text-sm">
           Find trending videos across platforms — open any result in the Studio to generate clips.
         </p>
+        <p className="text-secondary-foreground text-sm font-medium mt-1 bg-secondary/30 p-2 rounded-md border border-border/50 inline-block">
+          💡 If you already know which video you want to clip, go directly to <a href="/studio/videos" className="text-primary hover:underline">My Videos</a> and add the link there.
+        </p>
       </div>
 
       {/* Search bar + platform dropdown */}

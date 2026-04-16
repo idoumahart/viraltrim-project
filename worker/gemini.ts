@@ -96,11 +96,10 @@ export async function fetchYouTubeVideos(
       platform: "youtube",
       isCreativeCommons: isCC,
     };
-  }).filter(r => r.durationSeconds >= 600); // Only keep videos >= 10 minutes
+  }).filter(r => r.durationSeconds >= 600 && r.durationSeconds <= 18000); // 10 mins to 5 hours
 
-  // Sort CC-licensed to front — all content is accessible
-  return results.sort((a, b) => (b.isCreativeCommons ? 1 : 0) - (a.isCreativeCommons ? 1 : 0));
-
+  // Sort by Viral Score (descending) primarily, to aim for 90+ score results
+  return results.sort((a, b) => b.viralScore - a.viralScore);
 }
 
 // ─── Reddit JSON API (no key needed) ─────────────────────────────────────────
@@ -396,13 +395,21 @@ Return JSON ONLY, without markdown fences or additional explanation.`;
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new Error("Invalid hook suggestion response");
   }
-  return parsed.map((p) => ({
-    ...p,
-    // ensure strings are converted if gemini hallucinates strings
-    startSec: Number(p.startSec) || 0,
-    endSec: Number(p.endSec) || targetDuration,
-    viral_score: Number(p.viral_score) || 85,
-  }));
+  return parsed.map((p) => {
+    let s = Number(p.startSec) || 0;
+    let e = Number(p.endSec) || targetDuration;
+    if (e - s > targetDuration + 10) {
+      e = s + targetDuration;
+    } else if (e <= s) {
+      e = s + targetDuration;
+    }
+    return {
+      ...p,
+      startSec: s,
+      endSec: e,
+      viral_score: Number(p.viral_score) || 85,
+    };
+  });
 }
 
 export async function chatbotReply(

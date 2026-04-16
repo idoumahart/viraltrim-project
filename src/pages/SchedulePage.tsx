@@ -110,6 +110,38 @@ function ScheduleModal({ onScheduled }: { onScheduled: () => void }) {
   );
 }
 
+function ConnectSocialsCard() {
+  const handleConnect = (platform: string) => {
+    toast.info(`OAuth connection for ${platform} coming soon!`);
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Connected Accounts</CardTitle>
+        <CardDescription>Link your social media to enable one-click scheduling.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {[
+          { name: "TikTok", icon: "🎵", connected: false },
+          { name: "YouTube Shorts", icon: "▶️", connected: false },
+          { name: "Instagram Reels", icon: "📸", connected: false },
+          { name: "X (Twitter)", icon: "🐦", connected: false }
+        ].map(p => (
+          <div key={p.name} className="flex items-center justify-between p-3 border rounded-lg bg-card shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">{p.icon}</span>
+              <span className="font-medium text-sm">{p.name}</span>
+            </div>
+            <Button size="sm" variant={p.connected ? "outline" : "default"} onClick={() => handleConnect(p.name)}>
+              {p.connected ? "Connected" : "Connect"}
+            </Button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function SchedulePage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [posts, setPosts] = useState<ScheduledPost[]>([]);
@@ -141,13 +173,20 @@ export default function SchedulePage() {
         <ScheduleModal onScheduled={fetchSchedule} />
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Calendar</CardTitle>
-            <CardDescription>Select a day to review posts.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Connection Widget */}
+        <div className="lg:col-span-1">
+          <ConnectSocialsCard />
+        </div>
+
+        {/* Schedule View */}
+        <div className="lg:col-span-2 space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Calendar</CardTitle>
+              <CardDescription>Select a day to review posts.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
             <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border" />
           </CardContent>
         </Card>
@@ -206,6 +245,7 @@ export default function SchedulePage() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
     </AppLayout>
   );

@@ -394,6 +394,9 @@ export const api = {
     source_channel: string;
     requested_start_seconds: number;
     requested_end_seconds: number;
+    caption?: string;
+    title?: string;
+    viralScore?: number;
   }): Promise<ApiResponse<Clip>> {
     const res = await requestJson<Record<string, unknown>>("/api/clips/generate", {
       method: "POST",
