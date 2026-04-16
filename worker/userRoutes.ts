@@ -412,36 +412,44 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: "Clips longer than 90 seconds require Agency tier" }, 403);
     }
 
-    const bgTask = async () => {
-      try {
-        const ai = await generateClipMetadata(key, c.env.GEMINI_MODEL, {
-          sourceUrl,
-          sourceChannel,
+    // Run synchronously so the caller gets the created clip back
+    try {
+      const ai = await generateClipMetadata(key, c.env.GEMINI_MODEL, {
+        sourceUrl,
+        sourceChannel,
+        startSec: start,
+        endSec: end,
+      });
+      const credit = `Original video by ${sourceChannel}`;
+      const { clip: created, error: createErr } = await clipService.createGeneratedClip(fresh, {
+        title: ai.hashtags[0] ? String(ai.hashtags[0]) : "New clip",
+        platform: "TikTok (9:16)",
+        durationSeconds: Math.round(duration),
+        caption: ai.caption,
+        requiredCredit: credit,
+        viralScore: ai.viral_score,
+        sourceUrl,
+        sourceChannel,
+        thumbnail: `https://img.youtube.com/vi/${extractYoutubeId(sourceUrl)}/hqdefault.jpg`,
+        videoUrl: sourceUrl,
+      });
+      if (createErr || !created) {
+        return c.json({ success: false, error: createErr ?? "Failed to create clip" }, 400);
+      }
+      return c.json({
+        success: true,
+        data: {
+          ...created,
           startSec: start,
           endSec: end,
-        });
-        const credit = `Original video by ${sourceChannel}`;
-        await clipService.createGeneratedClip(fresh, {
-          title: ai.hashtags[0] ? String(ai.hashtags[0]) : "New clip",
-          platform: "TikTok (9:16)",
-          durationSeconds: Math.round(duration),
-          caption: ai.caption,
-          requiredCredit: credit,
-          viralScore: ai.viral_score,
-          sourceUrl,
-          sourceChannel,
-          thumbnail: `https://img.youtube.com/vi/${extractYoutubeId(sourceUrl)}/hqdefault.jpg`,
-          videoUrl: sourceUrl,
-        });
-      } catch (e) {
-        console.error("[generate-clip background error]", e);
-      }
-    };
-
-    // Dispatch fire-and-forget job
-    c.executionCtx?.waitUntil(bgTask());
-
-    return c.json({ success: true, message: "Processing started in background." });
+          captionLines: [ai.caption],
+          textStyle: "bold",
+        },
+      });
+    } catch (e) {
+      console.error("[generate-clip error]", e);
+      return c.json({ success: false, error: "AI generation failed. Check your Gemini API key." }, 502);
+    }
   });
 
   api.post("/api/clips/suggest-hooks", authMiddleware, async (c) => {
@@ -570,6 +578,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       caption: row.caption ?? undefined,
       editCount: row.editCount ?? 0,
       createdAt: row.createdAt ?? new Date(),
+      // Editor fields
+      startSec: row.startSec ?? undefined,
+      endSec: row.endSec ?? undefined,
+      captionLines: row.captionLines ? JSON.parse(String(row.captionLines)) : undefined,
+      combinedClipIds: row.combinedClipIds ? JSON.parse(String(row.combinedClipIds)) : undefined,
+      textStyle: row.textStyle ?? undefined,
+      mediaUrls: row.mediaUrls ? JSON.parse(String(row.mediaUrls)) : undefined,
+      viralScore: row.viralScore ?? undefined,
     }));
     return c.json({ success: true, data });
   });
@@ -698,6 +714,35 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       thumbnail: r.thumbnail ?? undefined,
     }));
     return c.json({ success: true, data });
+  });
+
+  api.post("/api/scheduled-posts", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const body = await c.req.json().catch(() => ({}));
+    const clipId = String(body.clipId ?? "");
+    const platform = String(body.platform ?? "");
+    const scheduledFor = body.scheduledFor ? new Date(body.scheduledFor) : null;
+    if (!clipId || !platform || !scheduledFor || isNaN(scheduledFor.getTime())) {
+      return c.json({ success: false, error: "clipId, platform, and scheduledFor are required" }, 400);
+    }
+    const clipSvc = createClipService(db);
+    const clip = await clipSvc.getClipById(clipId, user.id);
+    if (!clip) return c.json({ success: false, error: "Clip not found" }, 404);
+    const { scheduledPosts } = await import("./database/schema");
+    const id = generateId();
+    await db.insert(scheduledPosts).values({
+      id,
+      userId: user.id,
+      clipId,
+      title: clip.title,
+      platform,
+      scheduledFor,
+      status: "scheduled",
+      thumbnail: clip.thumbnail ?? null,
+      createdAt: new Date(),
+    });
+    return c.json({ success: true, data: { id } });
   });
 
   api.get("/api/dashboard/activity", authMiddleware, async (c) => {

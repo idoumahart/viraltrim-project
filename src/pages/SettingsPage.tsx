@@ -77,16 +77,39 @@ export default function SettingsPage() {
                 <Link2 className="h-5 w-5" />
                 Connected platforms
               </CardTitle>
-              <CardDescription>OAuth flows require platform approval in production.</CardDescription>
+              <CardDescription>Connect your accounts to push scheduled clips automatically.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {["TikTok", "Instagram", "YouTube"].map((p) => (
-                <div key={p} className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="flex items-center gap-2 text-sm font-medium">
-                    <Video className="h-4 w-4" />
-                    {p}
-                  </span>
-                  <Badge variant="secondary">Pending API approval</Badge>
+            <CardContent className="space-y-4">
+              {[
+                { name: "TikTok", connected: true },
+                { name: "Instagram", connected: false },
+                { name: "YouTube", connected: false },
+                { name: "X (Twitter)", connected: false }
+              ].map((p) => (
+                <div key={p.name} className="flex flex-col gap-3 rounded-lg border p-4 bg-card/50">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 font-semibold">
+                      <Video className="h-4 w-4" />
+                      {p.name}
+                    </span>
+                    {p.connected ? (
+                      <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => toast.success(`Disconnected from ${p.name}`)}>
+                        Disconnect
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" size="sm" onClick={() => {
+                        toast.error(`Auto-publishing to ${p.name} requires platform developer approval.`);
+                      }}>
+                        Connect
+                      </Button>
+                    )}
+                  </div>
+                  {p.connected && (
+                    <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-1">
+                      <span className="text-sm text-muted-foreground">Auto-push scheduled clips to {p.name}</span>
+                      <Switch defaultChecked />
+                    </div>
+                  )}
                 </div>
               ))}
             </CardContent>

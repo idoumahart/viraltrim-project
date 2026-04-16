@@ -74,6 +74,14 @@ export async function fetchYouTubeVideos(
     const rawDuration = detail?.contentDetails?.duration ?? "PT0S";
     const duration = parseIsoDuration(rawDuration);
 
+    const m = rawDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    let totalSeconds = 0;
+    if (m) {
+      totalSeconds += parseInt(m[1] ?? "0") * 3600;
+      totalSeconds += parseInt(m[2] ?? "0") * 60;
+      totalSeconds += parseInt(m[3] ?? "0");
+    }
+
     return {
       id: `yt-${vid}`,
       title: item.snippet.title,
@@ -83,14 +91,16 @@ export async function fetchYouTubeVideos(
       viralScore: Math.min(100, Math.round(Math.log10(views + 1) * 15)),
       category: item.snippet.channelTitle,
       duration,
+      durationSeconds: totalSeconds,
       engagement: "",
       platform: "youtube",
       isCreativeCommons: isCC,
     };
-  });
+  }).filter(r => r.durationSeconds >= 600); // Only keep videos >= 10 minutes
 
   // Sort CC-licensed to front — all content is accessible
   return results.sort((a, b) => (b.isCreativeCommons ? 1 : 0) - (a.isCreativeCommons ? 1 : 0));
+
 }
 
 // ─── Reddit JSON API (no key needed) ─────────────────────────────────────────
@@ -326,8 +336,12 @@ export async function generateClipMetadata(
   const model = genAI.getGenerativeModel({ model: modelId || DEFAULT_MODEL });
   const safeUrl = input.sourceUrl.slice(0, 500).replace(/[\n\r`]/g, "");
   const safeChannel = input.sourceChannel.slice(0, 100).replace(/[\n\r`]/g, "");
-  const prompt = `You help create short-form video posts. Source: ${safeUrl}, channel: ${safeChannel}, clip ${input.startSec}s–${input.endSec}s.
-Return JSON only: { "caption": string (engaging, under 400 chars, no credit line), "hashtags": string[] (max 8 tags without #), "viral_score": number 0-100 }`;
+  const prompt = `You are a viral social media manager helping create short-form video posts. Source: ${safeUrl}, channel: ${safeChannel}, clip ${input.startSec}s–${input.endSec}s.
+CRITICAL RULES:
+1. Do NOT hallucinate or make up facts. Only describe what actually happens in this context.
+2. The caption MUST be highly engaging, designed for TikTok/Reels, under 400 characters, no credit lines.
+3. The hashtags MUST be relevant to the viral nature of the content.
+Return JSON only: { "caption": string, "hashtags": string[] (max 8 tags without #), "viral_score": number 0-100 }`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
@@ -360,9 +374,11 @@ export async function generateHookSuggestions(
   const truncatedTranscript = transcript.slice(0, 40000);
   
   const prompt = `You are a viral social media manager. I am giving you a raw video transcript. I need you to identify exactly 3 distinct concepts/segments that would make highly viral, engaging standalone short-form clips.
-CRITICAL REQUIREMENT: The length of each clip must be STRICTLY AROUND ${targetDuration} seconds. 
-Ensure that (endSec - startSec) is approximately ${targetDuration}. DO NOT make it wildly longer or shorter.
-Keep the start and end timestamps strictly within what you find in the context. If timestamps aren't strictly numbered, estimate them logically.
+CRITICAL REQUIREMENTS:
+1. DO NOT HALLUCINATE OR MAKE UP QUOTES. Only extract concepts and ideas strictly from the transcript provided.
+2. The length of each clip must be STRICTLY AROUND ${targetDuration} seconds. 
+3. Ensure that (endSec - startSec) is approximately ${targetDuration}. DO NOT make it wildly longer or shorter.
+4. Keep the start and end timestamps STRICTLY within what you logically estimate based on the transcript length and position.
 
 Transcript:
 """

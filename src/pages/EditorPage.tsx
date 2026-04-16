@@ -98,18 +98,34 @@ export default function EditorPage() {
 
   // ── Save
   const handleSave = useCallback(async () => {
-    if (!clip) {
+    if (!clip && !videoUrl) {
       toast.error("No clip loaded — open a clip from My Videos first.");
       return;
     }
     const limit = editLimitFor(userPlan);
-    if ((clip.editCount ?? 0) >= limit) {
+    if (clip && (clip.editCount ?? 0) >= limit) {
       setShowUpgradeModal(true);
       return;
     }
     setSaving(true);
     try {
-      const res = await api.updateClip(clip.id, {
+      let targetClipId = clip?.id;
+      if (!targetClipId) {
+        toast.info("Initializing new clip...");
+        const res = await api.generateClip({
+          source_url: videoUrl,
+          source_channel: incomingVideo?.platform || "youtube",
+          requested_start_seconds: startSec,
+          requested_end_seconds: endSec,
+        });
+        if (res.success && res.data) {
+          targetClipId = res.data.id;
+        } else {
+          throw new Error(res.error || "Failed to initialize clip");
+        }
+      }
+
+      const res = await api.updateClip(targetClipId, {
         title,
         startSec,
         endSec,
@@ -124,12 +140,12 @@ export default function EditorPage() {
       } else {
         toast.error(res.error ?? "Save failed.");
       }
-    } catch {
-      toast.error("Save failed. Check your connection.");
+    } catch (err: any) {
+      toast.error(err.message || "Save failed. Check your connection.");
     } finally {
       setSaving(false);
     }
-  }, [clip, userPlan, title, startSec, endSec, captionLines, combinedClipIds, textStyle, mediaUrls]);
+  }, [clip, incomingVideo, videoUrl, userPlan, title, startSec, endSec, captionLines, combinedClipIds, textStyle, mediaUrls]);
 
   const handleGenerateHooks = async () => {
     if (!videoUrl) return;

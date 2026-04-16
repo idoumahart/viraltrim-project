@@ -290,6 +290,13 @@ export const api = {
     return requestJson(`/api/links/${id}`, { method: "DELETE" });
   },
 
+  async schedulePost(clipId: string, platform: string, scheduledFor: string | Date): Promise<ApiResponse<{ id: string }>> {
+    return requestJson("/api/scheduled-posts", {
+      method: "POST",
+      body: JSON.stringify({ clipId, platform, scheduledFor }),
+    });
+  },
+
   async getScheduledPosts(): Promise<ApiResponse<ScheduledPost[]>> {
     const res = await requestJson<Record<string, unknown>[]>("/api/scheduled-posts", {
       method: "GET",
