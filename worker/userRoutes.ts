@@ -4,7 +4,7 @@ import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { and, count, eq } from "drizzle-orm";
 import { createSession, extractBearerToken, generateId, revokeSession, validateSession } from "./auth";
 import { createDatabase } from "./database";
-import { affiliateReferrals, affiliates, dmcaReports, users, processedWebhookEvents, importedLinks } from "./database/schema";
+import { affiliateReferrals, affiliates, clips, dmcaReports, users, processedWebhookEvents, importedLinks } from "./database/schema";
 import { checkAuthRateLimit } from "./middleware/rate-limiter";
 import { createClipService } from "./database/services/clip-service";
 import { createSubscriptionService, syncUserPlanFromSubscription } from "./database/services/subscription-service";
@@ -575,6 +575,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: error ?? "Failed to update" }, 400);
     }
     return c.json({ success: true, data: clip });
+  });
+
+  api.delete("/api/clips/:id", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const clipId = c.req.param("id");
+    const clipSvc = createClipService(db);
+    const clip = await clipSvc.getClipById(clipId, user.id);
+    if (!clip) {
+      return c.json({ success: false, error: "Clip not found" }, 404);
+    }
+    await db.delete(clips).where(and(eq(clips.id, clipId), eq(clips.userId, user.id)));
+    await clipSvc.logActivity(user.id, "clip_deleted", { clipId });
+    return c.json({ success: true, data: null });
   });
 
   api.get("/api/scheduled-posts", authMiddleware, async (c) => {

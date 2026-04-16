@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { QuirkyLoader } from "@/components/ui/QuirkyLoader";
+import { UpgradeModal } from "@/components/ui/upgrade-modal";
 import { useAuth } from "@/hooks/use-auth";
 
 // Provide some funny loading states
@@ -361,20 +362,13 @@ export default function MyVideosPage() {
         </Dialog>
 
         {/* UPGRADE MODAL */}
-        <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl text-primary"><Sparkles /> Unlimited Agency Tiers required</DialogTitle>
-              <DialogDescription className="pt-4 text-base">
-                Creating clips longer than 90 seconds, and bulk-saving operations are strictly reserved for Unlimited Agency accounts.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-6">
-              <Button variant="outline" onClick={() => setShowUpgradeModal(false)}>Cancel</Button>
-              <Button asChild><a href="/settings?tab=billing">Upgrade to Agency</a></Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <UpgradeModal
+          open={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          feature="Longer clips & bulk saving"
+          reason="Creating clips longer than 90 seconds and bulk-saving operations are strictly reserved for Agency accounts."
+          requiredPlan="agency"
+        />
 
       </div>
     </AppLayout>

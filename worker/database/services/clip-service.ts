@@ -154,10 +154,12 @@ export class ClipService {
       return { clip: null, error: "Clip not found" };
     }
 
-    let editLimit = 3;
-    if (userPlan === "pro") editLimit = 10;
-    if (userPlan === "agency" || userPlan === "unlimited") editLimit = 20;
-    
+    // Spec: Free=1, Pro=3, Agency=10 (soft cap, contact us for more)
+    let editLimit = 1;
+    if (userPlan === "pro") editLimit = 3;
+    if (userPlan === "agency") editLimit = 10;
+    if (userPlan === "unlimited") editLimit = 999;
+
     if ((clip.editCount ?? 0) >= editLimit) {
       return { clip: null, error: `Edit limit reached (${editLimit} max for ${userPlan} tier)` };
     }

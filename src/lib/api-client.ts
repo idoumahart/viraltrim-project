@@ -425,4 +425,8 @@ export const api = {
     }
     return res as ApiResponse<Clip>;
   },
+
+  async deleteClip(id: string): Promise<ApiResponse<null>> {
+    return requestJson<null>(`/api/clips/${id}`, { method: "DELETE" });
+  },
 };
