@@ -139,7 +139,8 @@ export function AppLayout({
         </div>
       </div>
 
-      <div className="mt-auto pt-4 pb-2">
+      <div className="mt-auto pt-4 pb-2 space-y-3">
+        <TipsTour />
         <TierSwitcher />
         <Button
           variant="outline"
@@ -156,8 +157,8 @@ export function AppLayout({
 
   return (
     <div className={cn("min-h-screen bg-background flex", className)}>
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 flex-col fixed inset-y-0 left-0 border-r border-border/50 bg-card/30 backdrop-blur-xl z-50">
+      {/* Desktop Sidebar — z-[60] ensures it renders above Radix Dialog overlays (z-50) */}
+      <aside className="hidden md:flex w-64 flex-col fixed inset-y-0 left-0 border-r border-border/50 bg-card/30 backdrop-blur-xl z-[60]">
         <SidebarContent />
       </aside>
 
@@ -206,7 +207,6 @@ export function AppLayout({
       </main>
 
       {/* Global Widgets */}
-      <TipsTour />
       <ChatbotWidget />
     </div>
   );

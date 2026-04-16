@@ -101,8 +101,7 @@ export function TipsTour() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-72 animate-in slide-in-from-bottom-4 duration-300 hidden sm:block">
-      <div className="rounded-xl border border-amber-500/30 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+    <div className="rounded-xl border border-amber-500/30 bg-card/95 backdrop-blur-xl shadow-sm overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/50 bg-amber-500/5">
           <Lightbulb className="h-4 w-4 text-amber-400 shrink-0" />
@@ -158,7 +157,6 @@ export function TipsTour() {
             Dismiss all
           </Button>
         </div>
-      </div>
     </div>
   );
 }

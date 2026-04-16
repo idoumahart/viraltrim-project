@@ -80,38 +80,43 @@ export default function SettingsPage() {
               <CardDescription>Connect your accounts to push scheduled clips automatically.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                { name: "TikTok", connected: true },
-                { name: "Instagram", connected: false },
-                { name: "YouTube", connected: false },
-                { name: "X (Twitter)", connected: false }
-              ].map((p) => (
-                <div key={p.name} className="flex flex-col gap-3 rounded-lg border p-4 bg-card/50">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 font-semibold">
-                      <Video className="h-4 w-4" />
-                      {p.name}
-                    </span>
-                    {p.connected ? (
-                      <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => toast.success(`Disconnected from ${p.name}`)}>
-                        Disconnect
-                      </Button>
-                    ) : (
-                      <Button variant="secondary" size="sm" onClick={() => {
-                        toast.error(`Auto-publishing to ${p.name} requires platform developer approval.`);
-                      }}>
-                        Connect
-                      </Button>
+                {[
+                  { name: "TikTok", connected: true },
+                  { name: "Instagram", connected: false },
+                  { name: "YouTube", connected: false },
+                  { name: "X (Twitter)", connected: false }
+                ].map((p) => (
+                  <div key={p.name} className="flex flex-col gap-3 rounded-lg border p-4 bg-card/50">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 font-semibold">
+                        <Video className="h-4 w-4" />
+                        {p.name}
+                      </span>
+                      {p.connected ? (
+                        <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => toast.success(`Disconnected from ${p.name}`)}>
+                          Disconnect
+                        </Button>
+                      ) : (
+                        <Button variant="secondary" size="sm" onClick={() => {
+                          toast.error(`Auto-publishing to ${p.name} requires platform developer approval.`);
+                        }}>
+                          Connect
+                        </Button>
+                      )}
+                    </div>
+                    {p.connected && (
+                      <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-1">
+                        <span className="text-sm text-muted-foreground">Auto-push scheduled clips to {p.name}</span>
+                        <Switch
+                          defaultChecked
+                          onCheckedChange={(checked) =>
+                            toast.success(checked ? `Auto-push to ${p.name} enabled` : `Auto-push to ${p.name} disabled`)
+                          }
+                        />
+                      </div>
                     )}
                   </div>
-                  {p.connected && (
-                    <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-1">
-                      <span className="text-sm text-muted-foreground">Auto-push scheduled clips to {p.name}</span>
-                      <Switch defaultChecked />
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))}
             </CardContent>
           </Card>
         </TabsContent>
@@ -126,14 +131,24 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Email product updates</span>
-                <Switch defaultChecked />
+                <Switch
+                  defaultChecked
+                  onCheckedChange={(checked) =>
+                    toast.success(checked ? "Email updates enabled" : "Email updates disabled")
+                  }
+                />
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm flex items-center gap-2">
                   <Shield className="h-4 w-4" />
                   Security alerts
                 </span>
-                <Switch defaultChecked />
+                <Switch
+                  defaultChecked
+                  onCheckedChange={(checked) =>
+                    toast.success(checked ? "Security alerts enabled" : "Security alerts disabled")
+                  }
+                />
               </div>
             </CardContent>
           </Card>
