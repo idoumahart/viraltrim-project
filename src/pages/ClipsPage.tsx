@@ -268,9 +268,17 @@ export default function ClipsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
+        <div className="flex flex-col items-center gap-4 py-16 text-muted-foreground">
           <Video className="h-10 w-10 opacity-30" />
-          <p className="text-sm">No clips yet — generate one from the studio.</p>
+          <p className="text-sm">
+            {searchTerm ? "No clips match your search." : "No clips yet — generate your first one from Viral Search."}
+          </p>
+          {!searchTerm && (
+            <Button className="btn-gradient gap-2" onClick={() => navigate("/discovery")}>
+              <Search className="h-4 w-4" />
+              Go to Viral Search
+            </Button>
+          )}
         </div>
       ) : (
         <motion.div layout className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

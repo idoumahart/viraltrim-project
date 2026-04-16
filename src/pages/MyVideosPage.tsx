@@ -171,7 +171,11 @@ export default function MyVideosPage() {
             <div className="text-center py-20 border border-dashed border-border rounded-xl">
               <Video className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-medium">No videos imported yet</h3>
-              <p className="text-muted-foreground">Paste a link above to get started.</p>
+              <p className="text-muted-foreground mb-6">Paste a YouTube link above, or discover trending videos first.</p>
+              <Button onClick={() => navigate("/discovery")} className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Browse Viral Search
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -197,9 +201,11 @@ export default function MyVideosPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="p-4 bg-muted/10 border-t border-border/50">
-                    <p className="text-xs font-semibold text-primary/80 mb-2 uppercase tracking-wide flex items-center"><Sparkles className="w-3 h-3 mr-1"/> Action Required</p>
-                    <p className="text-sm font-medium">Extract video and generate viral clip</p>
+                  <div className="p-4 bg-primary/5 border-t border-primary/20">
+                    <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wide flex items-center gap-1">
+                      <Sparkles className="w-3 h-3"/> Click to open AI Studio
+                    </p>
+                    <p className="text-sm text-muted-foreground">Extract clips &amp; generate viral hooks</p>
                   </div>
                   <div className="p-4 pt-0">
                     <div className="flex items-start justify-between gap-4">

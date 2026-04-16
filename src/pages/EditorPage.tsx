@@ -13,6 +13,7 @@ import {
 import { api, type Clip } from "@/lib/api-client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { cn } from "@/lib/utils";
 import { Timeline } from "@/components/editor/Timeline";
 import { AudioTimeline } from "@/components/editor/AudioTimeline";
 import { CaptionEditor, CaptionOverlay } from "@/components/editor/CaptionEditor";

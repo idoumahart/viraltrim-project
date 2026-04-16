@@ -434,6 +434,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         });
       }
       const credit = `Original video by ${sourceChannel}`;
+
+      // Auto-edit subtitle sequence
+      const words = ai.caption.split(/[\s\n]+/);
+      const generatedCaptionLines = [];
+      for (let i = 0; i < words.length; i += 4) {
+        generatedCaptionLines.push(words.slice(i, i + 4).join(" "));
+      }
+      const finalCaptionLines = generatedCaptionLines.length ? generatedCaptionLines : [ai.caption];
+
       const { clip: created, error: createErr } = await clipService.createGeneratedClip(fresh, {
         title: ai.hashtags[0] ? String(ai.hashtags[0]) : "New clip",
         platform: "TikTok (9:16)",
@@ -445,26 +454,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         sourceChannel,
         thumbnail: `https://img.youtube.com/vi/${extractYoutubeId(sourceUrl)}/hqdefault.jpg`,
         videoUrl: sourceUrl,
+        startSec: start,
+        endSec: end,
+        captionLines: finalCaptionLines,
+        textStyle: "gradient",
       });
       if (createErr || !created) {
         return c.json({ success: false, error: createErr ?? "Failed to create clip" }, 400);
       }
-      // Auto-edit subtitle sequence
-      const words = ai.caption.split(/[\s\n]+/);
-      const generatedCaptionLines = [];
-      for (let i = 0; i < words.length; i += 4) {
-        generatedCaptionLines.push(words.slice(i, i + 4).join(" "));
-      }
 
       return c.json({
         success: true,
-        data: {
-          ...created,
-          startSec: start,
-          endSec: end,
-          captionLines: generatedCaptionLines.length ? generatedCaptionLines : [ai.caption],
-          textStyle: "gradient",
-        },
+        data: created,
       });
     } catch (e) {
       console.error("[generate-clip error]", e);

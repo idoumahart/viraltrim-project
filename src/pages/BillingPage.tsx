@@ -6,11 +6,13 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { CreditCard, Zap, ShieldCheck } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api-client";
 import { formatDistanceToNow } from "date-fns";
 
 export default function BillingPage() {
   const { isSubscribed, subscription, openPortal, createCheckout, prices } = useSubscription();
+  const { user } = useAuth();
   const [usage, setUsage] = useState<{ used: number; limit: number } | null>(null);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function BillingPage() {
               <div className="flex justify-between items-end">
                 <span className="text-sm font-medium">AI clips</span>
                 <span className="text-sm font-mono text-primary">
-                  {usage ? `${usage.used} / ${usage.limit}` : "—"}
+                  {usage ? `${usage.used} / ${usage.limit}` : `0 / —`}
                 </span>
               </div>
               <Progress value={pct} className="h-2.5" />
@@ -59,13 +61,11 @@ export default function BillingPage() {
                 Current plan
               </CardTitle>
               <CardDescription>
-                {isSubscribed
-                  ? `Status: ${subscription?.status ?? "active"} · renews ${
-                      subscription?.currentPeriodEnd
-                        ? formatDistanceToNow(subscription.currentPeriodEnd, { addSuffix: true })
-                        : "—"
-                    }`
-                  : "You are on the Free plan."}
+                <span className="capitalize font-semibold text-foreground">{user?.plan ?? "free"}</span>
+                {" plan"}
+                {isSubscribed && subscription?.currentPeriodEnd
+                  ? ` · renews ${formatDistanceToNow(subscription.currentPeriodEnd, { addSuffix: true })}`
+                  : " · No active Stripe subscription"}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">

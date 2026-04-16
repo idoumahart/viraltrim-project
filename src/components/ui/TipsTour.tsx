@@ -101,7 +101,7 @@ export function TipsTour() {
   };
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 w-72 animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-4 right-4 z-40 w-72 animate-in slide-in-from-bottom-4 duration-300 hidden sm:block">
       <div className="rounded-xl border border-amber-500/30 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/50 bg-amber-500/5">

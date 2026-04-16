@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { api, type ViralVideo } from "@/lib/api-client";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, decodeHTML } from "@/lib/utils";
 
 // ─── Platform config ──────────────────────────────────────────────────────────
 const PLATFORMS = [
@@ -114,7 +114,8 @@ export default function DiscoveryPage() {
           // Only generate YouTube thumbnail fallback for YouTube URLs
           const ytId = v.url.match(/[?&]v=([^&]+)/)?.[1];
           const thumb = v.thumbnail || (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : "");
-          return { ...v, thumbnail: thumb };
+          // Decode HTML entities from API titles (e.g. &#39; → ')
+          return { ...v, thumbnail: thumb, title: decodeHTML(v.title) };
         });
         setTrends(fixedTrends);
         if (res.data.length === 0) {
@@ -250,7 +251,7 @@ export default function DiscoveryPage() {
                 </div>
 
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm line-clamp-2 leading-snug">{t.title}</CardTitle>
+                  <CardTitle className="text-sm line-clamp-2 leading-snug">{decodeHTML(t.title)}</CardTitle>
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {t.views && (
                       <Badge variant="secondary" className="text-xs">
