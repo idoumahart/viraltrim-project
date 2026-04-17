@@ -43,7 +43,7 @@ interface Suggestion {
   selected?: boolean;
 }
 
-export default function StudioGeneratorPage() {
+export function StudioGeneratorPage() {
   const { videoId } = useParams();
   const navigate = useNavigate();
   const [video, setVideo] = useState<any>(null);
@@ -102,8 +102,11 @@ export default function StudioGeneratorPage() {
       if (res.success && res.data) {
         setSuggestions(res.data.map((s: any, i: number) => ({
           ...s,
-          id: `suggest-${i}`,
-          selected: true, // Default to selected
+          id: s.id || `suggest-${i}-${Date.now()}`,
+          durationSeconds: s.durationSeconds || (s.endSec - s.startSec) || 0,
+          viralScore: s.viralScore || s.viral_score || 0,
+          title: s.title || s.concept || `Viral Moment ${i + 1}`,
+          selected: true,
         })));
         setProgress(100);
         setStatus("Generation complete!");
@@ -137,20 +140,28 @@ export default function StudioGeneratorPage() {
       return;
     }
 
+    if (!video) {
+      toast.error("Source video lost. Please refresh.");
+      return;
+    }
+
     setSaving(true);
     toast.info(`Saving ${selected.length} clips to your library...`);
 
     try {
+      let savedCount = 0;
       for (const s of selected) {
-        await api.generateClip({
+        const res = await api.generateClip({
           source_url: video.url,
           source_channel: video.title || "ViralTrim",
           requested_start_seconds: s.startSec,
           requested_end_seconds: s.endSec,
-          title: s.title,
+          title: s.title || s.concept || "Viral Clip",
+          viralScore: s.viralScore,
         });
+        if (res.success) savedCount++;
       }
-      toast.success("Clips saved successfully!");
+      toast.success(`Successfully saved ${savedCount} clips!`);
       navigate("/studio/clips");
     } catch (err: any) {
       toast.error("Failed to save some clips. Please try again.");

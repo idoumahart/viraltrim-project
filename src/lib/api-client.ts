@@ -412,11 +412,20 @@ export const api = {
   async suggestHooks(body: {
     transcript: string;
     targetLength: number;
-  }): Promise<ApiResponse<Array<{ concept: string; startSec: number; endSec: number; viral_score: number; caption: string }>>> {
-    return requestJson<Array<{ concept: string; startSec: number; endSec: number; viral_score: number; caption: string }>>("/api/clips/suggest-hooks", {
+  }): Promise<ApiResponse<Array<{ concept: string; title: string; startSec: number; endSec: number; viralScore: number; durationSeconds: number; caption: string }>>> {
+    const res = await requestJson<any[]>("/api/clips/suggest-hooks", {
       method: "POST",
       body: JSON.stringify(body),
     });
+    if (res.success && res.data) {
+      res.data = res.data.map(s => ({
+        ...s,
+        viralScore: s.viral_score ?? 0,
+        durationSeconds: (s.endSec - s.startSec) ?? 0,
+        title: s.title || s.concept || "Viral Moment"
+      }));
+    }
+    return res as ApiResponse<any[]>;
   },
 
   async chatbot(message: string, history: { role: string; content: string }[]): Promise<ApiResponse<{ reply: string }>> {
@@ -439,24 +448,24 @@ export const api = {
     return requestJson<{ id: string; title: string; url: string; transcript: string | null; thumbnail: string | null }>(`/api/links/${id}`, { method: "GET" });
   },
 
-  async generateHooks(url: string, videoId?: string): Promise<ApiResponse<Array<{ concept: string; startSec: number; endSec: number; viral_score: number; caption: string }>>> {
+  async generateHooks(url: string, videoId?: string): Promise<ApiResponse<Array<any>>> {
     // 1. If we have a videoId, try to get its transcript first
     if (videoId) {
-      const v = await this.getVideo(videoId);
+      const v = await api.getVideo(videoId);
       if (v.success && v.data?.transcript) {
-        return this.suggestHooks({ transcript: v.data.transcript, targetLength: 60 });
+        return api.suggestHooks({ transcript: v.data.transcript, targetLength: 60 });
       }
     }
     
     // 2. Fallback: Import the URL to get a transcript, then suggest
-    const imp = await this.importLink(url);
+    const imp = await api.importLink(url);
     if (!imp.success || !imp.data) return { success: false, error: imp.error || "Failed to analyze video" };
     
     // Wait for transcript (it's sync in our current worker implementation, but we'll re-fetch just in case)
-    const fresh = await this.getVideo(imp.data.id);
+    const fresh = await api.getVideo(imp.data.id);
     if (!fresh.success || !fresh.data?.transcript) return { success: false, error: "AI transcript extraction failed for this video." };
     
-    return this.suggestHooks({ transcript: fresh.data.transcript, targetLength: 60 });
+    return api.suggestHooks({ transcript: fresh.data.transcript, targetLength: 60 });
   },
 
   async updateClip(

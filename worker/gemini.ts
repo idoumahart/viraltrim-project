@@ -392,8 +392,12 @@ Transcript:
 ${truncatedTranscript}
 """
 
-Return a raw JSON array of 3 objects containing the fields: "concept" (a catchy 3-4 word title), "startSec" (integer), "endSec" (integer), "viral_score" (0-100), and "caption" (engaging and under 200 chars).
-Return JSON ONLY, without markdown fences or additional explanation.`;
+Return a JSON array of exactly 3 objects.
+        Each object MUST have: "concept", "title" (a catchy, viral name), "startSec", "endSec", "viral_score" (0-100), and "caption" (the key spoken hook).
+        Format:
+        [
+          { "concept": "...", "title": "...", "startSec": 10, "endSec": 40, "viral_score": 95, "caption": "..." }
+        ]`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
