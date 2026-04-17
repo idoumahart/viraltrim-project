@@ -243,16 +243,16 @@ export default function EditorPage() {
   const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
 
-  // Normalization hook to unstick the loader
-  const [videoUrl, setVideoUrl] = useState("");
-  useEffect(() => {
-    // Check all potential URL fields (case-agnostic)
-    const url = incomingClip?.videoUrl || incomingClip?.video_url || 
-                incomingClip?.sourceUrl || incomingClip?.source_url || 
-                incomingVideo?.url || incomingVideo?.video_url;
-    
-    if (url) setVideoUrl(url);
-  }, [incomingClip, incomingVideo]);
+  // Resolve playable URL synchronously on first render — check every possible field name
+  // so the empty-state guard below sees the URL before any useEffect fires.
+  const videoUrl =
+    incomingClip?.videoUrl ||
+    (incomingClip as any)?.video_url ||
+    incomingClip?.sourceUrl ||
+    (incomingClip as any)?.source_url ||
+    incomingVideo?.url ||
+    (incomingVideo as any)?.video_url ||
+    "";
 
   // Clip data
   const [clip, setClip] = useState<Clip | null>(incomingClip);
@@ -384,7 +384,7 @@ export default function EditorPage() {
     } finally { setIsGenerating(false); }
   };
 
-  // ── Empty state
+  // ── Empty state: no clip object AND no video AND no URL
   if (!clip && !incomingVideo && !videoUrl) {
     return (
       <AppLayout>
@@ -412,6 +412,32 @@ export default function EditorPage() {
       </AppLayout>
     );
   }
+
+  // ── Clip exists but has no playable URL — show a clear error (not a blank/stuck screen)
+  if (clip && !videoUrl) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex items-center justify-center bg-[#111114]">
+          <div className="flex flex-col items-center gap-5 text-center px-6">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Film className="h-8 w-8 text-amber-400/60" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white mb-2">Video unavailable</h2>
+              <p className="text-sm text-white/40 max-w-xs">
+                This clip's source video could not be found. It may have been deleted or the URL has expired.
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap justify-center">
+              <Button variant="outline" className="border-white/10 text-white/70 hover:bg-white/5" onClick={() => navigate("/studio/clips")}>Back to My Clips</Button>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+
 
   const tools: { id: ToolId; icon: React.ElementType; label: string }[] = [
     { id: "captions", icon: Type, label: "Text" },

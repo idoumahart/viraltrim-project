@@ -68,6 +68,7 @@ export interface Clip {
   engagement?: string;
   thumbnail?: string;
   videoUrl?: string;
+  sourceUrl?: string;  // original source URL (YouTube link, etc.)
   caption?: string;
   editCount: number;
   // Editor fields
@@ -80,6 +81,7 @@ export interface Clip {
   viralScore?: number;
   createdAt: Date;
 }
+
 
 
 export interface ScheduledPost {

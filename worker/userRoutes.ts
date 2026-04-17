@@ -622,6 +622,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       engagement: row.engagement ?? undefined,
       thumbnail: row.thumbnail ?? undefined,
       videoUrl: row.videoUrl ?? undefined,
+      sourceUrl: row.sourceUrl ?? undefined, // ← FIX: include source URL so editor can always find a playable URL
       caption: row.caption ?? undefined,
       editCount: row.editCount ?? 0,
       createdAt: row.createdAt ?? new Date(),
@@ -636,6 +637,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return c.json({ success: true, data });
   });
+
 
   api.get("/api/clips/:id", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
