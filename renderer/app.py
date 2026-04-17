@@ -14,6 +14,16 @@ R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY", "")
 R2_BUCKET = os.environ.get("R2_BUCKET", "viraltrim-media")
 WEBSHARE_PROXY_URL = os.environ.get("WEBSHARE_PROXY_URL", "")
 
+# Internal shared secret — must match INTERNAL_WEBHOOK_SECRET in Cloudflare Worker
+INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
+
+def verify_internal_secret(req):
+    """Reject requests not coming from our Cloudflare Worker."""
+    if not INTERNAL_SECRET:
+        print("[security] WARNING: INTERNAL_SECRET not set — all requests accepted.")
+        return True
+    return req.headers.get("X-Internal-Secret", "") == INTERNAL_SECRET
+
 def get_r2_client():
     return boto3.client(
         's3',
@@ -37,7 +47,9 @@ def download_from_gcs(bucket_name, source_blob_name, destination_file_name):
 
 @app.route('/transcript', methods=['POST'])
 def extract_transcript():
-    """Extract transcript using yt-dlp to bypass 429 blockades"""
+    """Extract transcript using yt-dlp subtitle extraction (YouTube CC captions)."""
+    if not verify_internal_secret(request):
+        return jsonify({'error': 'Unauthorized'}), 401
     data = request.json
     url = data.get('url')
     if not url:
@@ -88,6 +100,8 @@ def extract_transcript():
 @app.route('/render', methods=['POST'])
 def process_video():
     """FFmpeg rendering pipeline to download, trim, and subtitle video (GCS source support)"""
+    if not verify_internal_secret(request):
+        return jsonify({'error': 'Unauthorized'}), 401
     data = request.json
     url = data.get('url') # Can be gs:// path or public URL
     start_time = data.get('start_time', 0)
@@ -126,11 +140,12 @@ def process_video():
             # External File (YouTube/Direct)
             print(f"Downloading clip via yt-dlp: {url}")
             download_cmd = [
-                "yt_dlp",
+                "yt-dlp",  # Fixed: was "yt_dlp" (underscore), CLI binary uses hyphen
                 "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
                 "--download-sections", f"*{start_time}-{end_time}",
                 "--force-keyframes-at-cuts",
-                "-o", raw_path
+                "-o", raw_path,
+                "--no-playlist",
             ]
             if WEBSHARE_PROXY_URL:
                 download_cmd.extend(["--proxy", WEBSHARE_PROXY_URL])
@@ -174,5 +189,6 @@ def process_video():
             os.remove(final_path)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
 

@@ -46,6 +46,7 @@
     "RESEND_ADMIN_EMAIL": "admin@viraltrim.com",
     "STRIPE_PRO_PRICE_ID": "",
     "STRIPE_AGENCY_PRICE_ID": "",
-    "RENDERER_URL": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app"
+    "RENDERER_URL": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app",
+    "WHISPER_URL": "https://viraltrim-whisper-734039841201.us-central1.run.app"
   }
 }

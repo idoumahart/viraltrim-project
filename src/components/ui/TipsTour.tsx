@@ -34,7 +34,7 @@ const TIPS: Tip[] = [
   {
     id: "editor-upload",
     title: "Upload Your Own Media",
-    body: "Use the Upload tab to bring in your own images (≤5 MB) or videos (≤100 MB) and include them in your clip.",
+    body: "Use the Upload tab to bring in your own images (≤5 MB) or videos (≤75 MB) and include them in your clip.",
   },
   {
     id: "tier-switcher",

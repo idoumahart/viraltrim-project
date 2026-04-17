@@ -2,17 +2,16 @@ import type Stripe from "stripe";
 import { Context, Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { and, count, eq } from "drizzle-orm";
-import { createSession, extractBearerToken, generateId, revokeSession, validateSession } from "./auth";
+import { createSession, extractBearerToken, generateId, revokeSession, validateSession, validateApiKey } from "./auth";
 import { createDatabase } from "./database";
-import { affiliateReferrals, affiliates, clips, dmcaReports, users, processedWebhookEvents, importedLinks } from "./database/schema";
-import { checkAuthRateLimit } from "./middleware/rate-limiter";
+import { affiliateReferrals, affiliates, apiKeys, clips, dmcaReports, users, processedWebhookEvents, importedLinks, sessions } from "./database/schema";
 import { createClipService } from "./database/services/clip-service";
 import { createSubscriptionService, syncUserPlanFromSubscription } from "./database/services/subscription-service";
 import { createUserService } from "./database/services/user-service";
 import type { Env } from "./core-utils";
 import { dmcaAdminHtml, sendResendEmail, welcomeEmailHtml, verifyEmailHtml } from "./email";
 import { chatbotReply, fetchYouTubeVideos, fetchRedditVideos, fetchRapidApiVideos, generateClipMetadata, generateHookSuggestions } from "./gemini";
-import { checkChatbotRateLimit } from "./rate-limit";
+import { checkChatbotRateLimit, checkAuthRateLimit, checkApiRateLimit } from "./rate-limit";
 import {
   createCheckoutSession,
   createPortalSession,
@@ -67,23 +66,39 @@ function jwtSecret(env: Env, req: Request): string {
 }
 
 const authMiddleware = async (c: Context<AppEnv>, next: () => Promise<void>) => {
-  const token = getCookie(c, "vt_session") || extractBearerToken(c.req.raw);
+  const cookieToken = getCookie(c, "vt_session");
+  const bearerToken = extractBearerToken(c.req.raw);
+  const token = cookieToken || bearerToken;
+
   if (!token) {
     return c.json({ success: false, error: "Authorization required" }, 401);
   }
+
   const db = createDatabase(c.env.DB);
-  const secret = jwtSecret(c.env, c.req.raw);
-  if (!secret) {
-    return c.json({ success: false, error: "Server misconfigured" }, 500);
-  }
+
   try {
-    const result = await validateSession(db, token, secret);
-    if (!result) {
-      return c.json({ success: false, error: "Invalid or expired session" }, 401);
+    // ── Path 1: JWT session (browser / cookie auth) ────────────────────────────
+    const secret = jwtSecret(c.env, c.req.raw);
+    if (secret) {
+      const result = await validateSession(db, token, secret);
+      if (result) {
+        c.set("user", result.user);
+        c.set("token", token);
+        return await next();
+      }
     }
-    c.set("user", result.user);
-    c.set("token", token);
-    await next();
+
+    // ── Path 2: API key (Bearer token for mobile apps / developer API) ─────────
+    if (bearerToken) {
+      const apiKeyResult = await validateApiKey(db, bearerToken);
+      if (apiKeyResult) {
+        c.set("user", apiKeyResult.user);
+        c.set("token", bearerToken);
+        return await next();
+      }
+    }
+
+    return c.json({ success: false, error: "Invalid or expired session" }, 401);
   } catch (error) {
     console.error("[AUTH MIDDLEWARE]", error);
     return c.json({ success: false, error: "Identity verification failed" }, 500);
@@ -383,6 +398,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
 
   api.post("/api/clips/generate", authMiddleware, async (c) => {
+    const ip = c.req.raw.headers.get("cf-connecting-ip") || c.req.raw.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const ok = await checkApiRateLimit(c.env.CACHE, ip);
+    if (!ok) return c.json({ success: false, error: "Too many requests, slow down." }, 429);
+
     const key = c.env.GEMINI_API_KEY;
     if (!key) {
       return c.json({ success: false, error: "AI not configured" }, 503);
@@ -516,6 +535,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
 
   api.post("/api/links", authMiddleware, async (c) => {
+    const ip = c.req.raw.headers.get("cf-connecting-ip") || c.req.raw.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const ok = await checkApiRateLimit(c.env.CACHE, ip);
+    if (!ok) return c.json({ success: false, error: "Too many requests, slow down." }, 429);
+
     const user = c.get("user");
     const body = await c.req.json().catch(() => ({}));
     if (!body.url) return c.json({ success: false, error: "URL is required" }, 400);
@@ -532,51 +555,67 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     let transcriptText = "";
     let videoTitle = body.title || "Imported Video";
     let videoThumbnail = body.thumbnail || null;
-    
-    try {
-      // Use ViralTrim GC Run Renderer for robust transcript extraction (yt-dlp powered)
-      const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: body.url })
-      });
-      
-      if (renderResp.ok) {
-        const data = await renderResp.json() as any;
-        if (data.success && data.transcript) {
-          transcriptText = data.transcript;
-        }
-      } else {
-        console.error(`[renderer-transcript-failed] status ${renderResp.status}:`, await renderResp.text());
-        
-        // Fallback to RapidAPI for YouTube if renderer fails
-        if (platform === "youtube" && c.env.RAPID_API_KEY) {
-          console.log("[transcript-fallback] Attempting RapidAPI fallback for YouTube...");
-          const apiResp = await fetch("https://video-transcript-scraper.p.rapidapi.com/transcript/youtube", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-rapidapi-host": "video-transcript-scraper.p.rapidapi.com",
-              "x-rapidapi-key": c.env.RAPID_API_KEY
-            },
-            body: JSON.stringify({ video_url: body.url, transcript_text: true })
-          });
-          
-          if (apiResp.ok) {
-            const data = await apiResp.json() as any;
-            if (data.status === "success" && data.data) {
-              transcriptText = typeof data.data.transcript === "string" ? data.data.transcript : JSON.stringify(data.data.transcript);
-              if (data.data.video_info) {
-                if (data.data.video_info.title) videoTitle = data.data.video_info.title;
-                if (data.data.video_info.thumbnail) videoThumbnail = data.data.video_info.thumbnail;
-              }
-            }
+    let whisperSegments: Array<{ word: string; start: number; end: number }> = [];
+
+    const internalSecret = c.env.INTERNAL_WEBHOOK_SECRET;
+    const gcHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(internalSecret ? { "X-Internal-Secret": internalSecret } : {}),
+    };
+
+    // ── 1. Try Faster-Whisper (primary — word-level timestamps, no API credits) ──
+    const whisperUrl = c.env.WHISPER_URL;
+    if (whisperUrl) {
+      try {
+        console.log("[transcript] Calling Whisper service...");
+        const whisperResp = await fetch(`${whisperUrl}/transcribe`, {
+          method: "POST",
+          headers: gcHeaders,
+          body: JSON.stringify({ url: body.url }),
+          signal: AbortSignal.timeout(240_000), // 4 min max for long videos
+        });
+
+        if (whisperResp.ok) {
+          const data = await whisperResp.json() as any;
+          if (data.success && data.text) {
+            transcriptText = data.text;
+            whisperSegments = Array.isArray(data.segments) ? data.segments : [];
+            console.log(`[transcript] Whisper success: ${transcriptText.length} chars, ${whisperSegments.length} words`);
           }
+        } else {
+          console.error(`[transcript] Whisper returned ${whisperResp.status}:`, await whisperResp.text());
         }
+      } catch (e) {
+        console.error("[transcript] Whisper call failed:", e);
       }
-    } catch (e) {
-      console.error("[transcript-fetch-failed]", e);
     }
+
+    // ── 2. Fallback: yt-dlp CC subtitles via renderer (YouTube CC only) ──────────
+    if (!transcriptText && c.env.RENDERER_URL) {
+      try {
+        console.log("[transcript] Falling back to yt-dlp subtitle extraction...");
+        const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
+          method: "POST",
+          headers: gcHeaders,
+          body: JSON.stringify({ url: body.url }),
+        });
+
+        if (renderResp.ok) {
+          const data = await renderResp.json() as any;
+          if (data.success && data.transcript) {
+            transcriptText = data.transcript;
+            console.log(`[transcript] yt-dlp subtitle fallback success: ${transcriptText.length} chars`);
+          }
+        } else {
+          console.error(`[transcript] yt-dlp fallback failed ${renderResp.status}`);
+        }
+      } catch (e) {
+        console.error("[transcript] yt-dlp fallback error:", e);
+      }
+    }
+
+    // Note: RapidAPI removed — credits exhausted and replaced by Whisper service.
+
 
     const id = generateId();
     await db.insert(importedLinks).values({
@@ -1257,7 +1296,100 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     return c.json({ success: true, data: { upheldCount: n, banned: n >= 3 } });
   });
+
+  // ─── API Key Management (Headless / Mobile / Developer API) ───────────────────
+
+  /**
+   * POST /api/keys
+   * Creates a new API key for the authenticated user.
+   * Returns the raw key ONCE — it cannot be retrieved again.
+   * Body: { name?: string }  — optional label, e.g. "iOS App"
+   */
+  api.post("/api/keys", authMiddleware, async (c) => {
+    const ip = c.req.raw.headers.get("cf-connecting-ip") || c.req.raw.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const ok = await checkApiRateLimit(c.env.CACHE, ip);
+    if (!ok) return c.json({ success: false, error: "Too many requests, slow down." }, 429);
+
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const body = await c.req.json().catch(() => ({})) as { name?: string };
+    const name = String(body.name || "Default Key").slice(0, 64);
+
+    // Enforce a max of 10 keys per user
+    const existing = await db.select().from(apiKeys).where(eq(apiKeys.userId, user.id));
+    const activeKeys = existing.filter(k => !k.isRevoked);
+    if (activeKeys.length >= 10) {
+      return c.json({ success: false, error: "Maximum of 10 API keys reached. Revoke an existing key first." }, 400);
+    }
+
+    const { generateApiKey } = await import("./auth");
+    const { raw, hash } = await generateApiKey();
+    const id = generateId();
+
+    await db.insert(apiKeys).values({ id, userId: user.id, keyHash: hash, name });
+
+    return c.json({
+      success: true,
+      data: {
+        id,
+        name,
+        key: raw, // ← shown ONCE. User must copy it now.
+        createdAt: new Date().toISOString(),
+        warning: "Save this key now. It will not be shown again.",
+      },
+    }, 201);
+  });
+
+  /**
+   * GET /api/keys
+   * Lists all API keys for the authenticated user.
+   * Never returns key hashes or raw keys — only metadata.
+   */
+  api.get("/api/keys", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const rows = await db
+      .select({
+        id: apiKeys.id,
+        name: apiKeys.name,
+        isRevoked: apiKeys.isRevoked,
+        lastUsedAt: apiKeys.lastUsedAt,
+        createdAt: apiKeys.createdAt,
+      })
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, user.id))
+      .orderBy(apiKeys.createdAt);
+
+    return c.json({ success: true, data: rows });
+  });
+
+  /**
+   * DELETE /api/keys/:id
+   * Revokes (soft-deletes) an API key. The key immediately stops working.
+   */
+  api.delete("/api/keys/:id", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const keyId = c.req.param("id");
+
+    const [existing] = await db
+      .select()
+      .from(apiKeys)
+      .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, user.id)))
+      .limit(1);
+
+    if (!existing) {
+      return c.json({ success: false, error: "API key not found" }, 404);
+    }
+    if (existing.isRevoked) {
+      return c.json({ success: false, error: "Key is already revoked" }, 400);
+    }
+
+    await db.update(apiKeys).set({ isRevoked: true }).where(eq(apiKeys.id, keyId));
+    return c.json({ success: true, data: { id: keyId, revoked: true } });
+  });
 }
+
 
 function extractYoutubeId(url: string): string {
   try {

@@ -119,13 +119,13 @@ export function AppLayout({
           {MAIN_NAV.map((i) => renderSingleLink(i))}
         </div>
 
-        {/* My Studio Section */}
+        {/* AI Clip Generator Section */}
         <div className="space-y-1">
           <button 
             onClick={() => setStudioExpanded(!studioExpanded)}
             className="w-full flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2 hover:text-foreground transition-colors"
           >
-            <span className="flex items-center gap-2"><Video className="w-4 h-4"/> My Studio</span>
+            <span className="flex items-center gap-2"><Video className="w-4 h-4"/> AI Clip Generator</span>
             <ChevronDown className={cn("w-4 h-4 transition-transform", !studioExpanded && "-rotate-90")} />
           </button>
           

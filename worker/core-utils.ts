@@ -24,6 +24,11 @@ export interface Env {
   RESEND_API_KEY: string;
   RESEND_FROM_EMAIL: string;
   RESEND_ADMIN_EMAIL: string;
+
   RENDERER_URL: string;
+  WHISPER_URL: string;
   INTERNAL_WEBHOOK_SECRET: string;
+  RAPID_API_KEY: string;
+  YOUTUBE_API_KEY: string;
 }
+

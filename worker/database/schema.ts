@@ -233,6 +233,23 @@ export const processedWebhookEvents = sqliteTable("processed_webhook_events", {
   processedAt: integer("processed_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
 
+/**
+ * API keys for headless authentication (mobile apps, developer API).
+ * Raw keys are never stored — only SHA-256 hashes.
+ * Users can create named keys, revoke them individually, and see last-used timestamp.
+ */
+export const apiKeys = sqliteTable("api_keys", {
+  id: text("id").primaryKey().notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  keyHash: text("key_hash").notNull(),
+  name: text("name").notNull().default("Default Key"),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  isRevoked: integer("is_revoked", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
@@ -242,3 +259,5 @@ export type Clip = typeof clips.$inferSelect;
 export type NewClip = typeof clips.$inferInsert;
 export type Item = typeof items.$inferSelect;
 export type NewItem = typeof items.$inferInsert;
+export type ApiKey = typeof apiKeys.$inferSelect;
+
