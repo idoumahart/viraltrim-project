@@ -599,6 +599,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true });
   });
 
+  api.get("/api/links/:id", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const id = c.req.param("id");
+    const userId = c.get("user").id;
+    const [link] = await db.select().from(importedLinks).where(and(eq(importedLinks.id, id), eq(importedLinks.userId, userId))).limit(1);
+    if (!link) return c.json({ success: false, error: "Link not found" }, 404);
+    return c.json({ success: true, data: link });
+  });
+
   api.get("/api/clips", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const list = await createClipService(db).listClips(c.get("user").id);

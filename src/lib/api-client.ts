@@ -435,6 +435,30 @@ export const api = {
     return res as ApiResponse<Clip>;
   },
 
+  async getVideo(id: string): Promise<ApiResponse<{ id: string; title: string; url: string; transcript: string | null; thumbnail: string | null }>> {
+    return requestJson<{ id: string; title: string; url: string; transcript: string | null; thumbnail: string | null }>(`/api/links/${id}`, { method: "GET" });
+  },
+
+  async generateHooks(url: string, videoId?: string): Promise<ApiResponse<Array<{ concept: string; startSec: number; endSec: number; viral_score: number; caption: string }>>> {
+    // 1. If we have a videoId, try to get its transcript first
+    if (videoId) {
+      const v = await this.getVideo(videoId);
+      if (v.success && v.data?.transcript) {
+        return this.suggestHooks({ transcript: v.data.transcript, targetLength: 60 });
+      }
+    }
+    
+    // 2. Fallback: Import the URL to get a transcript, then suggest
+    const imp = await this.importLink(url);
+    if (!imp.success || !imp.data) return { success: false, error: imp.error || "Failed to analyze video" };
+    
+    // Wait for transcript (it's sync in our current worker implementation, but we'll re-fetch just in case)
+    const fresh = await this.getVideo(imp.data.id);
+    if (!fresh.success || !fresh.data?.transcript) return { success: false, error: "AI transcript extraction failed for this video." };
+    
+    return this.suggestHooks({ transcript: fresh.data.transcript, targetLength: 60 });
+  },
+
   async updateClip(
     id: string,
     updates: {

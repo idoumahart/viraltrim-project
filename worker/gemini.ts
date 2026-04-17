@@ -28,7 +28,7 @@ export async function fetchYouTubeVideos(
   // Step 1: search for videos
   const searchUrl =
     `https://www.googleapis.com/youtube/v3/search` +
-    `?part=snippet&type=video&maxResults=18&q=${encodedQuery}` +
+    `?part=snippet&type=video&maxResults=30&q=${encodedQuery}` +
     `&key=${apiKey}`;
 
   const searchRes = await fetch(searchUrl);
@@ -108,7 +108,7 @@ export async function fetchRedditVideos(
 ): Promise<ViralVideoResult[]> {
   const safeQuery = encodeURIComponent(query.slice(0, 100).replace(/[\n\r`]/g, ""));
   const url =
-    `https://www.reddit.com/search.json?q=${safeQuery}&type=link&sort=hot&limit=25`;
+    `https://www.reddit.com/search.json?q=${safeQuery}&type=link&sort=hot&limit=50`;
 
   const res = await fetch(url, {
     headers: { "User-Agent": "ViralTrim/1.0" },
@@ -135,7 +135,7 @@ export async function fetchRedditVideos(
   return (
     data.data.children
       .filter((c) => c.data.is_video || c.data.url.includes("v.redd.it"))
-      .slice(0, 12)
+      .slice(0, 24)
       .map((c) => ({
         id: `reddit-${c.data.id}`,
         title: c.data.title,
@@ -180,7 +180,7 @@ export async function fetchRapidApiVideos(
         const items = Array.isArray(data.data) ? data.data : [];
         return items
           .filter((i: any) => i.videoId)
-          .slice(0, 12)
+          .slice(0, 24)
           .map((i: any) => ({
             id: `rapid-yt-${i.videoId}`,
             title: i.title ?? "",
@@ -205,7 +205,7 @@ export async function fetchRapidApiVideos(
   const platformSearchApis: Record<string, { host: string; path: (q: string) => string; map: (item: any, idx: number) => ViralVideoResult | null }> = {
     tiktok: {
       host: "tiktok-scraper7.p.rapidapi.com",
-      path: (q) => `/video/search?keywords=${encodeURIComponent(q)}&count=12&cursor=0&sort_type=0&publish_time=0&region=US`,
+      path: (q) => `/video/search?keywords=${encodeURIComponent(q)}&count=20&cursor=0&sort_type=0&publish_time=0&region=US`,
       map: (item: any, idx: number): ViralVideoResult | null => {
         if (!item?.aweme_id) return null;
         return {
@@ -241,7 +241,7 @@ export async function fetchRapidApiVideos(
         return rawItems
           .map((item: any, idx: number) => apiConfig.map(item, idx))
           .filter((v): v is ViralVideoResult => v !== null)
-          .slice(0, 12);
+          .slice(0, 24);
       }
     } catch (err) {
       console.warn(`[fetchRapidApiVideos] ${platform} API failed`, err);
@@ -276,7 +276,7 @@ export async function fetchRapidApiVideos(
       const items = Array.isArray(data.data) ? data.data : [];
       return items
         .filter((i: any) => i.videoId)
-        .slice(0, 12)
+        .slice(0, 24)
         .map((i: any) => ({
           id: `cross-${platform}-${i.videoId}`,
           title: i.title ?? "",

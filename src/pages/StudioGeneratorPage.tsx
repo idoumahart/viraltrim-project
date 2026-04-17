@@ -67,7 +67,9 @@ export default function StudioGeneratorPage() {
         if (res.success) {
           setVideo(res.data);
           // Auto-start generation if no suggestions yet
-          handleStartGeneration(res.data);
+          if (suggestions.length === 0) {
+            handleStartGeneration(res.data);
+          }
         } else {
           toast.error("Video not found");
           navigate("/studio/videos");
@@ -96,7 +98,7 @@ export default function StudioGeneratorPage() {
     try {
       // For the demo, we'll call generateHooks suggestions
       // In production, this would be a long-running job
-      const res = await api.generateHooks(v.url);
+      const res = await api.generateHooks(v.url, v.id);
       if (res.success && res.data) {
         setSuggestions(res.data.map((s: any, i: number) => ({
           ...s,
@@ -105,7 +107,7 @@ export default function StudioGeneratorPage() {
         })));
         setProgress(100);
         setStatus("Generation complete!");
-        toast.success("AI found 3 high-potential clips!");
+        toast.success(`AI found ${res.data.length} high-potential clips!`);
       } else {
         throw new Error(res.error || "Generation failed");
       }

@@ -233,7 +233,7 @@ export default function EditorPage() {
 
   // Clip data
   const [clip, setClip] = useState<Clip | null>(incomingClip);
-  const [videoUrl] = useState(incomingClip?.videoUrl ?? incomingVideo?.url ?? "");
+  const [videoUrl] = useState(incomingClip?.videoUrl || incomingClip?.sourceUrl || incomingVideo?.url || "");
   const [title, setTitle] = useState(incomingClip?.title ?? incomingVideo?.title ?? "");
 
   // Editor state
