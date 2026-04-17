@@ -3,7 +3,7 @@ import os
 import subprocess
 import tempfile
 import boto3
-        
+from google.cloud import storage
 
 app = Flask(__name__)
 
@@ -22,6 +22,18 @@ def get_r2_client():
         aws_secret_access_key=R2_SECRET_KEY,
         region_name="auto"
     )
+
+def download_from_gcs(bucket_name, source_blob_name, destination_file_name):
+    """Download source asset from GCS using Default Service Account"""
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(source_blob_name)
+        blob.download_to_filename(destination_file_name)
+        print(f"Successfully downloaded {source_blob_name} to {destination_file_name}")
+    except Exception as e:
+        print(f"GCS Download Error: {str(e)}")
+        raise
 
 @app.route('/transcript', methods=['POST'])
 def extract_transcript():
@@ -42,7 +54,6 @@ def extract_transcript():
         
         if WEBSHARE_PROXY_URL:
             ydl_opts['proxy'] = WEBSHARE_PROXY_URL
-            print(f"Using proxy for transcript extraction...")
 
         import yt_dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -57,16 +68,12 @@ def extract_transcript():
                 with urllib.request.urlopen(req) as response:
                     sub_data = response.read().decode('utf-8')
                 
-                # Very basic stripping of VTT tags and timestamps
                 clean_lines = []
                 for line in sub_data.split('\n'):
-                    # skip headers, timestamps, purely numeric lines
                     if '-->' in line or line.startswith('WEBVTT') or line.startswith('Kind:') or line.startswith('Language:') or not line.strip() or line.strip().isdigit():
                         continue
-                    # strip internal <c> styles and positioning
                     clean_line = re.sub(r'<[^>]+>', '', line).strip()
                     if clean_line:
-                        # Prevent duplicate lines (common in auto-subs)
                         if not clean_lines or clean_lines[-1] != clean_line:
                             clean_lines.append(clean_line)
                             
@@ -80,54 +87,72 @@ def extract_transcript():
 
 @app.route('/render', methods=['POST'])
 def process_video():
-    """FFmpeg rendering pipeline to download, trim, and subtitle video"""
+    """FFmpeg rendering pipeline to download, trim, and subtitle video (GCS source support)"""
     data = request.json
-    url = data.get('url')
+    url = data.get('url') # Can be gs:// path or public URL
     start_time = data.get('start_time', 0)
     end_time = data.get('end_time', 15)
     
     if not url:
         return jsonify({'error': 'URL is required'}), 400
         
+    raw_path = None
+    final_path = None
+        
     try:
-        # Generate temporary files for intermediate rendering inside the container
-        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as raw_vid, \
-             tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as final_vid:
-            
-            raw_path = raw_vid.name
-            final_path = final_vid.name
+        # Generate temporary files
+        fd_raw, raw_path = tempfile.mkstemp(suffix='.mp4')
+        os.close(fd_raw)
+        fd_final, final_path = tempfile.mkstemp(suffix='.mp4')
+        os.close(fd_final)
 
-        # 1. Download specifically requested time-slice using yt-dlp
-        print(f"Downloading clip from {start_time} to {end_time}...")
-        download_cmd = [
-            "yt-dlp",
-            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-            "--download-sections", f"*{start_time}-{end_time}",
-            "--force-keyframes-at-cuts",
-            "-o", raw_path
-        ]
-        
-        if WEBSHARE_PROXY_URL:
-            download_cmd.extend(["--proxy", WEBSHARE_PROXY_URL])
-            print(f"Using proxy for video download...")
+        # 1. Source Acquisition
+        if url.startswith("gs://"):
+            # Internal File (GCS)
+            bucket_name = url.split("/")[2]
+            blob_name = "/".join(url.split("/")[3:])
+            print(f"Downloading from GCS: {bucket_name}/{blob_name}")
+            download_from_gcs(bucket_name, blob_name, raw_path)
             
-        download_cmd.append(url)
-        subprocess.run(download_cmd, check=True, capture_output=True)
+            # Trim GCS file if needed (GCS downloads entire file)
+            trim_path = raw_path + ".trimmed.mp4"
+            trim_cmd = [
+                "ffmpeg", "-y", "-ss", str(start_time), "-to", str(end_time),
+                "-i", raw_path, "-c", "copy", trim_path
+            ]
+            subprocess.run(trim_cmd, check=True, capture_output=True)
+            os.replace(trim_path, raw_path)
+        else:
+            # External File (YouTube/Direct)
+            print(f"Downloading clip via yt-dlp: {url}")
+            download_cmd = [
+                "yt_dlp",
+                "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                "--download-sections", f"*{start_time}-{end_time}",
+                "--force-keyframes-at-cuts",
+                "-o", raw_path
+            ]
+            if WEBSHARE_PROXY_URL:
+                download_cmd.extend(["--proxy", WEBSHARE_PROXY_URL])
+            download_cmd.append(url)
+            subprocess.run(download_cmd, check=True, capture_output=True)
         
-        # 2. Add sub-processing FFmpeg effects (Standard burn-in logic)
-        # Note: Viral caption ASS generation logic would inject here.
-        # For now, we perform a test transcode.
-        transcode_cmd = [
+        # 2. Optimized Processing (720p, CRF 28, Preset Faster)
+        print("Rendering optimized 720p clip...")
+        render_cmd = [
             "ffmpeg", "-y", "-i", raw_path,
-            "-c:v", "libx264", "-preset", "ultrafast",
-            "-c:a", "aac",
+            "-vf", "scale=720:-2",
+            "-c:v", "libx264", 
+            "-crf", "28",
+            "-preset", "faster",
+            "-c:a", "aac", "-b:a", "128k",
             final_path
         ]
-        subprocess.run(transcode_cmd, check=True, capture_output=True)
+        subprocess.run(render_cmd, check=True, capture_output=True)
 
-        # 3. Upload Output to Cloudflare R2
+        # 3. Multi-Cloud Delivery (Upload to R2)
         output_key = f"renders/{os.path.basename(final_path)}.mp4"
-        print("Uploading to R2...")
+        print(f"Uploading to R2: {output_key}")
         
         if R2_ACCOUNT_ID and R2_ACCESS_KEY:
             s3 = get_r2_client()
@@ -136,15 +161,18 @@ def process_video():
         else:
             final_url = "http://localhost/r2-missing-creds.mp4"
 
-        # Cleanup Memory
-        os.remove(raw_path)
-        os.remove(final_path)
-
         return jsonify({'success': True, 'url': final_url})
         
     except Exception as e:
         print(f"Render Error: {str(e)}")
         return jsonify({'error': str(e)}), 500
+    finally:
+        # 4. Immediate Purge
+        if raw_path and os.path.exists(raw_path):
+            os.remove(raw_path)
+        if final_path and os.path.exists(final_path):
+            os.remove(final_path)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
+

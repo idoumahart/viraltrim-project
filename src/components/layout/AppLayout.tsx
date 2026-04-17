@@ -41,10 +41,12 @@ const MAIN_NAV = [
 ] as const;
 
 const STUDIO_NAV = [
+  { label: "AI Clip Generator", icon: Sparkles, path: "/studio/generator" },
   { label: "My Videos", icon: FolderOpen, path: "/studio/videos" },
   { label: "Editor", icon: Scissors, path: "/studio/editor" },
   { label: "My Clips", icon: Film, path: "/studio/clips" },
 ] as const;
+
 
 const ACCOUNT_NAV = [
   { label: "Billing", icon: CreditCard, path: "/billing" },

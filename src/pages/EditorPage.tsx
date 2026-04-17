@@ -40,9 +40,21 @@ function fmt(s: number): string {
 type ToolId = "captions" | "audio" | "combine" | "upload" | "enhance";
 
 interface LocationState {
-  clip?: Clip;
-  video?: { id: string; title: string; url: string; thumbnail?: string; duration?: string; viralScore?: number };
+  clip?: Clip & { 
+    video_url?: string; // Add snake_case support
+    source_url?: string; 
+  };
+  video?: { 
+    id: string; 
+    title: string; 
+    url?: string; 
+    video_url?: string; // Add snake_case support
+    thumbnail?: string; 
+    duration?: string; 
+    viralScore?: number 
+  };
 }
+
 
 // ─── Multi-track Timeline ─────────────────────────────────────────────────────
 interface TrackTimelineProps {
@@ -231,10 +243,21 @@ export default function EditorPage() {
   const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
 
+  // Normalization hook to unstick the loader
+  const [videoUrl, setVideoUrl] = useState("");
+  useEffect(() => {
+    // Check all potential URL fields (case-agnostic)
+    const url = incomingClip?.videoUrl || incomingClip?.video_url || 
+                incomingClip?.sourceUrl || incomingClip?.source_url || 
+                incomingVideo?.url || incomingVideo?.video_url;
+    
+    if (url) setVideoUrl(url);
+  }, [incomingClip, incomingVideo]);
+
   // Clip data
   const [clip, setClip] = useState<Clip | null>(incomingClip);
-  const [videoUrl] = useState(incomingClip?.videoUrl || incomingClip?.sourceUrl || incomingVideo?.url || "");
   const [title, setTitle] = useState(incomingClip?.title ?? incomingVideo?.title ?? "");
+
 
   // Editor state
   const [startSec, setStartSec] = useState(incomingClip?.startSec ?? 0);
@@ -604,7 +627,8 @@ export default function EditorPage() {
                 {/* UPLOAD */}
                 {activeTool === "upload" && (
                   <div className="space-y-3">
-                    <p className="text-[11px] text-white/30">Upload images (≤ 5 MB) or videos (≤ 100 MB) to include in this clip.</p>
+                    <p className="text-[11px] text-white/30">Upload images (≤ 5 MB) or videos (≤ 75 MB) to include in this clip.</p>
+
                     <MediaUploader onChange={setMediaUrls} />
                   </div>
                 )}
@@ -636,8 +660,12 @@ export default function EditorPage() {
                       width="100%"
                       height="100%"
                       style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-                      config={{ youtube: { playerVars: { modestbranding: 1 } } }}
+                      config={{ 
+                        file: { attributes: { crossOrigin: "anonymous" } },
+                        youtube: { playerVars: { modestbranding: 1 } } 
+                      }}
                     />
+
                     {/* Caption overlay */}
                     <div className="pointer-events-none absolute inset-0 z-10">
                       <CaptionOverlay lines={captionLines} textStyle={textStyle} />

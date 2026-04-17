@@ -5,7 +5,7 @@ import { Upload, X, ImageIcon, Film, Music, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const VIDEO_MAX_MB = 100;
+const VIDEO_MAX_MB = 75;
 const IMAGE_MAX_MB = 5;
 const AUDIO_MAX_MB = 50;
 
@@ -33,17 +33,26 @@ export function MediaUploader({ onChange }: MediaUploaderProps) {
     const isImage = file.type.startsWith("image/");
     const isAudio = file.type.startsWith("audio/");
 
-    if (!isVideo && !isImage && !isAudio) {
-      toast.error("Only image, video, and audio files are supported.");
+    // 1. Strict File Type Validation
+    if (isVideo) {
+      const allowedVideo = ["video/mp4", "video/quicktime", "video/webm"];
+      if (!allowedVideo.includes(file.type)) {
+        toast.error("Invalid format. Please use MP4, MOV, or WEBM.");
+        return;
+      }
+    } else if (!isImage && !isAudio) {
+      toast.error("File type not supported. Please upload an image, video, or audio file.");
       return;
     }
 
+    // 2. Size Validation
     const maxMB = isVideo ? VIDEO_MAX_MB : isAudio ? AUDIO_MAX_MB : IMAGE_MAX_MB;
     const fileMB = file.size / (1024 * 1024);
     if (fileMB > maxMB) {
-      toast.error(`File too large. Max size: ${maxMB}MB for ${isVideo ? "video" : isAudio ? "audio" : "image"} files.`);
+      toast.error(`File is too heavy (${fileMB.toFixed(1)}MB). Max limit is ${maxMB}MB for ${isVideo ? "videos" : isAudio ? "audio" : "images"}.`);
       return;
     }
+
 
     setUploading(true);
     setProgress(10);
