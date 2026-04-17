@@ -18,6 +18,7 @@ import {
   CheckCircle,
   Video,
   Loader2,
+  Download,
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,7 +26,6 @@ import { toast } from "sonner";
 
 // ─── Edit limits by plan (spec: Free=3, Pro=10, Agency=20) ───────────────────
 const EDIT_LIMITS: Record<string, number> = { free: 3, pro: 10, agency: 20, unlimited: 999 };
-
 
 function editLimitFor(plan: string): number {
   return EDIT_LIMITS[plan.toLowerCase()] ?? 1;
@@ -84,6 +84,19 @@ function ClipCard({
 }) {
   const limit = editLimitFor(userPlan);
   const editsLeft = Math.max(0, limit - (clip.editCount ?? 0));
+
+  const handleDownload = () => {
+    if (!clip.videoUrl) {
+      toast.error("Video not yet rendered for download.");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = clip.videoUrl;
+    link.download = `${clip.title.replace(/\s+/g, "_")}.mp4`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <motion.div
@@ -162,6 +175,16 @@ function ClipCard({
             <Button
               size="sm"
               variant="outline"
+              className="h-8 px-2 text-muted-foreground hover:text-primary hover:border-primary/50"
+              onClick={handleDownload}
+              disabled={deleting || !clip.videoUrl}
+              title="Download clip"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
               className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:border-destructive/50"
               onClick={() => onDelete(clip)}
               disabled={deleting}
@@ -184,7 +207,6 @@ export default function ClipsPage() {
   const navigate = useNavigate();
   const { user, effectivePlan } = useAuth();
   const userPlan = effectivePlan;
-
 
   const [searchTerm, setSearchTerm] = useState("");
   const [clips, setClips] = useState<Clip[]>([]);

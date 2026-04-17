@@ -1,40 +1,23 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Plus, Trash2, Video, FileText, Sparkles, Loader2, Play, Lock } from "lucide-react";
+import { Plus, Trash2, Video, FileText, Sparkles, Loader2, Play } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { QuirkyLoader } from "@/components/ui/QuirkyLoader";
 import { UpgradeModal } from "@/components/ui/upgrade-modal";
 import { useAuth } from "@/hooks/use-auth";
-
-// Provide some funny loading states
-const LOADING_MESSAGES = [
-  "Teaching AI to watch TikToks...",
-  "Convincing the algorithm you're funny...",
-  "Watching 10,000 hours of YouTube so you don't have to...",
-  "Extracting pure viral dopamine...",
-];
+import { cn } from "@/lib/utils";
 
 export default function MyVideosPage() {
-  const { user, effectivePlan } = useAuth();
-
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [url, setUrl] = useState("");
-  const [activeVideo, setActiveVideo] = useState<any>(null);
-  
-  // Phase 2 hook flow state
-  const [targetLength, setTargetLength] = useState<number>(30); // 30, 60, 90, 180, 300, 600
-  const [suggestedHooks, setSuggestedHooks] = useState<any[]>([]);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
   const queryClient = useQueryClient();
+  const [url, setUrl] = useState("");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const { data: res, isLoading } = useQuery({
     queryKey: ["importedLinks"],
@@ -63,306 +46,163 @@ export default function MyVideosPage() {
       if (data.success) {
         toast.success("Video removed");
         queryClient.invalidateQueries({ queryKey: ["importedLinks"] });
-        if (activeVideo) setActiveVideo(null);
       } else {
         toast.error("Failed to remove video");
       }
     },
   });
 
-  const suggestHooksMutation = useMutation({
-    mutationFn: () => api.suggestHooks({
-      transcript: activeVideo?.transcript || "",
-      targetLength: targetLength,
-    }),
-    onSuccess: (data) => {
-      if (data.success && data.data) {
-        setSuggestedHooks(data.data);
-        toast.success("Got viral suggestions!");
-      } else {
-        toast.error(data.error || "Failed to load suggestions.");
-      }
-    },
-    onError: () => toast.error("Network error while finding viral moments."),
-  });
-
-  const createClipMutation = useMutation({
-    mutationFn: (hook: any) => api.generateClip({
-      source_url: activeVideo?.url || "",
-      source_channel: activeVideo?.title || "Imported Video",
-      requested_start_seconds: hook.startSec,
-      requested_end_seconds: hook.endSec,
-      caption: hook.caption,
-      title: hook.concept,
-      viralScore: hook.viral_score,
-    }),
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success("Clip generated successfully! Redirecting...");
-        navigate("/studio/clips", { state: { clip: data.data } });
-      } else {
-        toast.error(data.error || "Failed to finalize clip.");
-      }
-    },
-  });
-
-  const handleTargetLengthChange = (length: number) => {
-    if (length > 90 && effectivePlan !== "agency") {
-      setShowUpgradeModal(true);
-      return;
-    }
-    setTargetLength(length);
-  };
-
   const handleImport = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url) return;
+    if (!url.trim()) return;
     importMutation.mutate(url);
   };
 
-  const getFunnyLoadingMessage = () => {
-    const idx = Math.floor(Math.random() * LOADING_MESSAGES.length);
-    return LOADING_MESSAGES[idx];
+  const handleGenerate = (video: any) => {
+    navigate(`/studio/generator/${video.id}`);
   };
 
   return (
-    <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">My Videos</h1>
-          <p className="text-muted-foreground mt-2">
-            Import videos from YouTube to generate viral clips.
-          </p>
+    <AppLayout container contentClassName="space-y-10 pb-20">
+      {/* Hero / Import Section */}
+      <div className="flex flex-col gap-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-display font-bold">My Videos</h1>
+          <p className="text-muted-foreground text-lg">Import videos from YouTube, TikTok, or Instagram to start generating hooks.</p>
         </div>
 
-        <div className="p-6 rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm">
-          <form onSubmit={handleImport} className="flex gap-4">
-            <div className="flex-1 relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                <Video className="w-5 h-5" />
-              </div>
-              <Input
-                placeholder="Paste YouTube link here..."
-                className="pl-10 h-12 bg-background border-border"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-              />
-            </div>
-            <Button
-              type="submit"
-              size="lg"
-              className="h-12 px-8 shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] transition-all"
-              disabled={importMutation.isPending || !url}
-            >
-              {importMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2"/> : <Plus className="w-5 h-5 mr-2" />}
-              {importMutation.isPending ? "Importing..." : "Import Video"}
-            </Button>
-          </form>
-        </div>
-
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Video Library</h2>
-          {isLoading ? (
-             <div className="flex flex-col items-center justify-center p-20 border border-dashed border-border rounded-xl">
-               <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-               <p className="text-muted-foreground animate-pulse">{getFunnyLoadingMessage()}</p>
-             </div>
-          ) : links.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-border rounded-xl">
-              <Video className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium">No videos imported yet</h3>
-              <p className="text-muted-foreground mb-6">Paste a YouTube link above, or discover trending videos first.</p>
-              <Button onClick={() => navigate("/discovery")} className="gap-2">
-                <Sparkles className="w-4 h-4" />
-                Browse Viral Search
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {links.map((link) => (
-                <div
-                  key={link.id}
-                  className="group relative rounded-xl border border-border/50 bg-card overflow-hidden hover:border-primary/50 hover:shadow-[0_0_30px_rgba(var(--primary),0.1)] transition-all cursor-pointer"
-                  onClick={() => {
-                    setActiveVideo(link);
-                    setSuggestedHooks([]); // reset hooks when changing videos
-                  }}
-                >
-                  <div className="aspect-video bg-muted/30 relative flex items-center justify-center">
-                    {link.platform === "youtube" ? (
-                      <img src={`https://img.youtube.com/vi/${link.url.split('v=')[1]?.split('&')[0] || link.url.split('/').pop()}/maxresdefault.jpg`} alt="thumbnail" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = `https://img.youtube.com/vi/${link.url.split('v=')[1]?.split('&')[0] || link.url.split('/').pop()}/hqdefault.jpg`; }} />
-                    ) : (
-                      <Video className="w-10 h-10 text-muted-foreground opacity-50" />
-                    )}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                      <Button variant="secondary" size="sm" className="rounded-full shadow-lg">
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Extract video and generate viral clip
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-primary/5 border-t border-primary/20">
-                    <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wide flex items-center gap-1">
-                      <Sparkles className="w-3 h-3"/> Click to open AI Studio
-                    </p>
-                    <p className="text-sm text-muted-foreground">Extract clips &amp; generate viral hooks</p>
-                  </div>
-                  <div className="p-4 pt-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate" title={link.title || link.url}>
-                          {link.title || link.url}
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-1 capitalize whitespace-nowrap overflow-hidden text-ellipsis">
-                          {link.platform} • {new Date(link.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteMutation.mutate(link.id);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* INLINE VIDEO DETAILS EXPANSE (MODAL) */}
-        <Dialog open={!!activeVideo} onOpenChange={(open) => !open && setActiveVideo(null)}>
-          <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] overflow-hidden flex flex-col p-6 border-border bg-card shadow-2xl">
-            {activeVideo && (
-              <div className="flex-1 flex flex-col overflow-hidden h-full">
-                <DialogHeader className="mb-4 shrink-0">
-                  <DialogTitle className="text-xl flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary"/> AI Clip Extraction Studio</DialogTitle>
-                  <DialogDescription className="truncate mt-1">{activeVideo.title}</DialogDescription>
-                </DialogHeader>
-                
-                <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
-                  
-                  {/* Left Column: Player & Transcript */}
-                  <div className="flex-1 flex flex-col gap-4 overflow-hidden min-w-[300px]">
-                    <div className="aspect-video bg-black rounded-xl overflow-hidden shrink-0 border border-border/50">
-                       {activeVideo.platform === "youtube" ? (
-                          <iframe 
-                            src={`https://www.youtube.com/embed/${activeVideo.url.split('v=')[1]?.split('&')[0] || activeVideo.url.split('/').pop()}`}
-                            className="w-full h-full border-0"
-                            allowFullScreen
-                          />
-                       ) : (
-                          <div className="w-full h-full flex items-center justify-center text-muted-foreground"><Video className="w-8 h-8 opacity-40"/></div>
-                       )}
-                    </div>
-                    
-                    <div className="flex-1 flex flex-col min-h-[150px] border border-border/50 rounded-xl bg-muted/10">
-                      <div className="px-4 py-3 border-b border-border/50 flex items-center bg-muted/20">
-                        <FileText className="w-4 h-4 mr-2 text-primary"/>
-                        <h3 className="font-semibold text-sm">Video Transcript</h3>
-                      </div>
-                      <ScrollArea className="flex-1 p-4">
-                        {activeVideo.transcript ? (
-                          <p className="font-mono text-xs leading-relaxed text-muted-foreground">{activeVideo.transcript}</p>
-                        ) : (
-                          <p className="text-muted-foreground text-sm flex items-center justify-center h-full opacity-60">No transcript available for this video.</p>
-                        )}
-                      </ScrollArea>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Hooks AI Generation */}
-                  <div className="w-full md:w-[400px] flex flex-col gap-4 overflow-hidden shrink-0">
-                    <Card className="shrink-0 border-border/50 bg-muted/10 shadow-none">
-                      <CardContent className="p-4 space-y-4">
-                        <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Find Viral Moments</h3>
-                        
-                        <div className="space-y-4">
-                          <p className="text-xs text-muted-foreground">Target Clip Length</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <Button variant={targetLength === 30 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(30)}>&lt;30s</Button>
-                            <Button variant={targetLength === 60 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(60)}>60s</Button>
-                            <Button variant={targetLength === 90 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(90)}>90s</Button>
-                            <Button variant={targetLength === 180 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(180)}>3 min {effectivePlan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
-                            <Button variant={targetLength === 300 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(300)}>5 min {effectivePlan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
-                            <Button variant={targetLength === 600 ? "default" : "outline"} size="sm" onClick={() => handleTargetLengthChange(600)}>10 min {effectivePlan !== 'agency' && <Lock className="w-3 h-3 ml-1 opacity-50"/>}</Button>
-                          </div>
-                        </div>
-
-                        <Button 
-                          className="w-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" 
-                          disabled={!activeVideo.transcript || suggestHooksMutation.isPending}
-                          onClick={() => suggestHooksMutation.mutate()}
-                        >
-                          {suggestHooksMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Sparkles className="w-4 h-4 mr-2"/>}
-                          {suggestHooksMutation.isPending ? "Analyzing Transcript..." : "Generate AI Hooks"}
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    <ScrollArea className="flex-1">
-                      <div className="space-y-3 pb-4">
-                        {suggestHooksMutation.isPending && (
-                          <div className="p-6 rounded-lg border border-primary/20 bg-primary/5">
-                            <QuirkyLoader />
-                          </div>
-                        )}
-
-                        {!suggestHooksMutation.isPending && suggestedHooks.length === 0 && (
-                          <div className="p-8 text-center text-sm text-muted-foreground border border-dashed border-border/50 rounded-lg">
-                            Select a target length and click generate to find the most viral segments inside the transcript.
-                          </div>
-                        )}
-
-                        {!suggestHooksMutation.isPending && suggestedHooks.map((hook, i) => (
-                           <div key={i} className="p-4 border border-border/60 bg-card rounded-lg space-y-3 hover:border-primary/40 transition-colors shadow-sm">
-                             <div className="flex items-start justify-between">
-                               <h4 className="font-bold text-sm text-foreground pr-2 leading-tight">{hook.concept}</h4>
-                               <span className="text-xs bg-green-500/10 text-green-500 px-2 py-0.5 rounded font-mono font-bold shrink-0">{hook.viral_score}/100</span>
-                             </div>
-                             <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{hook.caption}</p>
-                             <div className="flex items-center justify-between pt-2">
-                               <span className="text-xs font-mono text-muted-foreground px-2 py-1 bg-muted rounded">
-                                 {hook.startSec}s - {hook.endSec}s
-                               </span>
-                               <Button 
-                                  size="sm" 
-                                  onClick={() => createClipMutation.mutate(hook)}
-                                  disabled={createClipMutation.isPending}
-                                  variant="secondary"
-                               >
-                                 {createClipMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin"/> : "Save Clip"}
-                               </Button>
-                             </div>
-                           </div>
-                        ))}
-
-                      </div>
-                    </ScrollArea>
-                  </div>
-
-                </div>
-              </div>
+        <form onSubmit={handleImport} className="flex flex-col sm:flex-row gap-3 max-w-3xl">
+          <div className="relative flex-1">
+            <Video className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Paste video URL here..."
+              className="pl-11 h-12 bg-card border-white/10 focus:border-primary/50 transition-all text-base"
+              disabled={importMutation.isPending}
+            />
+          </div>
+          <Button 
+            type="submit" 
+            className="h-12 px-8 btn-gradient font-bold text-base shadow-lg shadow-primary/20"
+            disabled={importMutation.isPending || !url.trim()}
+          >
+            {importMutation.isPending ? (
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            ) : (
+              <Plus className="h-5 w-5 mr-2" />
             )}
-          </DialogContent>
-        </Dialog>
-
-        {/* UPGRADE MODAL */}
-        <UpgradeModal
-          open={showUpgradeModal}
-          onClose={() => setShowUpgradeModal(false)}
-          feature="Longer clips & bulk saving"
-          reason="Creating clips longer than 90 seconds and bulk-saving operations are strictly reserved for Agency accounts."
-          requiredPlan="agency"
-        />
-
+            Import Video
+          </Button>
+        </form>
       </div>
+
+      {/* Video Grid */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Video className="h-5 w-5 text-primary" />
+            Imported Library
+            <Badge variant="outline" className="ml-2 bg-white/5 border-white/10 opacity-70">
+              {links.length}
+            </Badge>
+          </h2>
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="bg-card border-white/5 h-64 animate-pulse" />
+            ))}
+          </div>
+        ) : links.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white/5 rounded-3xl border-2 border-dashed border-white/10 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+              <Video className="h-8 w-8 text-white/20" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">No videos imported yet</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">Paste a link above to start your viral journey.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {links.map((link: any) => (
+              <Card key={link.id} className="group overflow-hidden bg-card border-white/5 hover:border-primary/40 transition-all duration-300 shadow-xl">
+                <div className="aspect-video relative bg-black">
+                  {link.thumbnail ? (
+                    <img src={link.thumbnail} alt={link.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white/10">
+                      <Video className="h-12 w-12" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-[2px]">
+                    <Button 
+                      className="rounded-full h-12 w-12 bg-primary hover:scale-110 transition-transform"
+                      onClick={() => handleGenerate(link)}
+                    >
+                      <Play className="h-6 w-6 ml-0.5 fill-current" />
+                    </Button>
+                  </div>
+                  {link.duration && (
+                    <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono font-bold text-white z-20">
+                      {link.duration}
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-4 space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-sm line-clamp-2 leading-tight group-hover:text-primary transition-colors">{link.title || "Untitled Video"}</h3>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                      Source: {new URL(link.url).hostname.replace('www.', '')}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <Button 
+                      className="flex-1 btn-gradient text-xs font-bold h-9"
+                      onClick={() => handleGenerate(link)}
+                    >
+                      <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                      Generate Clips
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-9 w-9 shrink-0 border-white/10 hover:bg-destructive/20 hover:text-destructive hover:border-destructive/30"
+                      onClick={() => deleteMutation.mutate(link.id)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        feature="Longer clips & bulk saving"
+        reason="Creating clips longer than 90 seconds and bulk-saving operations are strictly reserved for Agency accounts."
+        requiredPlan="agency"
+      />
     </AppLayout>
+  );
+}
+
+function Badge({ children, className, variant }: any) {
+  return (
+    <span className={cn(
+      "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+      variant === "outline" ? "border border-white/10" : "bg-primary/20 text-primary",
+      className
+    )}>
+      {children}
+    </span>
   );
 }

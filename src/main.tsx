@@ -30,6 +30,7 @@ const EditorPage = React.lazy(() => import("@/pages/EditorPage"));
 const ClipsPage = React.lazy(() => import("@/pages/ClipsPage"));
 const SchedulePage = React.lazy(() => import("@/pages/SchedulePage"));
 const SettingsPage = React.lazy(() => import("@/pages/SettingsPage"));
+const StudioGeneratorPage = React.lazy(() => import("@/pages/StudioGeneratorPage").then(m => ({ default: m.StudioGeneratorPage })));
 const AffiliatePage = React.lazy(() => import("@/pages/AffiliatePage"));
 
 const queryClient = new QueryClient({
@@ -96,6 +97,16 @@ root.render(
                         <ProtectedRoute>
                           <VerifiedRoute>
                             <EditorPage />
+                          </VerifiedRoute>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/studio/generator/:videoId?"
+                      element={
+                        <ProtectedRoute>
+                          <VerifiedRoute>
+                            <StudioGeneratorPage />
                           </VerifiedRoute>
                         </ProtectedRoute>
                       }

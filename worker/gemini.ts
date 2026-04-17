@@ -382,9 +382,10 @@ export async function generateHookSuggestions(
   const prompt = `You are a viral social media manager. I am giving you a raw video transcript. I need you to identify exactly 3 distinct concepts/segments that would make highly viral, engaging standalone short-form clips.
 CRITICAL REQUIREMENTS:
 1. DO NOT HALLUCINATE OR MAKE UP QUOTES. Only extract concepts and ideas strictly from the transcript provided.
-2. The length of each clip must be STRICTLY AROUND ${targetDuration} seconds. 
-3. Ensure that (endSec - startSec) is approximately ${targetDuration}. DO NOT make it wildly longer or shorter.
-4. Keep the start and end timestamps STRICTLY within what you logically estimate based on the transcript length and position.
+2. The duration of each clip MUST BE STICTLY LESS THAN OR EQUAL TO ${targetDuration} SECONDS.
+3. Your provided "endSec" - "startSec" MUST be strictly between 15 and ${targetDuration} seconds. 
+4. If you suggest a clip longer than ${targetDuration} seconds, the user will be penalized. DO NOT EXCEED THIS LIMIT.
+5. Keep the start and end timestamps STRICTLY within what you logically estimate based on the transcript length and position.
 
 Transcript:
 """
@@ -403,13 +404,16 @@ Return JSON ONLY, without markdown fences or additional explanation.`;
     throw new Error("Invalid hook suggestion response");
   }
   return parsed.map((p) => {
-    let s = Number(p.startSec) || 0;
-    let e = Number(p.endSec) || targetDuration;
-    if (e - s > targetDuration + 10) {
+    let s = Math.max(0, Math.floor(Number(p.startSec) || 0));
+    let e = Math.floor(Number(p.endSec) || s + targetDuration);
+    
+    // HARD LIMIT ENFORCEMENT
+    if (e - s > targetDuration) {
       e = s + targetDuration;
     } else if (e <= s) {
       e = s + targetDuration;
     }
+    
     return {
       ...p,
       startSec: s,
