@@ -17,6 +17,7 @@ import { CaptionEditor, CaptionOverlay } from "@/components/editor/CaptionEditor
 import { ClipCombiner } from "@/components/editor/ClipCombiner";
 import { MediaUploader } from "@/components/editor/MediaUploader";
 import { AudioTimeline } from "@/components/editor/AudioTimeline";
+import { ScheduleModal } from "@/components/editor/ScheduleModal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const EDIT_LIMITS: Record<string, number> = { free: 3, pro: 10, agency: 20, unlimited: 999 };
@@ -248,7 +249,10 @@ export default function EditorPage() {
   // UI state
   const [activeTool, setActiveTool] = useState<ToolId | null>("captions");
   const [saving, setSaving] = useState(false);
+  const [isRendering, setIsRendering] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [renderedVideoUrl, setRenderedVideoUrl] = useState<string>();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const handleDuration = (d: number) => {
@@ -262,10 +266,10 @@ export default function EditorPage() {
   }, []);
   const seekRelative = (delta: number) => handleSeek(Math.max(0, Math.min(duration, currentTime + delta)));
 
-  const handleSave = useCallback(async () => {
-    if (!clip && !videoUrl) { toast.error("No clip loaded."); return; }
+  const saveProgress = async () => {
+    if (!clip && !videoUrl) { toast.error("No clip loaded."); return null; }
     const limit = editLimitFor(userPlan);
-    if (clip && (clip.editCount ?? 0) >= limit) { setShowUpgradeModal(true); return; }
+    if (clip && (clip.editCount ?? 0) >= limit) { setShowUpgradeModal(true); return null; }
     setSaving(true);
     try {
       let targetClipId = clip?.id;
@@ -274,18 +278,62 @@ export default function EditorPage() {
           source_url: videoUrl,
           source_channel: incomingVideo?.title || "youtube",
           requested_start_seconds: startSec,
-          requested_end_seconds: endSec,
+          requested_end_seconds: endSec || 30, // Fallback if still 0
         });
         if (res.success && res.data) targetClipId = res.data.id;
         else throw new Error(res.error || "Failed to initialize clip");
       }
       const res = await api.updateClip(targetClipId, { title, startSec, endSec, captionLines, combinedClipIds, textStyle, mediaUrls });
-      if (res.success && res.data) { setClip(res.data); toast.success("Clip saved ✓"); }
-      else toast.error(res.error ?? "Save failed.");
+      if (res.success && res.data) { 
+        setClip(res.data); 
+        return res.data; 
+      }
+      else {
+        toast.error(res.error ?? "Save failed.");
+        return null;
+      }
     } catch (err: any) {
       toast.error(err.message || "Save failed.");
+      return null;
     } finally { setSaving(false); }
-  }, [clip, incomingVideo, videoUrl, userPlan, title, startSec, endSec, captionLines, combinedClipIds, textStyle, mediaUrls]);
+  };
+
+  const handleSaveDraft = async () => {
+    const res = await saveProgress();
+    if (res) toast.success("Draft saved ✓");
+  };
+
+  const handleFinishAndSchedule = async () => {
+    const savedClip = await saveProgress();
+    if (!savedClip) return;
+
+    setIsRendering(true);
+    toast.info("Preparing your video for export...", { duration: 3000 });
+    
+    try {
+      const res = await api.renderClip(savedClip.id);
+      if (res.success && res.data) {
+        setRenderedVideoUrl(res.data.videoUrl);
+        setIsScheduleModalOpen(true);
+        toast.success("Ready to post!");
+      } else {
+        throw new Error(res.error || "Rendering failed");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Could not render video. Try again.");
+    } finally {
+      setIsRendering(false);
+    }
+  };
+
+  const handleSchedulePost = async (data: { platform: string; date: Date }) => {
+    if (!clip) return;
+    const res = await api.schedulePost(clip.id, data.platform, data.date);
+    if (!res.success) {
+      toast.error(res.error || "Failed to schedule post");
+      throw new Error(res.error);
+    }
+  };
 
   const handleGenerateHooks = async () => {
     if (!videoUrl) return;
@@ -385,13 +433,24 @@ export default function EditorPage() {
             <span className="hidden sm:inline">{isGenerating ? "Generating…" : "AI Hooks"}</span>
           </Button>
           <Button
+            variant="ghost"
             size="sm"
-            className="h-7 text-xs bg-[#5865F2] hover:bg-[#4752C4] text-white font-semibold px-4 gap-1.5"
-            onClick={handleSave}
-            disabled={saving}
+            className="h-7 text-xs text-white/50 hover:text-white hover:bg-white/10 gap-1.5"
+            onClick={handleSaveDraft}
+            disabled={saving || isRendering}
           >
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            Export
+            Save Draft
+          </Button>
+
+          <Button
+            size="sm"
+            className="h-7 text-xs bg-[#5865F2] hover:bg-[#4752C4] text-white font-semibold px-4 gap-1.5"
+            onClick={handleFinishAndSchedule}
+            disabled={saving || isRendering}
+          >
+            {isRendering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {isRendering ? "Rendering..." : "Finish & Schedule"}
           </Button>
         </div>
       </div>

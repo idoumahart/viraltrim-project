@@ -486,4 +486,8 @@ export const api = {
   async deleteClip(id: string): Promise<ApiResponse<null>> {
     return requestJson<null>(`/api/clips/${id}`, { method: "DELETE" });
   },
+
+  async renderClip(id: string): Promise<ApiResponse<{ videoUrl: string }>> {
+    return requestJson<{ videoUrl: string }>(`/api/clips/${id}/render`, { method: "POST" });
+  },
 };

@@ -418,6 +418,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const passedTitle = body.title ? String(body.title) : null;
       const passedScore = body.viralScore ? Number(body.viralScore) : 85;
 
+      // ── Transcript lookup for AI analysis ──────────
+      const [link] = await db
+        .select()
+        .from(importedLinks)
+        .where(eq(importedLinks.url, sourceUrl))
+        .limit(1);
+
       let ai;
       if (passedCaption && passedCaption !== "") {
         ai = {
@@ -431,6 +438,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           sourceChannel,
           startSec: start,
           endSec: end,
+          transcript: link?.transcript || undefined
         });
       }
       const credit = `Original video by ${sourceChannel}`;
@@ -443,6 +451,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       }
       const finalCaptionLines = generatedCaptionLines.length ? generatedCaptionLines : [ai.caption];
 
+      const ytId = extractYoutubeId(sourceUrl);
+      const thumbnailFallback = ytId 
+        ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
+        : "/placeholder-thumbnail.jpg";
+
       const { clip: created, error: createErr } = await clipService.createGeneratedClip(fresh, {
         title: ai.hashtags[0] ? String(ai.hashtags[0]) : "New clip",
         platform: "TikTok (9:16)",
@@ -452,7 +465,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         viralScore: ai.viral_score,
         sourceUrl,
         sourceChannel,
-        thumbnail: `https://img.youtube.com/vi/${extractYoutubeId(sourceUrl)}/hqdefault.jpg`,
+        thumbnail: link?.thumbnail || thumbnailFallback,
         videoUrl: sourceUrl,
         startSec: start,
         endSec: end,
@@ -521,10 +534,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     let videoThumbnail = body.thumbnail || null;
     
     try {
-      if (platform === "youtube") {
-        if (!c.env.RAPID_API_KEY) {
-          console.error("[transcript-fetch-failed] Missing RAPID_API_KEY environment variable. Have you run 'npx wrangler secret put RAPID_API_KEY'?");
-        } else {
+      // Use ViralTrim GC Run Renderer for robust transcript extraction (yt-dlp powered)
+      const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: body.url })
+      });
+      
+      if (renderResp.ok) {
+        const data = await renderResp.json() as any;
+        if (data.success && data.transcript) {
+          transcriptText = data.transcript;
+        }
+      } else {
+        console.error(`[renderer-transcript-failed] status ${renderResp.status}:`, await renderResp.text());
+        
+        // Fallback to RapidAPI for YouTube if renderer fails
+        if (platform === "youtube" && c.env.RAPID_API_KEY) {
+          console.log("[transcript-fallback] Attempting RapidAPI fallback for YouTube...");
           const apiResp = await fetch("https://video-transcript-scraper.p.rapidapi.com/transcript/youtube", {
             method: "POST",
             headers: {
@@ -532,33 +559,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
               "x-rapidapi-host": "video-transcript-scraper.p.rapidapi.com",
               "x-rapidapi-key": c.env.RAPID_API_KEY
             },
-            body: JSON.stringify({ 
-              video_url: body.url,
-              transcript_text: true
-            })
+            body: JSON.stringify({ video_url: body.url, transcript_text: true })
           });
           
-          if (!apiResp.ok) {
-            console.error(`[transcript-fetch-failed] RapidAPI status ${apiResp.status}:`, await apiResp.text());
-          } else {
+          if (apiResp.ok) {
             const data = await apiResp.json() as any;
             if (data.status === "success" && data.data) {
               transcriptText = typeof data.data.transcript === "string" ? data.data.transcript : JSON.stringify(data.data.transcript);
-              
-              // We also get ultra high-quality metadata from this API for free
               if (data.data.video_info) {
                 if (data.data.video_info.title) videoTitle = data.data.video_info.title;
                 if (data.data.video_info.thumbnail) videoThumbnail = data.data.video_info.thumbnail;
               }
-            } else {
-              console.error("[transcript-fetch-failed] Unknown RapidAPI Response format:", data);
             }
           }
         }
       }
     } catch (e) {
       console.error("[transcript-fetch-failed]", e);
-      // We still save the link even if transcript generation fails
     }
 
     const id = generateId();
@@ -676,6 +693,52 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await db.delete(clips).where(and(eq(clips.id, clipId), eq(clips.userId, user.id)));
     await clipSvc.logActivity(user.id, "clip_deleted", { clipId });
     return c.json({ success: true, data: null });
+  });
+
+  api.post("/api/clips/:id/render", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const id = c.req.param("id");
+    
+    const clipSvc = createClipService(db);
+    const clip = await clipSvc.getClipById(id, user.id);
+    if (!clip) return c.json({ success: false, error: "Clip not found" }, 404);
+
+    try {
+      // Trigger GC Run Renderer
+      const renderResp = await fetch(`${c.env.RENDERER_URL}/render`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: clip.sourceUrl ?? clip.videoUrl,
+          start_time: clip.startSec ?? 0,
+          end_time: clip.endSec ?? 30
+        })
+      });
+
+      if (!renderResp.ok) {
+        const errText = await renderResp.text();
+        console.error(`[renderer-failed] status ${renderResp.status}:`, errText);
+        return c.json({ success: false, error: "Video processing failed on server" }, 502);
+      }
+
+      const data = await renderResp.json() as any;
+      if (data.success && data.url) {
+        // Update clip with the newly rendered R2 URL
+        await db.update(clips).set({ 
+          videoUrl: data.url,
+          status: "ready", 
+          updatedAt: new Date() 
+        }).where(eq(clips.id, id));
+        
+        return c.json({ success: true, data: { videoUrl: data.url } });
+      } else {
+        return c.json({ success: false, error: data.error || "Rendering finished but no URL returned" }, 500);
+      }
+    } catch (e: any) {
+      console.error("[render-exception]", e);
+      return c.json({ success: false, error: "Rendering service connection error" }, 503);
+    }
   });
 
   // ── Media upload → R2 ────────────────────────────────────────────────────

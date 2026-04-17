@@ -329,14 +329,21 @@ export async function generateClipMetadata(
     sourceChannel: string;
     startSec: number;
     endSec: number;
+    transcript?: string;
   },
 ): Promise<ClipAiResult> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: modelId || DEFAULT_MODEL });
   const safeUrl = input.sourceUrl.slice(0, 500).replace(/[\n\r`]/g, "");
   const safeChannel = input.sourceChannel.slice(0, 100).replace(/[\n\r`]/g, "");
-  const prompt = `You are a viral social media manager helping create short-form video posts. Source: ${safeUrl}, channel: ${safeChannel}, clip ${input.startSec}s–${input.endSec}s.
-CRITICAL RULES:
+  
+  let prompt = `You are a viral social media manager helping create short-form video posts. Source: ${safeUrl}, channel: ${safeChannel}, clip ${input.startSec}s–${input.endSec}s.`;
+  
+  if (input.transcript) {
+    prompt += `\n\nTRANSCRIPT CONTEXT:\n${input.transcript.slice(0, 10000)}`;
+  }
+
+  prompt += `\n\nCRITICAL RULES:
 1. Do NOT hallucinate or make up facts. Only describe what actually happens in this context.
 2. The caption MUST be highly engaging, designed for TikTok/Reels, under 400 characters, no credit lines.
 3. The hashtags MUST be relevant to the viral nature of the content.
