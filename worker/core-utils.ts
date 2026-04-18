@@ -27,6 +27,7 @@ export interface Env {
 
   RENDERER_URL: string;
   WHISPER_URL: string;
+  VISION_URL: string;
   INTERNAL_WEBHOOK_SECRET: string;
   RAPID_API_KEY: string;
   YOUTUBE_API_KEY: string;
