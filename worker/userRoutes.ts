@@ -542,16 +542,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const user = c.get("user");
     const body = await c.req.json().catch(() => ({}));
     if (!body.url) return c.json({ success: false, error: "URL is required" }, 400);
-    
+
     const db = createDatabase(c.env.DB);
-    
+
     // Determine platform
     let platform = "other";
     if (body.url.includes("youtube.com") || body.url.includes("youtu.be")) platform = "youtube";
     else if (body.url.includes("tiktok.com")) platform = "tiktok";
     else if (body.url.includes("instagram.com")) platform = "instagram";
     else if (body.url.includes("facebook.com")) platform = "facebook";
-    
+
     let transcriptText = "";
     let videoTitle = body.title || "Imported Video";
     let videoThumbnail = body.thumbnail || null;
@@ -562,6 +562,43 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       "Content-Type": "application/json",
       ...(internalSecret ? { "X-Internal-Secret": internalSecret } : {}),
     };
+
+    // ── 0. Dedup: return existing record if URL already imported by this user ──
+    const existing = await db.select().from(importedLinks)
+      .where(and(eq(importedLinks.userId, user.id), eq(importedLinks.url, body.url)))
+      .limit(1);
+    if (existing.length > 0) {
+      const ex = existing[0];
+      console.log(`[import] URL already exists for user, returning existing id: ${ex.id}`);
+      return c.json({ success: true, data: { id: ex.id, platform: ex.platform, hasTranscript: !!ex.transcript } });
+    }
+
+    // ── 0b. Auto-resolve YouTube title + thumbnail via oEmbed (free, no API key) ──
+    if (platform === "youtube" && (!body.title || !body.thumbnail)) {
+      try {
+        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(body.url)}&format=json`;
+        const oembedResp = await fetch(oembedUrl, { signal: AbortSignal.timeout(5_000) });
+        if (oembedResp.ok) {
+          const oembed = await oembedResp.json() as any;
+          if (!body.title && oembed.title) {
+            videoTitle = oembed.title;
+            console.log(`[import] oEmbed title: ${videoTitle}`);
+          }
+          if (!body.thumbnail) {
+            // Extract video ID and use hqdefault thumbnail
+            const ytIdMatch = body.url.match(/[?&]v=([^&]+)/) || body.url.match(/youtu\.be\/([^?&]+)/);
+            if (ytIdMatch?.[1]) {
+              videoThumbnail = `https://img.youtube.com/vi/${ytIdMatch[1]}/hqdefault.jpg`;
+              console.log(`[import] Auto-set YouTube thumbnail`);
+            } else if (oembed.thumbnail_url) {
+              videoThumbnail = oembed.thumbnail_url;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[import] oEmbed fetch failed (non-critical):", e);
+      }
+    }
 
     // ── 1. Try Faster-Whisper (primary — word-level timestamps, no API credits) ──
     const whisperUrl = c.env.WHISPER_URL;

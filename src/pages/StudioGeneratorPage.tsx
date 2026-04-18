@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   Loader2,
   Sparkles,
@@ -26,6 +26,8 @@ import {
   Info,
   Download,
   Copy,
+  RefreshCw,
+  Link2,
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -47,12 +49,16 @@ export function StudioGeneratorPage() {
   const { videoId } = useParams();
   const navigate = useNavigate();
   const [video, setVideo] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!videoId); // only show loader if we have a videoId
   const [generating, setGenerating] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<string>("Initializing AI...");
   const [saving, setSaving] = useState(false);
+
+  // Landing state (no videoId)
+  const [pasteUrl, setPasteUrl] = useState("");
+  const [importing, setImporting] = useState(false);
 
   // Player state
   const playerRef = useRef<ReactPlayer>(null);
@@ -64,12 +70,9 @@ export function StudioGeneratorPage() {
     void (async () => {
       try {
         const res = await api.getVideo(videoId);
-        if (res.success) {
+        if (res.success && res.data) {
           setVideo(res.data);
-          // Auto-start generation if no suggestions yet
-          if (suggestions.length === 0) {
-            handleStartGeneration(res.data);
-          }
+          handleStartGeneration(res.data);
         } else {
           toast.error("Video not found");
           navigate("/studio/videos");
@@ -86,7 +89,7 @@ export function StudioGeneratorPage() {
     setGenerating(true);
     setSuggestions([]);
     setProgress(10);
-    setStatus("Analyzing video transcript...");
+    setStatus("Analyzing video transcript…");
 
     const interval = setInterval(() => {
       setProgress((p) => {
@@ -96,8 +99,6 @@ export function StudioGeneratorPage() {
     }, 1500);
 
     try {
-      // For the demo, we'll call generateHooks suggestions
-      // In production, this would be a long-running job
       const res = await api.generateHooks(v.url, v.id);
       if (res.success && res.data) {
         setSuggestions(res.data.map((s: any, i: number) => ({
@@ -117,9 +118,30 @@ export function StudioGeneratorPage() {
     } catch (err: any) {
       toast.error(err.message || "AI was unable to process this video.");
       setStatus("Error during generation.");
+      setProgress(0);
     } finally {
       clearInterval(interval);
       setGenerating(false);
+    }
+  };
+
+  const handleImportAndGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = pasteUrl.trim();
+    if (!trimmed) return;
+    setImporting(true);
+    toast.info("Importing video…");
+    try {
+      const res = await api.importLink(trimmed);
+      if (res.success && res.data) {
+        navigate(`/studio/generator/${res.data.id}`);
+      } else {
+        toast.error(res.error ?? "Failed to import video");
+        setImporting(false);
+      }
+    } catch {
+      toast.error("Failed to import video");
+      setImporting(false);
     }
   };
 
@@ -139,15 +161,12 @@ export function StudioGeneratorPage() {
       toast.error("Please select at least one clip to save.");
       return;
     }
-
     if (!video) {
       toast.error("Source video lost. Please refresh.");
       return;
     }
-
     setSaving(true);
-    toast.info(`Saving ${selected.length} clips to your library...`);
-
+    toast.info(`Saving ${selected.length} clips to your library…`);
     try {
       let savedCount = 0;
       for (const s of selected) {
@@ -163,7 +182,7 @@ export function StudioGeneratorPage() {
       }
       toast.success(`Successfully saved ${savedCount} clips!`);
       navigate("/studio/clips");
-    } catch (err: any) {
+    } catch {
       toast.error("Failed to save some clips. Please try again.");
     } finally {
       setSaving(false);
@@ -175,12 +194,84 @@ export function StudioGeneratorPage() {
     toast.success("Transcript copied to clipboard");
   };
 
+  // ─── Loading state (fetching video from DB) ────────────────────────────────
   if (loading) {
     return (
       <AppLayout>
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-[#5865F2]" />
         </div>
+      </AppLayout>
+    );
+  }
+
+  // ─── Landing state (no videoId provided) ──────────────────────────────────
+  if (!videoId && !video) {
+    return (
+      <AppLayout container contentClassName="max-w-2xl space-y-8 pb-20 pt-8">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-display font-bold flex items-center gap-3">
+            <Sparkles className="h-7 w-7 text-[#5865F2]" />
+            AI Clip Generator
+          </h1>
+          <p className="text-muted-foreground">
+            Paste a video link below or choose from your imported library.
+          </p>
+        </div>
+
+        {/* AI Methodology */}
+        <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 space-y-4">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-white/30">AI Methodology</h3>
+          <div className="space-y-3">
+            {[
+              { icon: TrendingUp, label: "Engagement Prediction", desc: "Hooks analyzed for retention likelihood." },
+              { icon: Zap, label: "Contextual Slicing", desc: "Clips cut to preserve narrative flow." },
+              { icon: Sparkles, label: "Viral Pattern Match", desc: "Compared against trending short-form data." },
+            ].map((m, i) => (
+              <div key={i} className="flex gap-3">
+                <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                  <m.icon className="h-4 w-4 text-white/40" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-white/70">{m.label}</p>
+                  <p className="text-[10px] text-white/40">{m.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* URL input */}
+        <form onSubmit={handleImportAndGenerate} className="space-y-3">
+          <div className="relative">
+            <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              value={pasteUrl}
+              onChange={(e) => setPasteUrl(e.target.value)}
+              placeholder="Paste YouTube, TikTok, or any video link…"
+              className="pl-11 h-12 bg-card border-white/10 focus:border-primary/50 text-base"
+              disabled={importing}
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full h-12 btn-gradient font-bold text-base"
+            disabled={importing || !pasteUrl.trim()}
+          >
+            {importing ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Sparkles className="h-5 w-5 mr-2" />}
+            {importing ? "Importing & Analyzing…" : "Generate Viral Clips"}
+          </Button>
+        </form>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10" /></div>
+          <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">or choose from library</span></div>
+        </div>
+
+        <Button variant="outline" className="w-full" onClick={() => navigate("/studio/videos")}>
+          <Video className="h-4 w-4 mr-2" />
+          My Videos
+        </Button>
       </AppLayout>
     );
   }
@@ -197,21 +288,21 @@ export function StudioGeneratorPage() {
               <ArrowLeft className="h-4 w-4" /> My Videos
             </button>
             <ChevronRight className="h-4 w-4" />
-            <span className="text-foreground font-medium">Clip Generator</span>
+            <span className="text-foreground font-medium">AI Clip Generator</span>
           </div>
           <h1 className="text-3xl font-display font-bold flex items-center gap-3">
             <Sparkles className="h-7 w-7 text-[#5865F2]" />
-            AI Clip Studio
+            AI Clip Generator
           </h1>
           <p className="text-muted-foreground">
-            Analyzing: <span className="text-foreground font-semibold">{video?.title}</span>
+            Analyzing: <span className="text-foreground font-semibold">{video?.title || "your video"}</span>
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={() => navigate("/studio/videos")}>Cancel</Button>
-          <Button 
-            className="btn-gradient px-6 font-bold" 
+          <Button
+            className="btn-gradient px-6 font-bold"
             onClick={handleSaveSelected}
             disabled={saving || generating || selectedCount === 0}
           >
@@ -224,6 +315,28 @@ export function StudioGeneratorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: Source Preview & Progress */}
         <div className="lg:col-span-1 space-y-6">
+          {/* AI Methodology — shown at top of left column */}
+          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 space-y-4">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-white/30">AI Methodology</h3>
+            <div className="space-y-3">
+              {[
+                { icon: TrendingUp, label: "Engagement Prediction", desc: "Hooks analyzed for retention likelihood." },
+                { icon: Zap, label: "Contextual Slicing", desc: "Clips cut to preserve narrative flow." },
+                { icon: Sparkles, label: "Viral Pattern Match", desc: "Compared against trending short-form data." },
+              ].map((m, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                    <m.icon className="h-4 w-4 text-white/40" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-white/70">{m.label}</p>
+                    <p className="text-[10px] text-white/40">{m.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <Card className="overflow-hidden border-border/60 shadow-xl bg-black/40 backdrop-blur-sm">
             <div className="aspect-video relative bg-black">
               <ReactPlayer
@@ -250,7 +363,7 @@ export function StudioGeneratorPage() {
                   <Clock className="h-3 w-3" /> {video?.duration || "N/A"}
                 </div>
               </div>
-              
+
               {generating && (
                 <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
                   <div className="flex items-center justify-between text-xs sm:text-sm font-medium">
@@ -273,29 +386,20 @@ export function StudioGeneratorPage() {
                   </div>
                 </div>
               )}
+
+              {/* Generate Again button */}
+              {!generating && suggestions.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 border-white/10 text-white/60 hover:text-white hover:border-white/30"
+                  onClick={() => handleStartGeneration(video)}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Generate Again
+                </Button>
+              )}
             </div>
           </Card>
-
-          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-white/30">AI Methodology</h3>
-            <div className="space-y-3">
-              {[
-                { icon: TrendingUp, label: "Engagement Prediction", desc: "Hooks analyzed for retention likelihood." },
-                { icon: Zap, label: "Contextual Slicing", desc: "Clips cut to preserve narrative flow." },
-                { icon: Sparkles, label: "Viral Pattern Match", desc: "Compared against trending short-form data." },
-              ].map((m, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                    <m.icon className="h-4 w-4 text-white/40" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white/70">{m.label}</p>
-                    <p className="text-[10px] text-white/40">{m.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Right: Generated Clips */}
@@ -307,7 +411,7 @@ export function StudioGeneratorPage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold">Ready to Generate</h3>
-                <p className="text-sm text-muted-foreground max-w-xs mx-auto">Click the button below to have our AI find the best viral moments for you.</p>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">AI will analyze the transcript and find the best viral moments for you.</p>
               </div>
               <Button className="btn-gradient" onClick={() => handleStartGeneration(video)}>
                 Run AI Analysis
@@ -328,8 +432,8 @@ export function StudioGeneratorPage() {
                   s.selected ? "bg-[#5865F2]/5 border-[#5865F2]/40" : "bg-card hover:border-border"
                 )}>
                   <div className="absolute top-4 left-4 z-10">
-                    <Checkbox 
-                      checked={s.selected} 
+                    <Checkbox
+                      checked={s.selected}
                       onCheckedChange={() => handleToggleSelect(s.id)}
                       className="h-5 w-5 rounded border-white/20 data-[state=checked]:bg-[#5865F2] data-[state=checked]:border-[#5865F2]"
                     />
@@ -339,9 +443,9 @@ export function StudioGeneratorPage() {
                     <div className="w-full md:w-56 shrink-0 relative aspect-video md:aspect-auto bg-black flex items-center justify-center">
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-[1]" />
                       <div className="z-[2] text-center space-y-1">
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
+                        <Button
+                          size="icon"
+                          variant="ghost"
                           className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
                           onClick={() => handlePreview(s)}
                         >
@@ -363,9 +467,9 @@ export function StudioGeneratorPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-white/30 hover:text-white" onClick={() => handleCopyTranscript(s.caption)}>
-                             <Copy className="h-3.5 w-3.5" />
-                           </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-white/30 hover:text-white" onClick={() => handleCopyTranscript(s.caption)}>
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
 
@@ -390,7 +494,7 @@ export function StudioGeneratorPage() {
 
           <AnimatePresence>
             {suggestions.length > 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center justify-between p-6 rounded-3xl bg-gradient-to-r from-[#5865F2]/10 to-[#00D4AA]/10 border border-white/10"
@@ -400,8 +504,8 @@ export function StudioGeneratorPage() {
                   <p className="text-xs text-white/50">You've selected {selectedCount} viral moments to save.</p>
                 </div>
                 <Button className="btn-gradient shadow-[0_0_20px_rgba(88,101,242,0.4)]" onClick={handleSaveSelected} disabled={saving || selectedCount === 0}>
-                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                   Generate Selected Clips
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  Save Selected Clips
                 </Button>
               </motion.div>
             )}

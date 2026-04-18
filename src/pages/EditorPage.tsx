@@ -384,34 +384,8 @@ export default function EditorPage() {
     } finally { setIsGenerating(false); }
   };
 
-  // ── Empty state: no clip object AND no video AND no URL
-  if (!clip && !incomingVideo && !videoUrl) {
-    return (
-      <AppLayout>
-        <div className="flex-1 flex items-center justify-center bg-[#111114]">
-          <div className="flex flex-col items-center gap-5 text-center px-6">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <Film className="h-8 w-8 text-white/20" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white mb-2">No clip loaded</h2>
-              <p className="text-sm text-white/40 max-w-xs">Open a clip from My Videos, your Clip Library, or discover one in Viral Search.</p>
-            </div>
-            <div className="flex gap-2 flex-wrap justify-center">
-              <Button variant="outline" className="border-white/10 text-white/70 hover:bg-white/5" onClick={() => navigate("/studio/videos")}>My Videos</Button>
-              <Button variant="outline" className="border-white/10 text-white/70 hover:bg-white/5" onClick={() => navigate("/studio/clips")}>My Clips</Button>
-              <Button className="bg-[#5865F2] hover:bg-[#4752C4] text-white" onClick={() => navigate("/discovery")}>
-                <Sparkles className="h-4 w-4 mr-2" /> Viral Search
-              </Button>
-            </div>
-            <Button variant="ghost" className="text-white/30 text-xs" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-3 w-3 mr-1" /> Go back
-            </Button>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
+  // Note: No early-return for empty state — the full editor chrome always renders.
+  // When no video is loaded, the empty state is shown INSIDE the preview area.
 
   // ── Clip exists but has no playable URL — show a clear error (not a blank/stuck screen)
   if (clip && !videoUrl) {
@@ -674,6 +648,28 @@ export default function EditorPage() {
                   width: "auto",
                 }}
               >
+                {!videoUrl && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 text-center px-6 bg-[#0E0E11] z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                      <Film className="h-7 w-7 text-white/20" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-white mb-1">No video loaded</h2>
+                      <p className="text-xs text-white/30 max-w-[180px]">Choose a source to start editing.</p>
+                    </div>
+                    <div className="flex flex-col gap-2 w-full px-4">
+                      <Button size="sm" variant="outline" className="border-white/10 text-white/70 hover:bg-white/5 w-full text-xs" onClick={() => navigate("/studio/videos")}>
+                        My Videos
+                      </Button>
+                      <Button size="sm" variant="outline" className="border-white/10 text-white/70 hover:bg-white/5 w-full text-xs" onClick={() => navigate("/studio/clips")}>
+                        My Clips
+                      </Button>
+                      <Button size="sm" className="bg-[#5865F2] hover:bg-[#4752C4] text-white w-full text-xs" onClick={() => navigate("/discovery")}>
+                        <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Viral Search
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {videoUrl ? (
                   <>
                     <ReactPlayer

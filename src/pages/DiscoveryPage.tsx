@@ -13,6 +13,8 @@ import {
   ExternalLink,
   Youtube,
   Globe2,
+  BookmarkPlus,
+  Loader2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,18 +28,10 @@ import { api, type ViralVideo } from "@/lib/api-client";
 import { toast } from "sonner";
 import { cn, decodeHTML } from "@/lib/utils";
 
-// ─── Platform config ──────────────────────────────────────────────────────────
+// ─── Platform config — YouTube + Reddit only ──────────────────────────────────
 const PLATFORMS = [
   { value: "all", label: "All Platforms", icon: "🌐" },
   { value: "youtube", label: "YouTube", icon: "▶️" },
-  { value: "tiktok", label: "TikTok", icon: "🎵" },
-  { value: "instagram", label: "Instagram", icon: "📸" },
-  { value: "x", label: "X (Twitter)", icon: "🐦" },
-  { value: "facebook", label: "Facebook", icon: "📘" },
-  { value: "rumble", label: "Rumble", icon: "🔴" },
-  { value: "dailymotion", label: "Dailymotion", icon: "📺" },
-  { value: "vimeo", label: "Vimeo", icon: "🎬" },
-  { value: "loom", label: "Loom", icon: "🎥" },
   { value: "reddit", label: "Reddit", icon: "🔶" },
 ] as const;
 
@@ -62,7 +56,6 @@ const FUNNY_COMMENTS = [
   "Searching the depths of the algorithm...",
   "Bribing the YouTube gods...",
   "Analyzing 10,000 cat videos...",
-  "Checking TikTok for new dances...",
   "Downloading more RAM...",
 ];
 
@@ -96,6 +89,9 @@ export default function DiscoveryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [platform, setPlatform] = useState("all");
   const [hasSearched, setHasSearched] = useState(false);
+  // Track per-card save state
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   const handleSearch = async (e?: React.FormEvent, directQuery?: string) => {
     if (e) e.preventDefault();
@@ -119,7 +115,7 @@ export default function DiscoveryPage() {
         });
         setTrends(fixedTrends);
         if (res.data.length === 0) {
-          toast.info("No results found. Try broader keywords or a different platform.");
+          toast.info("No results found. Try broader keywords or switch platforms.");
         }
       } else {
         toast.error(res.error ?? "Search failed");
@@ -131,20 +127,53 @@ export default function DiscoveryPage() {
     }
   };
 
+  const handleSaveToMyVideos = async (t: ViralVideo) => {
+    if (savedIds.has(t.id)) {
+      toast.info("Already saved to My Videos");
+      return;
+    }
+    setSavingIds(prev => new Set(prev).add(t.id));
+    try {
+      const res = await api.importLink(t.url, decodeHTML(t.title), t.thumbnail || undefined);
+      if (res.success) {
+        setSavedIds(prev => new Set(prev).add(t.id));
+        toast.success("Saved to My Videos!");
+      } else {
+        toast.error(res.error ?? "Failed to save video");
+      }
+    } catch {
+      toast.error("Failed to save video");
+    } finally {
+      setSavingIds(prev => { const s = new Set(prev); s.delete(t.id); return s; });
+    }
+  };
+
+  const handleGenerateClip = async (t: ViralVideo) => {
+    toast.info("Importing video for clip generation…");
+    try {
+      // Import first to get a DB id (needed by the generator)
+      const res = await api.importLink(t.url, decodeHTML(t.title), t.thumbnail || undefined);
+      if (res.success && res.data) {
+        navigate(`/studio/generator/${res.data.id}`);
+      } else {
+        toast.error(res.error ?? "Failed to import video");
+      }
+    } catch {
+      toast.error("Failed to import video");
+    }
+  };
+
   return (
     <AppLayout container contentClassName="space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
           <Globe2 className="h-3.5 w-3.5" />
-          Built by codedmotion.studio
+          Viral Discovery
         </div>
         <h1 className="text-3xl font-display font-bold">Viral Search</h1>
         <p className="text-muted-foreground text-sm">
-          Find trending videos across platforms — open any result in the Studio to generate clips.
-        </p>
-        <p className="text-secondary-foreground text-sm font-medium mt-1 bg-secondary/30 p-2 rounded-md border border-border/50 inline-block">
-          💡 If you already know which video you want to clip, go directly to <a href="/studio/videos" className="text-primary hover:underline">My Videos</a> and add the link there.
+          Find trending videos on YouTube and Reddit — save them or generate clips instantly.
         </p>
       </div>
 
@@ -155,7 +184,7 @@ export default function DiscoveryPage() {
       >
         {/* Platform selector */}
         <Select value={platform} onValueChange={setPlatform}>
-          <SelectTrigger className="w-full sm:w-52 shrink-0">
+          <SelectTrigger className="w-full sm:w-44 shrink-0">
             <SelectValue placeholder="All Platforms" />
           </SelectTrigger>
           <SelectContent>
@@ -209,102 +238,122 @@ export default function DiscoveryPage() {
           <QuirkyLoader />
         ) : (
           trends.map((t) => (
-              <Card
-                key={t.id}
-                className="overflow-hidden border-border/80 bg-card/80 hover:border-primary/40 transition-all group"
-              >
-                {/* Thumbnail */}
-                <div className="relative h-36 bg-muted/30 overflow-hidden">
-                  {t.thumbnail ? (
-                    <img
-                      src={t.thumbnail}
-                      alt={t.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Try hqdefault if maxresdefault fails
-                        const img = e.currentTarget;
-                        const ytId = t.url.match(/[?&]v=([^&]+)/)?.[1];
-                        if (ytId && img.src.includes("maxresdefault")) {
-                          img.src = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
-                        } else {
-                          img.style.display = "none";
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-muted-foreground/30">
-                      <Play className="h-8 w-8" />
-                    </div>
-                  )}
-                  {/* CC badge */}
-                  {(t as any).isCreativeCommons && (
-                    <div className="absolute top-2 left-2 bg-green-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                      CC
-                    </div>
-                  )}
-                  {/* Platform badge */}
-                  <div className="absolute top-2 right-2 text-base leading-none">
-                    {platformLabel((t as any).platform)}
+            <Card
+              key={t.id}
+              className="overflow-hidden border-border/80 bg-card/80 hover:border-primary/40 transition-all group"
+            >
+              {/* Thumbnail */}
+              <div className="relative h-36 bg-muted/30 overflow-hidden">
+                {t.thumbnail ? (
+                  <img
+                    src={t.thumbnail}
+                    alt={t.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      const ytId = t.url.match(/[?&]v=([^&]+)/)?.[1];
+                      if (ytId && img.src.includes("maxresdefault")) {
+                        img.src = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+                      } else {
+                        img.style.display = "none";
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-muted-foreground/30">
+                    <Play className="h-8 w-8" />
                   </div>
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm line-clamp-2 leading-snug">{decodeHTML(t.title)}</CardTitle>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {t.views && (
-                      <Badge variant="secondary" className="text-xs">
-                        {t.views} views
-                      </Badge>
-                    )}
-                    {t.viralScore > 0 && (
-                      <Badge
-                        className={cn(
-                          "text-xs",
-                          t.viralScore >= 80
-                            ? "bg-green-500/20 text-green-400 border-green-500/30"
-                            : "bg-primary/20 text-primary border-primary/30",
-                        )}
-                        variant="outline"
-                      >
-                        {t.viralScore} score
-                      </Badge>
-                    )}
-                    {t.duration && (
-                      <Badge variant="outline" className="text-xs">
-                        {t.duration}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-
-                {(t as any).engagement && (
-                  <CardContent className="py-0 text-xs text-muted-foreground">
-                    {(t as any).engagement}
-                  </CardContent>
                 )}
+                {/* CC badge */}
+                {(t as any).isCreativeCommons && (
+                  <div className="absolute top-2 left-2 bg-green-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                    CC
+                  </div>
+                )}
+                {/* Platform badge */}
+                <div className="absolute top-2 right-2 text-base leading-none">
+                  {platformLabel((t as any).platform)}
+                </div>
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
 
-                <CardFooter className="flex gap-2 pt-3">
-                  <Button size="sm" variant="outline" className="gap-1 text-xs flex-1" asChild>
-                    <a href={t.url} target="_blank" rel="noreferrer">
-                      <ExternalLink className="h-3 w-3" />
-                      Open
-                    </a>
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="btn-gradient gap-1 text-xs flex-1"
-                    onClick={() =>
-                      navigate("/studio/editor", { state: { video: t } })
-                    }
-                  >
-                    <Scissors className="h-3 w-3" />
-                    Studio
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm line-clamp-2 leading-snug">{decodeHTML(t.title)}</CardTitle>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {t.views && (
+                    <Badge variant="secondary" className="text-xs">
+                      {t.views} views
+                    </Badge>
+                  )}
+                  {t.viralScore > 0 && (
+                    <Badge
+                      className={cn(
+                        "text-xs",
+                        t.viralScore >= 80
+                          ? "bg-green-500/20 text-green-400 border-green-500/30"
+                          : "bg-primary/20 text-primary border-primary/30",
+                      )}
+                      variant="outline"
+                    >
+                      {t.viralScore} score
+                    </Badge>
+                  )}
+                  {t.duration && (
+                    <Badge variant="outline" className="text-xs">
+                      {t.duration}
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+
+              {(t as any).engagement && (
+                <CardContent className="py-0 text-xs text-muted-foreground">
+                  {(t as any).engagement}
+                </CardContent>
+              )}
+
+              {/* Three action buttons */}
+              <CardFooter className="flex gap-1.5 pt-3">
+                {/* Watch */}
+                <Button size="sm" variant="outline" className="gap-1 text-xs flex-1" asChild>
+                  <a href={t.url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-3 w-3" />
+                    Watch
+                  </a>
+                </Button>
+
+                {/* Save to My Videos */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className={cn(
+                    "gap-1 text-xs flex-1 transition-colors",
+                    savedIds.has(t.id) && "border-green-500/40 text-green-400 hover:text-green-400"
+                  )}
+                  disabled={savingIds.has(t.id)}
+                  onClick={() => void handleSaveToMyVideos(t)}
+                >
+                  {savingIds.has(t.id) ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <BookmarkPlus className="h-3 w-3" />
+                  )}
+                  {savedIds.has(t.id) ? "Saved" : "Save"}
+                </Button>
+
+                {/* Generate Clip */}
+                <Button
+                  size="sm"
+                  className="btn-gradient gap-1 text-xs flex-1"
+                  onClick={() => void handleGenerateClip(t)}
+                >
+                  <Scissors className="h-3 w-3" />
+                  Generate
+                </Button>
+              </CardFooter>
+            </Card>
+          ))
         )}
       </div>
 

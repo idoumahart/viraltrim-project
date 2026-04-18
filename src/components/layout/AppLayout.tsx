@@ -36,15 +36,14 @@ type AppLayoutProps = {
 const MAIN_NAV = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Viral Search", icon: TrendingUp, path: "/discovery" },
-
-  { label: "Schedule", icon: Calendar, path: "/schedule" },
+  { label: "Schedule Post", icon: Calendar, path: "/schedule" },
 ] as const;
 
 const STUDIO_NAV = [
-  { label: "AI Clip Generator", icon: Sparkles, path: "/studio/generator" },
   { label: "My Videos", icon: FolderOpen, path: "/studio/videos" },
-  { label: "Editor", icon: Scissors, path: "/studio/editor" },
   { label: "My Clips", icon: Film, path: "/studio/clips" },
+  { label: "AI Clip Generator", icon: Sparkles, path: "/studio/generator" },
+  { label: "Clip Editor", icon: Scissors, path: "/studio/editor" },
 ] as const;
 
 
@@ -103,14 +102,18 @@ export function AppLayout({
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col p-4 w-full">
-      <div className="flex items-center gap-2 px-2 pb-6 pt-2">
+      {/* Logo — always navigates to home */}
+      <button
+        onClick={() => { navigate("/"); setMobileOpen(false); }}
+        className="flex items-center gap-2 px-2 pb-6 pt-2 hover:opacity-80 transition-opacity"
+      >
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-[0_0_15px_rgba(var(--primary),0.5)]">
           <Sparkles className="h-4 w-4 text-primary-foreground" />
         </span>
         <span className="font-display font-bold tracking-tight text-lg uppercase bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
           ViralTrim
         </span>
-      </div>
+      </button>
 
       <div className="flex-1 overflow-y-auto space-y-6 scrollbar-hide py-2">
         {/* Main Section */}
@@ -119,16 +122,16 @@ export function AppLayout({
           {MAIN_NAV.map((i) => renderSingleLink(i))}
         </div>
 
-        {/* AI Clip Generator Section */}
+        {/* My Studio Section */}
         <div className="space-y-1">
-          <button 
+          <button
             onClick={() => setStudioExpanded(!studioExpanded)}
             className="w-full flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2 hover:text-foreground transition-colors"
           >
-            <span className="flex items-center gap-2"><Video className="w-4 h-4"/> AI Clip Generator</span>
+            <span className="flex items-center gap-2"><Video className="w-4 h-4"/> My Studio</span>
             <ChevronDown className={cn("w-4 h-4 transition-transform", !studioExpanded && "-rotate-90")} />
           </button>
-          
+
           <div className={cn("overflow-hidden transition-all duration-300 space-y-1", studioExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0")}>
             {STUDIO_NAV.map((i) => renderSingleLink(i, true))}
           </div>
@@ -168,7 +171,7 @@ export function AppLayout({
       <header className="md:hidden fixed top-0 w-full z-40 border-b border-border bg-background/95 backdrop-blur h-14 flex items-center justify-between px-4">
         <button
           className="flex items-center gap-2 font-bold tracking-tight text-lg uppercase"
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/")}
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
             <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
