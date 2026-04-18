@@ -1,10 +1,15 @@
 FROM python:3.11-slim
 
-# Build-time optimization: Install FFmpeg and system dependencies
+# Install FFmpeg, curl, unzip (needed for Deno install)
 RUN apt-get update && \
-    apt-get install -y ffmpeg curl && \
+    apt-get install -y ffmpeg curl unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Install Deno (JS runtime required by yt-dlp for YouTube extraction)
+RUN curl -fsSL https://deno.land/install.sh | sh
+ENV DENO_INSTALL=/root/.deno
+ENV PATH="$DENO_INSTALL/bin:$PATH"
 
 # Set up working directory
 WORKDIR /app
@@ -12,6 +17,9 @@ WORKDIR /app
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Always pull the latest yt-dlp to ensure YouTube bot-bypass patches are current
+RUN pip install --upgrade yt-dlp
 
 # Copy the server application
 COPY app.py .

@@ -1,15 +1,23 @@
 FROM python:3.11-slim
 
-# Install ffmpeg (for yt-dlp audio extraction) and system deps
+# Install ffmpeg, curl, unzip (needed for Deno install)
 RUN apt-get update && \
-    apt-get install -y ffmpeg curl && \
+    apt-get install -y ffmpeg curl unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Install Deno (JS runtime required by yt-dlp for YouTube extraction)
+RUN curl -fsSL https://deno.land/install.sh | sh
+ENV DENO_INSTALL=/root/.deno
+ENV PATH="$DENO_INSTALL/bin:$PATH"
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Always pull the latest yt-dlp to ensure YouTube bot-bypass patches are current
+RUN pip install --upgrade yt-dlp
 
 # ---- Download the Whisper model during build ----
 # Set Hugging Face cache directory to a known location
