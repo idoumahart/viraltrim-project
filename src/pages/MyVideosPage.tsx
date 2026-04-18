@@ -186,7 +186,12 @@ export default function MyVideosPage() {
                         controls
                         width="100%"
                         height="100%"
-                        playing={false}
+                        playing={true} // Auto-play when expanded
+                        onError={() => {
+                          console.warn("Player failed to load. The video URL might be protected or unsupported. Falling back to native source link.");
+                          window.open(link.url, '_blank');
+                          setPreviewId(null);
+                        }}
                       />
                     ) : thumbnail ? (
                       <img

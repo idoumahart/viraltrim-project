@@ -519,7 +519,17 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
 
     try {
-      const hooks = await generateHookSuggestions(key, c.env.GEMINI_MODEL, transcript, targetLength);
+      const rawHooks = await generateHookSuggestions(key, c.env.GEMINI_MODEL, transcript, targetLength);
+      
+      // Code-Enforced Trim: Ensure no AI drift beyond target limit
+      const hooks = rawHooks.map(hook => {
+        const duration = hook.endSec - hook.startSec;
+        if (duration > targetLength) {
+           return { ...hook, endSec: hook.startSec + targetLength };
+        }
+        return hook;
+      });
+      
       return c.json({ success: true, data: hooks });
     } catch (e) {
       console.error("[suggest-hooks]", e);
@@ -662,6 +672,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       platform,
       title: videoTitle,
       transcript: transcriptText || null,
+      segments: whisperSegments.length > 0 ? Array.from(whisperSegments) : null,
       thumbnail: videoThumbnail
     });
 

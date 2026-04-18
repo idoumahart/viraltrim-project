@@ -158,6 +158,7 @@ export const importedLinks = sqliteTable("imported_links", {
   url: text("url").notNull(),
   platform: text("platform").notNull(),
   transcript: text("transcript"),
+  segments: text("segments", { mode: "json" }),
   thumbnail: text("thumbnail"),
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });

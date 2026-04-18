@@ -111,9 +111,12 @@ export async function fetchRedditVideos(
     `https://www.reddit.com/search.json?q=${safeQuery}&type=link&sort=hot&limit=50`;
 
   const res = await fetch(url, {
-    headers: { "User-Agent": "ViralTrim/1.0" },
+    headers: { "User-Agent": "web:com.viraltrim:v1.0 (by /u/viraltrim)" },
   });
-  if (!res.ok) throw new Error(`Reddit search failed: ${res.status}`);
+  if (!res.ok) {
+    console.warn(`[Reddit Search] failed: ${res.status}`);
+    return [];
+  }
 
   const data = (await res.json()) as {
     data: {
@@ -379,25 +382,32 @@ export async function generateHookSuggestions(
   // Truncate transcript to prevent context overflow. roughly 40,000 chars is safe for Gemini flash
   const truncatedTranscript = transcript.slice(0, 40000);
   
-  const prompt = `You are a viral social media manager. I am giving you a raw video transcript. I need you to identify exactly 3 distinct concepts/segments that would make highly viral, engaging standalone short-form clips.
+const prompt = `You are a viral social media manager. I am giving you a raw video transcript. I need you to identify exactly 3 distinct concepts/segments that would make highly viral, engaging standalone short-form clips.
 CRITICAL REQUIREMENTS:
 1. DO NOT HALLUCINATE OR MAKE UP QUOTES. Only extract concepts and ideas strictly from the transcript provided.
 2. The duration of each clip MUST BE STICTLY LESS THAN OR EQUAL TO ${targetDuration} SECONDS.
 3. Your provided "endSec" - "startSec" MUST be strictly between 15 and ${targetDuration} seconds. 
-4. If you suggest a clip longer than ${targetDuration} seconds, the user will be penalized. DO NOT EXCEED THIS LIMIT.
-5. Keep the start and end timestamps STRICTLY within what you logically estimate based on the transcript length and position.
+4. If you suggest a clip longer than ${targetDuration} seconds, you MUST trim the end off to fit.
+
+To ensure accuracy, you MUST output your response in this exact JSON array format:
+[
+  {
+    "concept": "A short description of why this hook works",
+    "title": "CATCHY VIRAL TITLE",
+    "startSec": 10,
+    "narrative_end_time": 60,
+    "duration_calculation": "60 - 10 = 50 seconds. This is under the limit of ${targetDuration}. No trim needed.",
+    "endSec": 60,
+    "viral_score": 95,
+    "caption": "The spoken hook..."
+  }
+]
 
 Transcript:
 """
 ${truncatedTranscript}
 """
-
-Return a JSON array of exactly 3 objects.
-        Each object MUST have: "concept", "title" (a catchy, viral name), "startSec", "endSec", "viral_score" (0-100), and "caption" (the key spoken hook).
-        Format:
-        [
-          { "concept": "...", "title": "...", "startSec": 10, "endSec": 40, "viral_score": 95, "caption": "..." }
-        ]`;
+`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
