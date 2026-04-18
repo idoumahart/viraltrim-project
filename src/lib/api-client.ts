@@ -292,11 +292,15 @@ export const api = {
     return requestJson(`/api/links/${id}`, { method: "DELETE" });
   },
 
-  async schedulePost(clipId: string, platform: string, scheduledFor: string | Date): Promise<ApiResponse<{ id: string }>> {
+  async schedulePost(clipId: string, platform: string, scheduledAt: Date): Promise<ApiResponse> {
     return requestJson("/api/scheduled-posts", {
       method: "POST",
-      body: JSON.stringify({ clipId, platform, scheduledFor }),
+      body: JSON.stringify({ clipId, platform, scheduledAt: scheduledAt.toISOString() }),
     });
+  },
+
+  async deleteScheduledPost(id: string): Promise<ApiResponse> {
+    return requestJson(`/api/scheduled-posts/${id}`, { method: "DELETE" });
   },
 
   async getScheduledPosts(): Promise<ApiResponse<ScheduledPost[]>> {

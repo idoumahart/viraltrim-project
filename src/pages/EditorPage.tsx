@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import ReactPlayer from "react-player";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -231,44 +231,88 @@ export default function EditorPage() {
   const { effectivePlan } = useAuth();
   const userPlan = effectivePlan;
 
-  const state = location.state as LocationState | null;
-  const incomingClip = state?.clip ?? null;
-  const incomingVideo = state?.video ?? null;
+  const { id: paramId } = useParams();
+  const [searchParams] = useSearchParams();
+  const clipIdFromUrl = paramId;
+  const videoIdFromUrl = searchParams.get("videoId");
 
-  // Player
+  const state = location.state as LocationState | null;
+  const [incomingClip, setIncomingClip] = useState<(Clip & { video_url?: string; source_url?: string }) | null>(state?.clip ?? null);
+  const [incomingVideo, setIncomingVideo] = useState<LocationState["video"] | null>(state?.video ?? null);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(!incomingClip && !incomingVideo && (!!clipIdFromUrl || !!videoIdFromUrl));
+
+
+  // Resolve playable URL - reactive state
+  const [videoUrl, setVideoUrl] = useState("");
+  const [clip, setClip] = useState<Clip | null>(null);
+  const [title, setTitle] = useState("");
+
+  // Editor configuration
+  const [startSec, setStartSec] = useState(0);
+  const [endSec, setEndSec] = useState(0);
+  const [captionLines, setCaptionLines] = useState<string[]>([]);
+  const [combinedClipIds, setCombinedClipIds] = useState<string[]>([]);
+  const [textStyle, setTextStyle] = useState("classic");
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [hasAudio, setHasAudio] = useState(false);
+
+  // Sync state to local state on load or change
+  useEffect(() => {
+    if (incomingClip) {
+      setClip(incomingClip);
+      setVideoUrl(incomingClip.videoUrl || (incomingClip as any).video_url || incomingClip.sourceUrl || (incomingClip as any).source_url || "");
+      setTitle(incomingClip.title || "");
+      setStartSec(incomingClip.startSec ?? 0);
+      setEndSec(incomingClip.endSec ?? (incomingClip.durationSeconds ?? 0));
+      setCaptionLines(incomingClip.captionLines ?? (incomingClip.caption ? [incomingClip.caption] : []));
+      setCombinedClipIds(incomingClip.combinedClipIds ?? []);
+      setTextStyle(incomingClip.textStyle ?? "classic");
+      setMediaUrls(incomingClip.mediaUrls ?? []);
+    } else if (incomingVideo) {
+      setVideoUrl(incomingVideo.url || (incomingVideo as any).video_url || "");
+      setTitle(incomingVideo.title || "");
+    }
+  }, [incomingClip, incomingVideo]);
+
+  // Fetch from API if missing state
+  useEffect(() => {
+    async function load() {
+      if (incomingClip || incomingVideo) return;
+      
+      setIsLoadingMetadata(true);
+      try {
+        if (clipIdFromUrl) {
+          const res = await api.getClip(clipIdFromUrl);
+          if (res.success && res.data) {
+            setIncomingClip(res.data);
+          } else {
+            toast.error("Could not find clip");
+          }
+        } else if (videoIdFromUrl) {
+          const res = await api.getVideo(videoIdFromUrl);
+          if (res.success && res.data) {
+            setIncomingVideo(res.data);
+          } else {
+            toast.error("Could not find video");
+          }
+        }
+      } catch (err) {
+        toast.error("Error loading editor data");
+      } finally {
+        setIsLoadingMetadata(false);
+      }
+    }
+    load();
+  }, [clipIdFromUrl, videoIdFromUrl]);
+
+
+  // Player state
   const playerRef = useRef<ReactPlayer>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
-
-  // Resolve playable URL synchronously on first render — check every possible field name
-  // so the empty-state guard below sees the URL before any useEffect fires.
-  const videoUrl =
-    incomingClip?.videoUrl ||
-    (incomingClip as any)?.video_url ||
-    incomingClip?.sourceUrl ||
-    (incomingClip as any)?.source_url ||
-    incomingVideo?.url ||
-    (incomingVideo as any)?.video_url ||
-    "";
-
-  // Clip data
-  const [clip, setClip] = useState<Clip | null>(incomingClip);
-  const [title, setTitle] = useState(incomingClip?.title ?? incomingVideo?.title ?? "");
-
-
-  // Editor state
-  const [startSec, setStartSec] = useState(incomingClip?.startSec ?? 0);
-  const [endSec, setEndSec] = useState(incomingClip?.endSec ?? (incomingClip?.durationSeconds ?? 0));
-  const [captionLines, setCaptionLines] = useState<string[]>(
-    incomingClip?.captionLines ?? (incomingClip?.caption ? [incomingClip.caption] : [])
-  );
-  const [combinedClipIds, setCombinedClipIds] = useState<string[]>(incomingClip?.combinedClipIds ?? []);
-  const [textStyle, setTextStyle] = useState(incomingClip?.textStyle ?? "classic");
-  const [mediaUrls, setMediaUrls] = useState<string[]>(incomingClip?.mediaUrls ?? []);
-  const [hasAudio, setHasAudio] = useState(false);
 
   // UI state
   const [activeTool, setActiveTool] = useState<ToolId | null>("captions");
@@ -387,8 +431,22 @@ export default function EditorPage() {
   // Note: No early-return for empty state — the full editor chrome always renders.
   // When no video is loaded, the empty state is shown INSIDE the preview area.
 
+  if (isLoadingMetadata) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex items-center justify-center bg-[#111114]">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-[#5865F2]" />
+            <p className="text-white/40 text-sm animate-pulse">Initializing editor...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   // ── Clip exists but has no playable URL — show a clear error (not a blank/stuck screen)
-  if (clip && !videoUrl) {
+  if ((clip || incomingVideo) && !videoUrl) {
+
     return (
       <AppLayout>
         <div className="flex-1 flex items-center justify-center bg-[#111114]">

@@ -562,10 +562,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     else if (body.url.includes("instagram.com")) platform = "instagram";
     else if (body.url.includes("facebook.com")) platform = "facebook";
 
-    let transcriptText = "";
     let videoTitle = body.title || "Imported Video";
     let videoThumbnail = body.thumbnail || null;
-    let whisperSegments: Array<{ word: string; start: number; end: number }> = [];
 
     const internalSecret = c.env.INTERNAL_WEBHOOK_SECRET;
     const gcHeaders: Record<string, string> = {
@@ -610,60 +608,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       }
     }
 
-    // ── 1. Try Faster-Whisper (primary — word-level timestamps, no API credits) ──
-    const whisperUrl = c.env.WHISPER_URL;
-    if (whisperUrl) {
-      try {
-        console.log("[transcript] Calling Whisper service...");
-        const whisperResp = await fetch(`${whisperUrl}/transcribe`, {
-          method: "POST",
-          headers: gcHeaders,
-          body: JSON.stringify({ url: body.url }),
-          signal: AbortSignal.timeout(240_000), // 4 min max for long videos
-        });
-
-        if (whisperResp.ok) {
-          const data = await whisperResp.json() as any;
-          if (data.success && data.text) {
-            transcriptText = data.text;
-            whisperSegments = Array.isArray(data.segments) ? data.segments : [];
-            console.log(`[transcript] Whisper success: ${transcriptText.length} chars, ${whisperSegments.length} words`);
-          }
-        } else {
-          console.error(`[transcript] Whisper returned ${whisperResp.status}:`, await whisperResp.text());
-        }
-      } catch (e) {
-        console.error("[transcript] Whisper call failed:", e);
-      }
-    }
-
-    // ── 2. Fallback: yt-dlp CC subtitles via renderer (YouTube CC only) ──────────
-    if (!transcriptText && c.env.RENDERER_URL) {
-      try {
-        console.log("[transcript] Falling back to yt-dlp subtitle extraction...");
-        const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
-          method: "POST",
-          headers: gcHeaders,
-          body: JSON.stringify({ url: body.url }),
-        });
-
-        if (renderResp.ok) {
-          const data = await renderResp.json() as any;
-          if (data.success && data.transcript) {
-            transcriptText = data.transcript;
-            console.log(`[transcript] yt-dlp subtitle fallback success: ${transcriptText.length} chars`);
-          }
-        } else {
-          console.error(`[transcript] yt-dlp fallback failed ${renderResp.status}`);
-        }
-      } catch (e) {
-        console.error("[transcript] yt-dlp fallback error:", e);
-      }
-    }
-
-    // Note: RapidAPI removed — credits exhausted and replaced by Whisper service.
-
-
+    // ── 1. Insert record immediately so the user gets a fast response ─────────────
+    // Transcription is kicked off in the background via waitUntil (fire-and-forget)
+    // This prevents Cloudflare's 30s CPU limit from killing the request.
     const id = generateId();
     await db.insert(importedLinks).values({
       id,
@@ -671,12 +618,66 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       url: body.url,
       platform,
       title: videoTitle,
-      transcript: transcriptText || null,
-      segments: whisperSegments.length > 0 ? Array.from(whisperSegments) : null,
-      thumbnail: videoThumbnail
+      transcript: null,
+      segments: null,
+      thumbnail: videoThumbnail,
     });
 
-    return c.json({ success: true, data: { id, platform, hasTranscript: !!transcriptText } });
+    // ── 2. Background transcription (non-blocking) ────────────────────────────────
+    const transcribeInBackground = async () => {
+      try {
+        const whisperUrl = c.env.WHISPER_URL;
+        let bgTranscript = "";
+        let bgSegments: Array<{ word: string; start: number; end: number }> = [];
+
+        if (whisperUrl) {
+          console.log("[transcript:bg] Calling Whisper service...");
+          const whisperResp = await fetch(`${whisperUrl}/transcribe`, {
+            method: "POST",
+            headers: gcHeaders,
+            body: JSON.stringify({ url: body.url }),
+            signal: AbortSignal.timeout(300_000),
+          });
+          if (whisperResp.ok) {
+            const data = await whisperResp.json() as any;
+            if (data.success && data.text) {
+              bgTranscript = data.text;
+              bgSegments = Array.isArray(data.segments) ? data.segments : [];
+              console.log(`[transcript:bg] Whisper success: ${bgTranscript.length} chars`);
+            }
+          }
+        }
+
+        // Fallback: yt-dlp CC subtitles
+        if (!bgTranscript && c.env.RENDERER_URL) {
+          const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
+            method: "POST",
+            headers: gcHeaders,
+            body: JSON.stringify({ url: body.url }),
+          });
+          if (renderResp.ok) {
+            const data = await renderResp.json() as any;
+            if (data.success && data.transcript) bgTranscript = data.transcript;
+          }
+        }
+
+        if (bgTranscript) {
+          await db.update(importedLinks)
+            .set({
+              transcript: bgTranscript,
+              segments: bgSegments.length > 0 ? Array.from(bgSegments) : null,
+            })
+            .where(eq(importedLinks.id, id));
+          console.log(`[transcript:bg] Updated record ${id} with transcript`);
+        }
+      } catch (e) {
+        console.error("[transcript:bg] Background transcription failed:", e);
+      }
+    };
+
+    c.executionCtx.waitUntil(transcribeInBackground());
+
+    return c.json({ success: true, data: { id, platform, hasTranscript: false } });
   });
 
   api.delete("/api/links/:id", authMiddleware, async (c) => {
@@ -925,6 +926,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       createdAt: new Date(),
     });
     return c.json({ success: true, data: { id } });
+  });
+
+  api.delete("/api/scheduled-posts/:id", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const postId = c.req.param("id");
+    const { scheduledPosts } = await import("./database/schema");
+    const [existing] = await db.select().from(scheduledPosts)
+      .where(and(eq(scheduledPosts.id, postId), eq(scheduledPosts.userId, user.id)))
+      .limit(1);
+    if (!existing) return c.json({ success: false, error: "Scheduled post not found" }, 404);
+    await db.delete(scheduledPosts).where(eq(scheduledPosts.id, postId));
+    return c.json({ success: true });
   });
 
   api.get("/api/dashboard/activity", authMiddleware, async (c) => {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Video, Share2, Clock, Plus, Loader2 } from "lucide-react";
+import { Video, Share2, Clock, Plus, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, type ScheduledPost, type Clip } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -233,9 +233,29 @@ export default function SchedulePage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <Badge variant="outline">{p.status}</Badge>
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center justify-end gap-1">
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={async () => {
+                          if (confirm("Cancel this scheduled post?")) {
+                            const res = await api.deleteScheduledPost(p.id);
+                            if (res.success) {
+                              toast.success("Post cancelled");
+                              fetchSchedule();
+                            } else {
+                              toast.error(res.error || "Failed to cancel");
+                            }
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <Badge variant="outline">{p.status}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground flex items-center justify-end gap-1">
                       <Clock className="h-3 w-3" />
                       {format(p.scheduledFor, "MMM d, HH:mm")}
                     </p>
