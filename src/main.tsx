@@ -92,7 +92,7 @@ root.render(
                     />
 
                     <Route
-                      path="/studio/editor"
+                      path="/studio/editor/:id?"
                       element={
                         <ProtectedRoute>
                           <VerifiedRoute>

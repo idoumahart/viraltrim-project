@@ -490,6 +490,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         endSec: end,
         captionLines: finalCaptionLines,
         textStyle: "gradient",
+        videoId: link?.id,
       });
       if (createErr || !created) {
         return c.json({ success: false, error: createErr ?? "Failed to create clip" }, 400);

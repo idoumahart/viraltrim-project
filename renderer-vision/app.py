@@ -20,6 +20,7 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
+PROXY_URL = os.environ.get("VT_WEBSHARE_PROXY_URL") or os.environ.get("WEBSHARE_PROXY_URL", "")
 
 mp_face_detection = mp.solutions.face_detection
 
@@ -98,8 +99,14 @@ def track():
             "--external-downloader-args", f"ffmpeg_i:-ss {start} -t {duration}",
             "-o", video_path,
             "--quiet",
-            url
         ]
+        
+        if PROXY_URL:
+            # Insert proxy before the URL (last arg)
+            download_cmd.insert(-1, "--proxy")
+            download_cmd.insert(-1, PROXY_URL)
+            
+        download_cmd.append(url)
         
         result = subprocess.run(download_cmd, capture_output=True, timeout=120)
         if result.returncode != 0:

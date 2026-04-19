@@ -86,6 +86,7 @@ export class ClipService {
       endSec?: number;
       captionLines?: string[];
       textStyle?: string;
+      videoId?: string | null;
     },
   ): Promise<{ clip: Clip | null; error?: string }> {
     const isAgency = ["agency", "unlimited"].includes((user.plan ?? "").toLowerCase());
@@ -123,6 +124,7 @@ export class ClipService {
         endSec: data.endSec,
         captionLines: data.captionLines,
         textStyle: data.textStyle,
+        videoId: data.videoId,
         createdAt: new Date(),
         updatedAt: new Date(),
       })

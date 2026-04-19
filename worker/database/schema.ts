@@ -120,6 +120,7 @@ export const clips = sqliteTable("clips", {
   combinedClipIds: text("combined_clip_ids", { mode: "json" }).$type<string[]>(),
   textStyle: text("text_style"),
   mediaUrls: text("media_urls", { mode: "json" }).$type<string[]>(),
+  videoId: text("video_id"),
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });

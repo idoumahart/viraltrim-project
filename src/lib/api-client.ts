@@ -79,6 +79,7 @@ export interface Clip {
   textStyle?: string | null;
   mediaUrls?: string[] | null;
   viralScore?: number;
+  videoId?: string | null;
   createdAt: Date;
 }
 
