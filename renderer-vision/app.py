@@ -21,11 +21,24 @@ app = Flask(__name__)
 
 INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
 PROXY_URL = os.environ.get("VT_WEBSHARE_PROXY_URL") or os.environ.get("WEBSHARE_PROXY_URL", "")
+_WEBSHARE_PROXY_URLS = os.environ.get("WEBSHARE_PROXY_URLS", "")
+PROXY_LIST = [p.strip() for p in _WEBSHARE_PROXY_URLS.split(",") if p.strip()] if _WEBSHARE_PROXY_URLS else ([PROXY_URL] if PROXY_URL else [])
+_proxy_index = 0
+
+def get_proxy():
+    global _proxy_index
+    if not PROXY_LIST:
+        return None
+    proxy = PROXY_LIST[_proxy_index % len(PROXY_LIST)]
+    _proxy_index += 1
+    return proxy
 
 mp_face_detection = mp.solutions.face_detection
 
 def verify_internal_secret(req) -> bool:
     if not INTERNAL_SECRET:
+        if os.environ.get("ENV", "dev") == "production":
+            raise RuntimeError("INTERNAL_SECRET is required in production")
         return True
     provided = req.headers.get("X-Internal-Secret", "")
     return provided == INTERNAL_SECRET
@@ -92,19 +105,20 @@ def track():
         duration = end - start
         
         # yt-dlp to grab just a small clip
+        # We use internal downloader (not external ffmpeg) to ensure --proxy works perfectly
         download_cmd = [
             "yt-dlp",
-            "-S", "res:720", # Restrict resolution for fast processing
-            "--external-downloader", "ffmpeg",
-            "--external-downloader-args", f"ffmpeg_i:-ss {start} -t {duration}",
+            "-S", "res:720",
+            "--download-sections", f"*{start}-{end}",
+            "--force-keyframes-at-cuts",
             "-o", video_path,
             "--quiet",
+            "--no-playlist",
         ]
         
-        if PROXY_URL:
-            # Insert proxy before the URL (last arg)
-            download_cmd.insert(-1, "--proxy")
-            download_cmd.insert(-1, PROXY_URL)
+        proxy = get_proxy()
+        if proxy:
+            download_cmd.extend(["--proxy", proxy])
             
         download_cmd.append(url)
         

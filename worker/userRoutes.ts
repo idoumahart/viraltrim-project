@@ -1,10 +1,10 @@
 import type Stripe from "stripe";
 import { Context, Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, or } from "drizzle-orm";
 import { createSession, extractBearerToken, generateId, revokeSession, validateSession, validateApiKey } from "./auth";
 import { createDatabase } from "./database";
-import { affiliateReferrals, affiliates, apiKeys, clips, dmcaReports, users, processedWebhookEvents, importedLinks, sessions } from "./database/schema";
+import { affiliateReferrals, affiliates, apiKeys, clips, dmcaReports, users, processedWebhookEvents, importedLinks, sessions, renderJobs } from "./database/schema";
 import { createClipService } from "./database/services/clip-service";
 import { createSubscriptionService, syncUserPlanFromSubscription } from "./database/services/subscription-service";
 import { createUserService } from "./database/services/user-service";
@@ -149,7 +149,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         maxAge: ttl,
       });
       const vToken = await userService.createVerificationToken(user.id);
-      const verifyUrl = `${c.env.APP_URL || "https://viraltrim.codedmotion.studio"}/verify-email?token=${vToken}`;
+      const verifyUrl = `${c.env.APP_URL || "http://localhost:3000"}/verify-email?token=${vToken}`;
 
       const welcome = sendResendEmail(
         c.env,
@@ -197,7 +197,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       
       // We don't bother strictly rate limiting this custom route initially, but standard CF protections apply
       const vToken = await userService.createVerificationToken(user.id);
-      const verifyUrl = `${c.env.APP_URL || "https://viraltrim.codedmotion.studio"}/verify-email?token=${vToken}`;
+      const verifyUrl = `${c.env.APP_URL || "http://localhost:3000"}/verify-email?token=${vToken}`;
       
       const welcome = sendResendEmail(
         c.env,
@@ -249,17 +249,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     } catch (error) {
       console.error("[API] Login", error);
       return c.json({ success: false, error: "System error" }, 500);
-    }
-  });
-
-  api.get("/api/system/cleanup", async (c) => {
-    try {
-      const db = createDatabase(c.env.DB);
-      // Automatically verify all currently registered users to bypass email blocks
-      await db.update(users).set({ isEmailVerified: true });
-      return c.json({ success: true, message: "All accounts verified perfectly. You can now login!" });
-    } catch (e) {
-      return c.json({ success: false, error: String(e) });
     }
   });
 
@@ -316,8 +305,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await c.env.MEDIA.put(key, buf, {
       httpMetadata: { contentType: file.type || "application/octet-stream" },
     });
-    const publicBase = String(c.env.APP_URL || "").replace(/\/$/, "");
-    const url = `${publicBase}/api/media/${encodeURIComponent(key)}`;
+    const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+    const url = `${r2PublicBase}/${key}`;
     const db = createDatabase(c.env.DB);
     await createUserService(db).setAvatarUrl(user.id, url);
     return c.json({ success: true, data: { url, key } });
@@ -328,15 +317,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!key) {
       return c.text("Not found", 404);
     }
-    const obj = await c.env.MEDIA.get(decodeURIComponent(key));
-    if (!obj) {
-      return c.text("Not found", 404);
-    }
-    const headers = new Headers();
-    obj.writeHttpMetadata(headers);
-    headers.set("etag", obj.httpEtag);
-    headers.set("cache-control", "public, max-age=86400");
-    return new Response(obj.body, { headers });
+    // Redirect to public R2 URL to save Worker CPU/bandwidth
+    const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+    return c.redirect(`${r2PublicBase}/${decodeURIComponent(key)}`, 302);
   });
 
   api.get("/api/viral-discovery", authMiddleware, async (c) => {
@@ -514,13 +497,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     const transcript = String(body.transcript ?? "");
     const targetLength = Number(body.targetLength ?? 30);
+    const thumbnailUrl = typeof body.thumbnailUrl === "string" ? body.thumbnailUrl : undefined;
     
     if (!transcript) {
       return c.json({ success: false, error: "Transcript is required to generate hooks" }, 400);
     }
 
     try {
-      const rawHooks = await generateHookSuggestions(key, c.env.GEMINI_MODEL, transcript, targetLength);
+      const rawHooks = await generateHookSuggestions(key, c.env.GEMINI_MODEL, transcript, targetLength, thumbnailUrl);
       
       // Code-Enforced Trim: Ensure no AI drift beyond target limit
       const hooks = rawHooks.map(hook => {
@@ -626,41 +610,68 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
     // ── 2. Background transcription (non-blocking) ────────────────────────────────
     const transcribeInBackground = async () => {
-      try {
+      let bgTranscript = "";
+      let bgSegments: Array<{ word: string; start: number; end: number }> = [];
+
+      const tryWhisper = async () => {
         const whisperUrl = c.env.WHISPER_URL;
-        let bgTranscript = "";
-        let bgSegments: Array<{ word: string; start: number; end: number }> = [];
-
-        if (whisperUrl) {
-          console.log("[transcript:bg] Calling Whisper service...");
-          const whisperResp = await fetch(`${whisperUrl}/transcribe`, {
-            method: "POST",
-            headers: gcHeaders,
-            body: JSON.stringify({ url: body.url }),
-            signal: AbortSignal.timeout(300_000),
-          });
-          if (whisperResp.ok) {
-            const data = await whisperResp.json() as any;
-            if (data.success && data.text) {
-              bgTranscript = data.text;
-              bgSegments = Array.isArray(data.segments) ? data.segments : [];
-              console.log(`[transcript:bg] Whisper success: ${bgTranscript.length} chars`);
+        if (!whisperUrl) return false;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            console.log(`[transcript:bg] Whisper attempt ${attempt}...`);
+            const whisperResp = await fetch(`${whisperUrl}/transcribe`, {
+              method: "POST",
+              headers: gcHeaders,
+              body: JSON.stringify({ url: body.url }),
+              signal: AbortSignal.timeout(300_000),
+            });
+            if (whisperResp.ok) {
+              const data = await whisperResp.json() as any;
+              if (data.success && data.text) {
+                bgTranscript = data.text;
+                bgSegments = Array.isArray(data.segments) ? data.segments : [];
+                console.log(`[transcript:bg] Whisper success: ${bgTranscript.length} chars`);
+                return true;
+              }
             }
+          } catch (e) {
+            console.error(`[transcript:bg] Whisper attempt ${attempt} failed:`, e);
           }
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
         }
+        return false;
+      };
 
-        // Fallback: yt-dlp CC subtitles
-        if (!bgTranscript && c.env.RENDERER_URL) {
-          const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
-            method: "POST",
-            headers: gcHeaders,
-            body: JSON.stringify({ url: body.url }),
-          });
-          if (renderResp.ok) {
-            const data = await renderResp.json() as any;
-            if (data.success && data.transcript) bgTranscript = data.transcript;
+      const tryRenderer = async () => {
+        if (!c.env.RENDERER_URL) return false;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            console.log(`[transcript:bg] Renderer transcript attempt ${attempt}...`);
+            const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
+              method: "POST",
+              headers: gcHeaders,
+              body: JSON.stringify({ url: body.url }),
+              signal: AbortSignal.timeout(60_000),
+            });
+            if (renderResp.ok) {
+              const data = await renderResp.json() as any;
+              if (data.success && data.transcript) {
+                bgTranscript = data.transcript;
+                console.log(`[transcript:bg] Renderer transcript success: ${bgTranscript.length} chars`);
+                return true;
+              }
+            }
+          } catch (e) {
+            console.error(`[transcript:bg] Renderer attempt ${attempt} failed:`, e);
           }
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
         }
+        return false;
+      };
+
+      try {
+        const whisperOk = await tryWhisper();
+        if (!whisperOk) await tryRenderer();
 
         if (bgTranscript) {
           await db.update(importedLinks)
@@ -670,6 +681,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             })
             .where(eq(importedLinks.id, id));
           console.log(`[transcript:bg] Updated record ${id} with transcript`);
+        } else {
+          console.error(`[transcript:bg] All transcript methods failed for ${id}`);
         }
       } catch (e) {
         console.error("[transcript:bg] Background transcription failed:", e);
@@ -685,6 +698,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const db = createDatabase(c.env.DB);
     const id = c.req.param("id");
     await db.delete(importedLinks).where(and(eq(importedLinks.id, id), eq(importedLinks.userId, c.get("user").id)));
+    return c.json({ success: true });
+  });
+
+  api.patch("/api/links/:id/transcript", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const id = c.req.param("id");
+    const body = await c.req.json().catch(() => ({}));
+    const transcript = typeof body.transcript === "string" ? body.transcript : "";
+    if (!transcript.trim()) return c.json({ success: false, error: "transcript is required" }, 400);
+
+    const [link] = await db.select().from(importedLinks).where(and(eq(importedLinks.id, id), eq(importedLinks.userId, user.id))).limit(1);
+    if (!link) return c.json({ success: false, error: "Link not found" }, 404);
+
+    await db.update(importedLinks).set({ transcript, updatedAt: new Date() }).where(eq(importedLinks.id, id));
     return c.json({ success: true });
   });
 
@@ -762,6 +790,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (Array.isArray(body.mediaUrls)) {
       updates.mediaUrls = JSON.stringify(body.mediaUrls.slice(0, 10));
     }
+    if (typeof body.aspectRatio === "string") updates.aspectRatio = body.aspectRatio;
 
     const clipSvc = createClipService(db);
     const [fullUser] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
@@ -799,46 +828,120 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const db = createDatabase(c.env.DB);
     const user = c.get("user");
     const id = c.req.param("id");
+
+    // Rate limit renders per IP
+    const ip = c.req.raw.headers.get("cf-connecting-ip") || c.req.raw.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const ok = await checkApiRateLimit(c.env.CACHE, ip);
+    if (!ok) return c.json({ success: false, error: "Too many render requests, slow down." }, 429);
     
     const clipSvc = createClipService(db);
     const clip = await clipSvc.getClipById(id, user.id);
     if (!clip) return c.json({ success: false, error: "Clip not found" }, 404);
 
-    try {
-      // Trigger GC Run Renderer
-      const renderResp = await fetch(`${c.env.RENDERER_URL}/render`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: clip.sourceUrl ?? clip.videoUrl,
-          start_time: clip.startSec ?? 0,
-          end_time: clip.endSec ?? 30
-        })
-      });
+    // Create render job and return immediately
+    const jobId = generateId();
+    await db.insert(renderJobs).values({
+      id: jobId,
+      clipId: id,
+      userId: user.id,
+      status: "pending",
+      attempts: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
-      if (!renderResp.ok) {
-        const errText = await renderResp.text();
-        console.error(`[renderer-failed] status ${renderResp.status}:`, errText);
-        return c.json({ success: false, error: "Video processing failed on server" }, 502);
-      }
+    // Background render with retry
+    const runRender = async () => {
+      let lastErr: string | null = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await db.update(renderJobs).set({ attempts: attempt, updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
+          
+          let cropCenterX: number | undefined;
+          if (c.env.VISION_URL) {
+            try {
+              const secret = c.env.INTERNAL_WEBHOOK_SECRET;
+              const visionResp = await fetch(`${c.env.VISION_URL}/track`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  ...(secret ? { "X-Internal-Secret": secret } : {}),
+                },
+                body: JSON.stringify({
+                  url: clip.sourceUrl ?? clip.videoUrl,
+                  start_time: clip.startSec ?? 0,
+                  end_time: clip.endSec ?? 30,
+                }),
+                signal: AbortSignal.timeout(25000),
+              });
+              if (visionResp.ok) {
+                const visionData = await visionResp.json() as any;
+                if (visionData.crop_center_x !== undefined) {
+                  cropCenterX = visionData.crop_center_x;
+                }
+              }
+            } catch (e) {
+              console.error("[render:bg] Vision error:", e);
+            }
+          }
 
-      const data = await renderResp.json() as any;
-      if (data.success && data.url) {
-        // Update clip with the newly rendered R2 URL
-        await db.update(clips).set({ 
-          videoUrl: data.url,
-          status: "ready", 
-          updatedAt: new Date() 
-        }).where(eq(clips.id, id));
-        
-        return c.json({ success: true, data: { videoUrl: data.url } });
-      } else {
-        return c.json({ success: false, error: data.error || "Rendering finished but no URL returned" }, 500);
+          const secret = c.env.INTERNAL_WEBHOOK_SECRET;
+          const renderResp = await fetch(`${c.env.RENDERER_URL}/render`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(secret ? { "X-Internal-Secret": secret } : {}),
+            },
+            body: JSON.stringify({
+              url: clip.sourceUrl ?? clip.videoUrl,
+              start_time: clip.startSec ?? 0,
+              end_time: clip.endSec ?? 30,
+              crop_center_x: cropCenterX,
+              aspect_ratio: clip.aspectRatio || "9/16",
+            }),
+            signal: AbortSignal.timeout(25000),
+          });
+
+          if (!renderResp.ok) {
+            const errText = await renderResp.text();
+            lastErr = `Renderer HTTP ${renderResp.status}: ${errText}`;
+            console.error(`[render:bg] attempt ${attempt} failed:`, lastErr);
+            if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
+            continue;
+          }
+
+          const data = await renderResp.json() as any;
+          if (data.success && data.url) {
+            await db.update(clips).set({ videoUrl: data.url, status: "ready", updatedAt: new Date() }).where(eq(clips.id, id));
+            await db.update(renderJobs).set({ status: "ready", videoUrl: data.url, updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
+            console.log(`[render:bg] job ${jobId} completed`);
+            return;
+          } else {
+            lastErr = data.error || "Renderer returned no URL";
+            console.error(`[render:bg] attempt ${attempt} bad response:`, lastErr);
+            if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
+          }
+        } catch (e: any) {
+          lastErr = e?.message || String(e);
+          console.error(`[render:bg] attempt ${attempt} exception:`, lastErr);
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
       }
-    } catch (e: any) {
-      console.error("[render-exception]", e);
-      return c.json({ success: false, error: "Rendering service connection error" }, 503);
-    }
+      // All attempts exhausted
+      await db.update(renderJobs).set({ status: "failed", error: lastErr || "All render attempts failed", updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
+    };
+
+    c.executionCtx?.waitUntil(runRender());
+    return c.json({ success: true, data: { jobId } });
+  });
+
+  api.get("/api/render-jobs/:id", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const jobId = c.req.param("id");
+    const [job] = await db.select().from(renderJobs).where(and(eq(renderJobs.id, jobId), eq(renderJobs.userId, user.id))).limit(1);
+    if (!job) return c.json({ success: false, error: "Not found" }, 404);
+    return c.json({ success: true, data: { status: job.status, videoUrl: job.videoUrl, error: job.error, attempts: job.attempts } });
   });
 
   // ── Media upload → R2 ────────────────────────────────────────────────────
@@ -963,6 +1066,38 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     const summary = await createClipService(db).getUsageSummary(u);
     return c.json({ success: true, data: summary });
+  });
+
+  api.get("/api/dashboard", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const userId = c.get("user").id;
+    const clipSvc = createClipService(db);
+
+    const [[u], clipList, scheduledRows, logs] = await Promise.all([
+      db.select().from(users).where(eq(users.id, userId)).limit(1),
+      clipSvc.listClips(userId),
+      clipSvc.listScheduled(userId),
+      clipSvc.listRecentActivity(userId),
+    ]);
+
+    const usage = u ? await clipSvc.getUsageSummary(u) : null;
+    const activity = logs.map((l) => ({
+      id: l.id,
+      type: l.action,
+      title: l.action,
+      createdAt: l.createdAt ?? new Date(),
+      meta: l.meta,
+    }));
+    const scheduledPosts = scheduledRows.map((r) => ({
+      id: r.id,
+      clipTitle: r.title || "Scheduled clip",
+      platform: r.platform,
+      scheduledFor: r.scheduledFor,
+      status: r.status,
+      thumbnail: r.thumbnail ?? undefined,
+    }));
+
+    return c.json({ success: true, data: { activity, usage, clips: clipList, scheduledPosts } });
   });
 
   api.get("/api/affiliate/stats", authMiddleware, async (c) => {
@@ -1123,17 +1258,35 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     const db = createDatabase(c.env.DB);
 
-    // SECURITY FIX: Idempotency check to prevent replays
-    const [alreadyProcessed] = await db
-      .select()
-      .from(processedWebhookEvents)
-      .where(eq(processedWebhookEvents.eventId, event.id))
-      .limit(1);
-    if (alreadyProcessed) return c.json({ received: true });
-    await db.insert(processedWebhookEvents).values({ id: generateId(), eventId: event.id });
+    // SECURITY FIX: Atomic idempotency — insert first, let unique constraint dedupe races
+    try {
+      await db.insert(processedWebhookEvents).values({ id: generateId(), eventId: event.id });
+    } catch (err: any) {
+      if (err?.message?.includes("UNIQUE constraint failed") || err?.code === "SQLITE_CONSTRAINT_UNIQUE") {
+        return c.json({ received: true });
+      }
+      throw err;
+    }
 
     const stripe = getStripe(c.env.STRIPE_SECRET_KEY);
     const subSvc = createSubscriptionService(db);
+
+    // Serialize plan updates per user via short KV lock to prevent races
+    const withUserLock = async (userId: string, fn: () => Promise<void>) => {
+      const lockKey = `stripe_lock:${userId}`;
+      const existing = await c.env.CACHE.get(lockKey);
+      if (existing) {
+        console.log(`[stripe webhook] Waiting for existing lock for user ${userId}`);
+        await new Promise((r) => setTimeout(r, 800));
+      }
+      await c.env.CACHE.put(lockKey, event.id, { expirationTtl: 15 });
+      try {
+        await fn();
+      } finally {
+        await c.env.CACHE.delete(lockKey);
+      }
+    };
+
     try {
       switch (event.type) {
         case WEBHOOK_EVENTS.CHECKOUT_COMPLETED: {
@@ -1143,13 +1296,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           if (userId && typeof subId === "string") {
             const stripeSub = await stripe.subscriptions.retrieve(subId);
             await subSvc.upsertFromStripeSubscription(userId, stripeSub);
-            await syncUserPlanFromSubscription(
-              db,
-              userId,
-              stripeSub,
-              c.env.STRIPE_PRO_PRICE_ID || "",
-              c.env.STRIPE_AGENCY_PRICE_ID || "",
-            );
+            await withUserLock(userId, async () => {
+              await syncUserPlanFromSubscription(
+                db,
+                userId,
+                stripeSub,
+                c.env.STRIPE_PRO_PRICE_ID || "",
+                c.env.STRIPE_AGENCY_PRICE_ID || "",
+              );
+            });
           }
           break;
         }
@@ -1158,13 +1313,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           const row = await subSvc.findByStripeSubscriptionId(stripeSub.id);
           if (row) {
             await subSvc.upsertFromStripeSubscription(row.userId, stripeSub);
-            await syncUserPlanFromSubscription(
-              db,
-              row.userId,
-              stripeSub,
-              c.env.STRIPE_PRO_PRICE_ID || "",
-              c.env.STRIPE_AGENCY_PRICE_ID || "",
-            );
+            await withUserLock(row.userId, async () => {
+              await syncUserPlanFromSubscription(
+                db,
+                row.userId,
+                stripeSub,
+                c.env.STRIPE_PRO_PRICE_ID || "",
+                c.env.STRIPE_AGENCY_PRICE_ID || "",
+              );
+            });
           }
           break;
         }
@@ -1299,6 +1456,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: "Required statements must be accepted" }, 400);
     }
     const db = createDatabase(c.env.DB);
+
+    // Find affected clips and user
+    const affectedClips = await db.select().from(clips).where(
+      or(eq(clips.videoUrl, infringingUrl), eq(clips.sourceUrl, infringingUrl))
+    ).limit(10);
+    const reportedUserId = affectedClips[0]?.userId ?? null;
+
+    // Auto-takedown: mark clips removed and delete from R2
+    for (const clipRow of affectedClips) {
+      if (clipRow.videoUrl) {
+        try {
+          const key = clipRow.videoUrl.replace(/^.*\/renders\//, "renders/");
+          await c.env.MEDIA.delete(key);
+        } catch (e) {
+          console.error("[dmca] Failed to delete R2 object:", e);
+        }
+      }
+      await db.update(clips).set({ status: "removed", videoUrl: null, updatedAt: new Date() }).where(eq(clips.id, clipRow.id));
+    }
+
     const id = generateId();
     await db.insert(dmcaReports).values({
       id,
@@ -1311,6 +1488,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       accuracyStatement: true,
       electronicSignature,
       status: "pending",
+      reportedUserId,
     });
     const admin = c.env.RESEND_ADMIN_EMAIL || "admin@viraltrim.com";
     const report = {

@@ -121,10 +121,26 @@ export const clips = sqliteTable("clips", {
   textStyle: text("text_style"),
   mediaUrls: text("media_urls", { mode: "json" }).$type<string[]>(),
   videoId: text("video_id"),
+  aspectRatio: text("aspect_ratio").default("9/16"),
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const renderJobs = sqliteTable("render_jobs", {
+  id: text("id").primaryKey().notNull(),
+  clipId: text("clip_id")
+    .notNull()
+    .references(() => clips.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"),
+  videoUrl: text("video_url"),
+  error: text("error"),
+  attempts: integer("attempts").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
 
 export const scheduledPosts = sqliteTable("scheduled_posts", {
   id: text("id").primaryKey().notNull(),
@@ -252,6 +268,30 @@ export const apiKeys = sqliteTable("api_keys", {
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const workspaces = sqliteTable("workspaces", {
+  id: text("id").primaryKey().notNull(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  ownerId: text("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  plan: text("plan", { enum: ["free", "pro", "agency"] }).notNull().default("free"),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const workspaceMembers = sqliteTable("workspace_members", {
+  id: text("id").primaryKey().notNull(),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["owner", "editor", "viewer"] }).notNull().default("editor"),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
@@ -259,6 +299,9 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Clip = typeof clips.$inferSelect;
 export type NewClip = typeof clips.$inferInsert;
+export type RenderJob = typeof renderJobs.$inferSelect;
+export type Workspace = typeof workspaces.$inferSelect;
+export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type Item = typeof items.$inferSelect;
 export type NewItem = typeof items.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactPlayer from "react-player";
+import { getEmbedUrl } from "@/lib/video-utils";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -89,8 +90,32 @@ export function StudioGeneratorPage() {
     setGenerating(true);
     setSuggestions([]);
     setProgress(10);
-    setStatus("Analyzing video transcript…");
 
+    // Poll for transcript if not ready yet
+    if (!v.transcript) {
+      setStatus("Transcribing video…");
+      let attempts = 0;
+      const maxAttempts = 20; // ~60 seconds
+      while (attempts < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const fresh = await api.getVideo(v.id);
+        if (fresh.success && fresh.data?.transcript) {
+          v.transcript = fresh.data.transcript;
+          break;
+        }
+        attempts++;
+        setProgress(10 + Math.min(40, attempts * 2));
+      }
+      if (!v.transcript) {
+        setGenerating(false);
+        setProgress(0);
+        setStatus("Transcript unavailable.");
+        toast.error("Transcription is taking longer than expected. You can paste a transcript manually from the video page.");
+        return;
+      }
+    }
+
+    setStatus("Analyzing video transcript…");
     const interval = setInterval(() => {
       setProgress((p) => {
         if (p < 90) return p + 2;
@@ -341,7 +366,7 @@ export function StudioGeneratorPage() {
             <div className="aspect-video relative bg-black">
               <ReactPlayer
                 ref={playerRef}
-                url={video?.url}
+                url={getEmbedUrl(video?.url)}
                 playing={playing}
                 controls
                 width="100%"

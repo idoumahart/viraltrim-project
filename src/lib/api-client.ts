@@ -78,6 +78,7 @@ export interface Clip {
   combinedClipIds?: string[] | null;
   textStyle?: string | null;
   mediaUrls?: string[] | null;
+  aspectRatio?: string | null;
   viralScore?: number;
   videoId?: string | null;
   createdAt: Date;
@@ -293,10 +294,17 @@ export const api = {
     return requestJson(`/api/links/${id}`, { method: "DELETE" });
   },
 
-  async schedulePost(clipId: string, platform: string, scheduledAt: Date): Promise<ApiResponse> {
+  async updateTranscript(id: string, transcript: string): Promise<ApiResponse> {
+    return requestJson(`/api/links/${id}/transcript`, {
+      method: "PATCH",
+      body: JSON.stringify({ transcript }),
+    });
+  },
+
+  async schedulePost(clipId: string, platform: string, scheduledFor: Date): Promise<ApiResponse> {
     return requestJson("/api/scheduled-posts", {
       method: "POST",
-      body: JSON.stringify({ clipId, platform, scheduledAt: scheduledAt.toISOString() }),
+      body: JSON.stringify({ clipId, platform, scheduledFor: scheduledFor.toISOString() }),
     });
   },
 
@@ -332,6 +340,41 @@ export const api = {
 
   async getUsage(): Promise<ApiResponse<UsageSummary>> {
     return requestJson<UsageSummary>("/api/dashboard/usage", { method: "GET" });
+  },
+
+  async getDashboard(): Promise<ApiResponse<{
+    activity: Array<{ id: string; type: string; title: string; createdAt: Date }>;
+    usage: UsageSummary;
+    clips: Clip[];
+    scheduledPosts: ScheduledPost[];
+  }>> {
+    const res = await requestJson<{
+      activity: Array<Record<string, unknown>>;
+      usage: Record<string, unknown>;
+      clips: Array<Record<string, unknown>>;
+      scheduledPosts: Array<Record<string, unknown>>;
+    }>("/api/dashboard", { method: "GET" });
+    if (res.success && res.data) {
+      res.data.activity = res.data.activity.map((row) => ({
+        ...row,
+        createdAt: parseDate(row.createdAt),
+      }));
+      res.data.clips = res.data.clips.map((row) => ({
+        ...row,
+        createdAt: parseDate(row.createdAt),
+        editCount: Number(row.editCount ?? 0),
+      })) as unknown as Clip[];
+      res.data.scheduledPosts = res.data.scheduledPosts.map((row) => ({
+        ...row,
+        scheduledFor: parseDate(row.scheduledFor),
+      })) as unknown as ScheduledPost[];
+    }
+    return res as ApiResponse<{
+      activity: Array<{ id: string; type: string; title: string; createdAt: Date }>;
+      usage: UsageSummary;
+      clips: Clip[];
+      scheduledPosts: ScheduledPost[];
+    }>;
   },
 
   async getAffiliateStats(): Promise<ApiResponse<AffiliateStats>> {
@@ -419,6 +462,7 @@ export const api = {
   async suggestHooks(body: {
     transcript: string;
     targetLength: number;
+    thumbnailUrl?: string;
   }): Promise<ApiResponse<Array<{ concept: string; title: string; startSec: number; endSec: number; viralScore: number; durationSeconds: number; caption: string }>>> {
     const res = await requestJson<any[]>("/api/clips/suggest-hooks", {
       method: "POST",
@@ -460,19 +504,21 @@ export const api = {
     if (videoId) {
       const v = await api.getVideo(videoId);
       if (v.success && v.data?.transcript) {
-        return api.suggestHooks({ transcript: v.data.transcript, targetLength: 60 });
+        return api.suggestHooks({ transcript: v.data.transcript, targetLength: 60, thumbnailUrl: v.data.thumbnail || undefined });
       }
+      return { success: false, error: "Transcript not ready yet. Please wait for transcription to complete." };
     }
     
     // 2. Fallback: Import the URL to get a transcript, then suggest
     const imp = await api.importLink(url);
     if (!imp.success || !imp.data) return { success: false, error: imp.error || "Failed to analyze video" };
     
-    // Wait for transcript (it's sync in our current worker implementation, but we'll re-fetch just in case)
     const fresh = await api.getVideo(imp.data.id);
-    if (!fresh.success || !fresh.data?.transcript) return { success: false, error: "AI transcript extraction failed for this video." };
+    if (!fresh.success || !fresh.data?.transcript) {
+      return { success: false, error: "Transcript not ready yet. Please wait for transcription to complete." };
+    }
     
-    return api.suggestHooks({ transcript: fresh.data.transcript, targetLength: 60 });
+    return api.suggestHooks({ transcript: fresh.data.transcript, targetLength: 60, thumbnailUrl: fresh.data.thumbnail || undefined });
   },
 
   async updateClip(
@@ -488,6 +534,7 @@ export const api = {
       combinedClipIds?: string[];
       textStyle?: string;
       mediaUrls?: string[];
+      aspectRatio?: string;
     },
   ): Promise<ApiResponse<Clip>> {
     const res = await requestJson<Record<string, unknown>>(`/api/clips/${id}`, {
@@ -527,7 +574,11 @@ export const api = {
     return requestJson<null>(`/api/clips/${id}`, { method: "DELETE" });
   },
 
-  async renderClip(id: string): Promise<ApiResponse<{ videoUrl: string }>> {
-    return requestJson<{ videoUrl: string }>(`/api/clips/${id}/render`, { method: "POST" });
+  async renderClip(id: string): Promise<ApiResponse<{ jobId: string }>> {
+    return requestJson<{ jobId: string }>(`/api/clips/${id}/render`, { method: "POST" });
+  },
+
+  async getRenderJob(jobId: string): Promise<ApiResponse<{ status: string; videoUrl: string | null; error: string | null; attempts: number }>> {
+    return requestJson(`/api/render-jobs/${jobId}`, { method: "GET" });
   },
 };

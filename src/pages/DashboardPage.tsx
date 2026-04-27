@@ -29,17 +29,14 @@ export function DashboardPage() {
     let isMounted = true;
     const fetchData = async () => {
       try {
-        const [activityRes, usageRes, clipsRes, scheduledRes] = await Promise.all([
-          api.getRecentActivity(),
-          api.getUsage(),
-          api.getClips(),
-          api.getScheduledPosts(),
-        ]);
+        const res = await api.getDashboard();
         if (!isMounted) return;
-        if (activityRes.success && activityRes.data) setActivity(activityRes.data);
-        if (usageRes.success && usageRes.data) setUsage(usageRes.data);
-        if (clipsRes.success && clipsRes.data) setClips(clipsRes.data);
-        if (scheduledRes.success && scheduledRes.data) setScheduledPosts(scheduledRes.data);
+        if (res.success && res.data) {
+          setActivity(res.data.activity);
+          setUsage(res.data.usage);
+          setClips(res.data.clips);
+          setScheduledPosts(res.data.scheduledPosts);
+        }
       } catch (err) {
         console.error("Data sync failed", err);
       } finally {

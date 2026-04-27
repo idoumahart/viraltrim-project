@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import ReactPlayer from "react-player";
+import { getEmbedUrl } from "@/lib/video-utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -21,8 +22,8 @@ import { ScheduleModal } from "@/components/editor/ScheduleModal";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const EDIT_LIMITS: Record<string, number> = { free: 3, pro: 10, agency: 20, unlimited: 999 };
-function editLimitFor(plan: string) { return EDIT_LIMITS[plan.toLowerCase()] ?? 3; }
+const EDIT_LIMITS: Record<string, number> = { free: 1, pro: 3, agency: 10, unlimited: 999 };
+function editLimitFor(plan: string) { return EDIT_LIMITS[plan.toLowerCase()] ?? 1; }
 
 const TEXT_STYLES = [
   { value: "classic", label: "Classic" },
@@ -65,16 +66,19 @@ interface TrackTimelineProps {
   onStartChange: (s: number) => void;
   onEndChange: (s: number) => void;
   onSeek: (s: number) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
   hasAudio: boolean;
   hasCaptions: boolean;
 }
 
 function TrackTimeline({
   duration, startSec, endSec, currentTime,
-  onStartChange, onEndChange, onSeek, hasAudio, hasCaptions,
+  onStartChange, onEndChange, onSeek, onDragStart, onDragEnd, hasAudio, hasCaptions,
 }: TrackTimelineProps) {
   const railRef = useRef<HTMLDivElement>(null);
   const dragging = useRef<"start" | "end" | "playhead" | null>(null);
+  const seekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const toPercent = (s: number) => (duration > 0 ? (s / duration) * 100 : 0);
   const toSeconds = useCallback((clientX: number) => {
@@ -83,9 +87,15 @@ function TrackTimeline({
     return Math.max(0, Math.min(duration, ((clientX - rect.left) / rect.width) * duration));
   }, [duration]);
 
+  const debouncedSeek = useCallback((s: number) => {
+    if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
+    seekTimeoutRef.current = setTimeout(() => onSeek(s), 50);
+  }, [onSeek]);
+
   const onPointerDown = (handle: "start" | "end" | "playhead") => (e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     dragging.current = handle;
+    onDragStart?.();
   };
 
   useEffect(() => {
@@ -94,13 +104,18 @@ function TrackTimeline({
       const s = toSeconds(e.clientX);
       if (dragging.current === "start") onStartChange(Math.min(Math.round(s), endSec - 1));
       else if (dragging.current === "end") onEndChange(Math.max(Math.round(s), startSec + 1));
-      else if (dragging.current === "playhead") onSeek(s);
+      else if (dragging.current === "playhead") debouncedSeek(s);
     };
-    const up = () => { dragging.current = null; };
+    const up = () => {
+      if (dragging.current) {
+        dragging.current = null;
+        onDragEnd?.();
+      }
+    };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-  }, [toSeconds, startSec, endSec, onStartChange, onEndChange, onSeek]);
+  }, [toSeconds, startSec, endSec, onStartChange, onEndChange, debouncedSeek, onDragStart, onDragEnd]);
 
   const startPct = toPercent(startSec);
   const endPct = toPercent(endSec);
@@ -255,6 +270,42 @@ export default function EditorPage() {
   const [textStyle, setTextStyle] = useState("classic");
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [hasAudio, setHasAudio] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState("9/16");
+  const [isTimelineDragging, setIsTimelineDragging] = useState(false);
+
+  // ─── Auto-save to localStorage ────────────────────────────────────────────────
+  const editorStateKey = `vt_editor_${clipIdFromUrl || videoIdFromUrl || "new"}`;
+
+  useEffect(() => {
+    if (!clip && !videoUrl) return;
+    const state = JSON.stringify({ videoUrl, title, startSec, endSec, captionLines, combinedClipIds, textStyle, mediaUrls, aspectRatio });
+    localStorage.setItem(editorStateKey, state);
+  }, [videoUrl, title, startSec, endSec, captionLines, combinedClipIds, textStyle, mediaUrls, aspectRatio, editorStateKey]);
+
+  useEffect(() => {
+    if (incomingClip || incomingVideo) return;
+    const saved = localStorage.getItem(editorStateKey);
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        if (state.videoUrl) setVideoUrl(state.videoUrl);
+        if (state.title) setTitle(state.title);
+        if (typeof state.startSec === "number") setStartSec(state.startSec);
+        if (typeof state.endSec === "number") setEndSec(state.endSec);
+        if (Array.isArray(state.captionLines)) setCaptionLines(state.captionLines);
+        if (Array.isArray(state.combinedClipIds)) setCombinedClipIds(state.combinedClipIds);
+        if (state.textStyle) setTextStyle(state.textStyle);
+        if (Array.isArray(state.mediaUrls)) setMediaUrls(state.mediaUrls);
+        if (state.aspectRatio) setAspectRatio(state.aspectRatio);
+      } catch {
+        // ignore corrupt localStorage
+      }
+    }
+  }, [editorStateKey, incomingClip, incomingVideo]);
+
+  const clearLocalAutoSave = () => {
+    localStorage.removeItem(editorStateKey);
+  };
 
   // Sync state to local state on load or change
   useEffect(() => {
@@ -268,6 +319,7 @@ export default function EditorPage() {
       setCombinedClipIds(incomingClip.combinedClipIds ?? []);
       setTextStyle(incomingClip.textStyle ?? "classic");
       setMediaUrls(incomingClip.mediaUrls ?? []);
+      setAspectRatio(incomingClip.aspectRatio ?? "9/16");
     } else if (incomingVideo) {
       setVideoUrl(incomingVideo.url || (incomingVideo as any).video_url || "");
       setTitle(incomingVideo.title || "");
@@ -327,7 +379,9 @@ export default function EditorPage() {
     setDuration(d);
     if (!incomingClip?.endSec) setEndSec(Math.floor(d));
   };
-  const handleProgress = ({ playedSeconds }: { playedSeconds: number }) => setCurrentTime(playedSeconds);
+  const handleProgress = ({ playedSeconds }: { playedSeconds: number }) => {
+    if (!isTimelineDragging) setCurrentTime(playedSeconds);
+  };
   const handleSeek = useCallback((s: number) => {
     playerRef.current?.seekTo(s, "seconds");
     setCurrentTime(s);
@@ -351,9 +405,10 @@ export default function EditorPage() {
         if (res.success && res.data) targetClipId = res.data.id;
         else throw new Error(res.error || "Failed to initialize clip");
       }
-      const res = await api.updateClip(targetClipId, { title, startSec, endSec, captionLines, combinedClipIds, textStyle, mediaUrls });
+      const res = await api.updateClip(targetClipId, { title, startSec, endSec, captionLines, combinedClipIds, textStyle, mediaUrls, aspectRatio });
       if (res.success && res.data) { 
         setClip(res.data); 
+        clearLocalAutoSave();
         return res.data; 
       }
       else {
@@ -376,20 +431,46 @@ export default function EditorPage() {
     if (!savedClip) return;
 
     setIsRendering(true);
-    toast.info("Preparing your video for export...", { duration: 3000 });
+    toast.info("Rendering your clip...", { duration: 3000 });
     
     try {
       const res = await api.renderClip(savedClip.id);
-      if (res.success && res.data) {
-        setRenderedVideoUrl(res.data.videoUrl);
-        setIsScheduleModalOpen(true);
-        toast.success("Ready to post!");
-      } else {
+      if (!res.success || !res.data?.jobId) {
         throw new Error(res.error || "Rendering failed");
       }
+      const jobId = res.data.jobId;
+
+      // Poll for job completion every 2 seconds
+      const poll = setInterval(async () => {
+        try {
+          const jobRes = await api.getRenderJob(jobId);
+          if (!jobRes.success || !jobRes.data) return;
+          const job = jobRes.data;
+          if (job.status === "ready" && job.videoUrl) {
+            clearInterval(poll);
+            setRenderedVideoUrl(job.videoUrl);
+            setIsScheduleModalOpen(true);
+            setIsRendering(false);
+            clearLocalAutoSave();
+            toast.success("Ready to post!");
+          } else if (job.status === "failed") {
+            clearInterval(poll);
+            setIsRendering(false);
+            toast.error(job.error || "Rendering failed. Try again.");
+          }
+        } catch (e) {
+          // keep polling on transient errors
+        }
+      }, 2000);
+
+      // Safety: stop polling after 5 minutes
+      setTimeout(() => {
+        clearInterval(poll);
+        setIsRendering(false);
+        toast.error("Render is taking too long. Check your clips page later.");
+      }, 300_000);
     } catch (err: any) {
       toast.error(err.message || "Could not render video. Try again.");
-    } finally {
       setIsRendering(false);
     }
   };
@@ -696,12 +777,30 @@ export default function EditorPage() {
 
           {/* ── CENTER: Preview ──────────────────────────────────────────────── */}
           <div className="flex-1 min-w-0 flex flex-col items-center justify-center bg-[#0E0E11] relative overflow-hidden">
-            {/* Portrait video wrapper — 9:16 aspect ratio */}
+            {/* Aspect ratio selector */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex gap-1 bg-black/60 backdrop-blur-sm rounded-lg p-1 border border-white/10">
+              {[
+                { value: "9/16", label: "9:16" },
+                { value: "16/9", label: "16:9" },
+                { value: "1/1", label: "1:1" },
+                { value: "4/5", label: "4:5" },
+              ].map((ar) => (
+                <button
+                  key={ar.value}
+                  onClick={() => setAspectRatio(ar.value)}
+                  className={`px-2 py-0.5 text-[10px] rounded transition-colors ${aspectRatio === ar.value ? "bg-white/20 text-white" : "text-white/50 hover:text-white/80"}`}
+                >
+                  {ar.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Portrait video wrapper — dynamic aspect ratio */}
             <div className="relative flex-1 w-full flex items-center justify-center py-6">
               <div
                 className="relative bg-black rounded-xl overflow-hidden shadow-2xl"
                 style={{
-                  aspectRatio: "9/16",
+                  aspectRatio,
                   maxHeight: "calc(100% - 48px)",
                   width: "auto",
                 }}
@@ -732,7 +831,7 @@ export default function EditorPage() {
                   <>
                     <ReactPlayer
                       ref={playerRef}
-                      url={videoUrl}
+                      url={getEmbedUrl(videoUrl)}
                       playing={playing}
                       volume={muted ? 0 : volume}
                       onDuration={handleDuration}
@@ -841,6 +940,8 @@ export default function EditorPage() {
               onStartChange={(s) => { setStartSec(s); handleSeek(s); }}
               onEndChange={(s) => { setEndSec(s); handleSeek(s); }}
               onSeek={handleSeek}
+              onDragStart={() => setIsTimelineDragging(true)}
+              onDragEnd={() => setIsTimelineDragging(false)}
               hasAudio={hasAudio}
               hasCaptions={captionLines.filter(Boolean).length > 0}
             />

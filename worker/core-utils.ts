@@ -31,5 +31,6 @@ export interface Env {
   INTERNAL_WEBHOOK_SECRET: string;
   RAPID_API_KEY: string;
   YOUTUBE_API_KEY: string;
+  R2_PUBLIC_URL: string;
 }
 

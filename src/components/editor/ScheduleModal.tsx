@@ -30,7 +30,9 @@ import {
   Twitter, 
   Download,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Copy,
+  Mail
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,7 @@ export function ScheduleModal({ isOpen, onClose, onSchedule, videoUrl, clipTitle
   const [platform, setPlatform] = useState<string>("tiktok");
   const [scheduling, setScheduling] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleSchedule = async () => {
     setScheduling(true);
@@ -70,9 +73,9 @@ export function ScheduleModal({ isOpen, onClose, onSchedule, videoUrl, clipTitle
               <CheckCircle2 className="h-10 w-10 text-green-500" />
             </div>
             <div className="text-center">
-              <DialogTitle className="text-xl font-bold">Successfully Scheduled!</DialogTitle>
+              <DialogTitle className="text-xl font-bold">Reminder Saved!</DialogTitle>
               <DialogDescription className="text-white/50 mt-1">
-                Your clip "{clipTitle}" is queued for {format(date, "PPP")}.
+                Your clip "{clipTitle}" reminder is set for {format(date, "PPP")}. Download and post manually.
               </DialogDescription>
             </div>
           </div>
@@ -95,10 +98,10 @@ export function ScheduleModal({ isOpen, onClose, onSchedule, videoUrl, clipTitle
         <div className="bg-gradient-to-br from-[#5865F2]/20 to-transparent p-6 pb-0">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-              Finish & Schedule
+              Export & Schedule Reminder
             </DialogTitle>
             <DialogDescription className="text-white/50">
-              Your video is rendered and ready. Where should we post it?
+              Your clip is ready. Download it, copy your caption, and we&apos;ll remind you when to post.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -174,7 +177,34 @@ export function ScheduleModal({ isOpen, onClose, onSchedule, videoUrl, clipTitle
             </div>
           </div>
 
-          {/* Download Fallback */}
+          {/* Copy Caption */}
+          {clipTitle && (
+            <div className="rounded-xl bg-white/5 border border-white/10 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#5865F2]/20 flex items-center justify-center">
+                  <Copy className="h-5 w-5 text-[#818CF8]" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold">Copy Caption</p>
+                  <p className="text-[10px] text-white/40">Copy caption + hashtags to clipboard</p>
+                </div>
+              </div>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="h-8 text-xs hover:bg-white/10" 
+                onClick={() => {
+                  navigator.clipboard.writeText(clipTitle);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copied ? "Copied!" : "Copy"}
+              </Button>
+            </div>
+          )}
+
+          {/* Download */}
           {videoUrl && (
             <div className="rounded-xl bg-white/5 border border-white/10 p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -182,7 +212,7 @@ export function ScheduleModal({ isOpen, onClose, onSchedule, videoUrl, clipTitle
                   <Download className="h-5 w-5 text-[#818CF8]" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold">Manual Download</p>
+                  <p className="text-xs font-bold">Download Clip</p>
                   <p className="text-[10px] text-white/40">Download MP4 for manual upload</p>
                 </div>
               </div>
@@ -204,7 +234,7 @@ export function ScheduleModal({ isOpen, onClose, onSchedule, videoUrl, clipTitle
             disabled={scheduling}
             onClick={handleSchedule}
           >
-            {scheduling ? "Scheduling..." : "Confirm Schedule"}
+            {scheduling ? "Saving..." : "Save Reminder"}
           </Button>
         </DialogFooter>
       </DialogContent>

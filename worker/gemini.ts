@@ -1,6 +1,23 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { z } from "zod";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
+
+// ─── Structured output schemas ────────────────────────────────────────────────
+const ClipAiResultSchema = z.object({
+  caption: z.string(),
+  hashtags: z.array(z.string()),
+  viral_score: z.number(),
+});
+
+const HookSuggestionSchema = z.array(z.object({
+  concept: z.string(),
+  title: z.string(),
+  startSec: z.number(),
+  endSec: z.number(),
+  viral_score: z.number(),
+  caption: z.string(),
+}));
 
 // ─── Shared ViralVideo shape ──────────────────────────────────────────────────
 export interface ViralVideoResult {
@@ -324,6 +341,35 @@ export interface ClipAiResult {
   viral_score: number;
 }
 
+function safeParseJson(text: string): unknown {
+  const cleaned = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+    if (match) return JSON.parse(match[0]);
+    throw new Error("Failed to parse AI response");
+  }
+}
+
+async function generateWithRetry(
+  model: any,
+  prompt: string | any[],
+  maxAttempts = 3,
+): Promise<string> {
+  let lastErr: unknown;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (err) {
+      lastErr = err;
+      if (i < maxAttempts - 1) await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export async function generateClipMetadata(
   apiKey: string,
   modelId: string | undefined,
@@ -352,14 +398,14 @@ export async function generateClipMetadata(
 3. The hashtags MUST be relevant to the viral nature of the content.
 Return JSON only: { "caption": string, "hashtags": string[] (max 8 tags without #), "viral_score": number 0-100 }`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
-  const cleaned = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-  const parsed = JSON.parse(cleaned) as ClipAiResult;
-  if (!parsed.caption || !Array.isArray(parsed.hashtags)) {
-    throw new Error("Invalid clip AI response");
+  const text = await generateWithRetry(model, prompt);
+  const parsed = safeParseJson(text);
+  const result = ClipAiResultSchema.safeParse(parsed);
+  if (!result.success) {
+    console.error("[gemini] Clip metadata validation failed:", result.error.flatten());
+    throw new Error("Invalid clip AI response structure");
   }
-  return parsed;
+  return result.data;
 }
 
 export interface HookSuggestion {
@@ -370,11 +416,33 @@ export interface HookSuggestion {
   caption: string;
 }
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+async function fetchImagePart(url: string): Promise<{ inlineData: { mimeType: string; data: string } } | null> {
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    const buffer = await blob.arrayBuffer();
+    return { inlineData: { mimeType: blob.type || "image/jpeg", data: arrayBufferToBase64(buffer) } };
+  } catch {
+    return null;
+  }
+}
+
 export async function generateHookSuggestions(
   apiKey: string,
   modelId: string | undefined,
   transcript: string,
   targetDuration: number,
+  thumbnailUrl?: string,
 ): Promise<HookSuggestion[]> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: modelId || DEFAULT_MODEL });
@@ -382,7 +450,13 @@ export async function generateHookSuggestions(
   // Truncate transcript to prevent context overflow. roughly 40,000 chars is safe for Gemini flash
   const truncatedTranscript = transcript.slice(0, 40000);
   
-const prompt = `You are a viral social media manager. I am giving you a raw video transcript. I need you to identify exactly 3 distinct concepts/segments that would make highly viral, engaging standalone short-form clips.
+  let prompt = `You are a viral social media manager. I am giving you a raw video transcript. I need you to identify exactly 3 distinct concepts/segments that would make highly viral, engaging standalone short-form clips.`;
+
+  if (thumbnailUrl) {
+    prompt += ` I have also provided the video thumbnail for visual context. Use BOTH the transcript and visual elements (facial expressions, scene setting, action, objects) to identify the most engaging moments.`;
+  }
+
+  prompt += `
 CRITICAL REQUIREMENTS:
 1. DO NOT HALLUCINATE OR MAKE UP QUOTES. Only extract concepts and ideas strictly from the transcript provided.
 2. The duration of each clip MUST BE STICTLY LESS THAN OR EQUAL TO ${targetDuration} SECONDS.
@@ -409,17 +483,32 @@ ${truncatedTranscript}
 """
 `;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
-  const cleaned = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-  const parsed = JSON.parse(cleaned) as HookSuggestion[];
-  
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error("Invalid hook suggestion response");
+  let resultText: string;
+  if (thumbnailUrl) {
+    const imagePart = await fetchImagePart(thumbnailUrl);
+    if (imagePart) {
+      const result = await generateWithRetry(model, [
+        prompt,
+        imagePart as any,
+      ]);
+      resultText = result;
+    } else {
+      resultText = await generateWithRetry(model, prompt);
+    }
+  } else {
+    resultText = await generateWithRetry(model, prompt);
   }
-  return parsed.map((p) => {
-    let s = Math.max(0, Math.floor(Number(p.startSec) || 0));
-    let e = Math.floor(Number(p.endSec) || s + targetDuration);
+
+  const parsed = safeParseJson(resultText);
+  
+  const validated = HookSuggestionSchema.safeParse(parsed);
+  if (!validated.success) {
+    console.error("[gemini] Hook suggestion validation failed:", validated.error.flatten());
+    throw new Error("Invalid hook suggestion response structure");
+  }
+  return validated.data.map((p) => {
+    let s = Math.max(0, Math.floor(p.startSec));
+    let e = Math.floor(p.endSec);
     
     // HARD LIMIT ENFORCEMENT
     if (e - s > targetDuration) {
@@ -432,7 +521,6 @@ ${truncatedTranscript}
       ...p,
       startSec: s,
       endSec: e,
-      viral_score: Number(p.viral_score) || 85,
     };
   });
 }

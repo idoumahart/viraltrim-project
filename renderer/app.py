@@ -13,6 +13,17 @@ R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY", "")
 R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY", "")
 R2_BUCKET = os.environ.get("R2_BUCKET", "viraltrim-media")
 WEBSHARE_PROXY_URL = os.environ.get("WEBSHARE_PROXY_URL", "")
+_WEBSHARE_PROXY_URLS = os.environ.get("WEBSHARE_PROXY_URLS", "")
+PROXY_LIST = [p.strip() for p in _WEBSHARE_PROXY_URLS.split(",") if p.strip()] if _WEBSHARE_PROXY_URLS else ([WEBSHARE_PROXY_URL] if WEBSHARE_PROXY_URL else [])
+_proxy_index = 0
+
+def get_proxy():
+    global _proxy_index
+    if not PROXY_LIST:
+        return None
+    proxy = PROXY_LIST[_proxy_index % len(PROXY_LIST)]
+    _proxy_index += 1
+    return proxy
 
 # Internal shared secret — must match INTERNAL_WEBHOOK_SECRET in Cloudflare Worker
 INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
@@ -20,6 +31,8 @@ INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
 def verify_internal_secret(req):
     """Reject requests not coming from our Cloudflare Worker."""
     if not INTERNAL_SECRET:
+        if os.environ.get("ENV", "dev") == "production":
+            raise RuntimeError("INTERNAL_SECRET is required in production")
         print("[security] WARNING: INTERNAL_SECRET not set — all requests accepted.")
         return True
     return req.headers.get("X-Internal-Secret", "") == INTERNAL_SECRET
@@ -64,8 +77,9 @@ def extract_transcript():
             'quiet': True
         }
         
-        if WEBSHARE_PROXY_URL:
-            ydl_opts['proxy'] = WEBSHARE_PROXY_URL
+        proxy = get_proxy()
+        if proxy:
+            ydl_opts['proxy'] = proxy
 
         import yt_dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -147,16 +161,42 @@ def process_video():
                 "-o", raw_path,
                 "--no-playlist",
             ]
-            if WEBSHARE_PROXY_URL:
-                download_cmd.extend(["--proxy", WEBSHARE_PROXY_URL])
+            proxy = get_proxy()
+            if proxy:
+                download_cmd.extend(["--proxy", proxy])
             download_cmd.append(url)
             subprocess.run(download_cmd, check=True, capture_output=True)
         
-        # 2. Optimized Processing (720p, CRF 28, Preset Faster)
-        print("Rendering optimized 720p clip...")
+        # 2. Optimized Processing (aspect-aware crop + scale)
+        print("Rendering optimized clip...")
+        aspect_ratio = data.get('aspect_ratio', '9/16')
+        crop_center_x = data.get('crop_center_x')
+        
+        # Target dimensions per aspect ratio
+        dims = {
+            '9/16': (720, 1280),
+            '16/9': (1280, 720),
+            '1/1': (720, 720),
+            '4/5': (720, 900),
+        }
+        target_w, target_h = dims.get(aspect_ratio, (720, 1280))
+        
+        # Default: scale and pad to target aspect ratio
+        vf_chain = f"scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2"
+        
+        # If face tracking data provided and vertical crop requested
+        if crop_center_x is not None and aspect_ratio == '9/16':
+            try:
+                cx = float(crop_center_x)
+                crop_filter = f"crop=ih*9/16:ih:iw*{cx}-ow/2:0"
+                vf_chain = f"{crop_filter},scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2"
+                print(f"[render] Applying intelligent crop centered at {cx}")
+            except Exception as e:
+                print(f"[render] Invalid crop_center_x skipped: {e}")
+
         render_cmd = [
             "ffmpeg", "-y", "-i", raw_path,
-            "-vf", "scale=720:-2",
+            "-vf", vf_chain,
             "-c:v", "libx264", 
             "-crf", "28",
             "-preset", "faster",

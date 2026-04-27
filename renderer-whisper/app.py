@@ -27,6 +27,17 @@ app = Flask(__name__)
 
 INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
 WEBSHARE_PROXY_URL = os.environ.get("WEBSHARE_PROXY_URL", "")
+_WEBSHARE_PROXY_URLS = os.environ.get("WEBSHARE_PROXY_URLS", "")
+PROXY_LIST = [p.strip() for p in _WEBSHARE_PROXY_URLS.split(",") if p.strip()] if _WEBSHARE_PROXY_URLS else ([WEBSHARE_PROXY_URL] if WEBSHARE_PROXY_URL else [])
+_proxy_index = 0
+
+def get_proxy():
+    global _proxy_index
+    if not PROXY_LIST:
+        return None
+    proxy = PROXY_LIST[_proxy_index % len(PROXY_LIST)]
+    _proxy_index += 1
+    return proxy
 
 # ─── Lazy model loading ────────────────────────────────────────────────────────
 # Model loads on first /transcribe request, not at startup.
@@ -50,7 +61,8 @@ def get_model() -> WhisperModel:
 def verify_internal_secret(req) -> bool:
     """Verify the caller is our Cloudflare Worker, not an external request."""
     if not INTERNAL_SECRET:
-        # If secret is not configured, allow all (dev mode) — log a warning.
+        if os.environ.get("ENV", "dev") == "production":
+            raise RuntimeError("INTERNAL_SECRET is required in production")
         print("[security] WARNING: INTERNAL_SECRET is not set. All requests are accepted.")
         return True
     provided = req.headers.get("X-Internal-Secret", "")
@@ -98,8 +110,9 @@ def transcribe():
         ]
 
         # Apply proxy if configured (helps with geo-restricted content)
-        if WEBSHARE_PROXY_URL:
-            download_cmd.extend(["--proxy", WEBSHARE_PROXY_URL])
+        proxy = get_proxy()
+        if proxy:
+            download_cmd.extend(["--proxy", proxy])
 
         download_cmd.append(url)
 

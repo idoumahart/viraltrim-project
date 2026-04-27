@@ -41,7 +41,8 @@ export async function verifyWebhookSignature(
   try {
     const stripe = getStripe(stripeSecretKey);
     return await stripe.webhooks.constructEventAsync(payload, signature, webhookSecret);
-  } catch {
+  } catch (err) {
+    console.error("[stripe] Webhook signature verification failed:", err);
     return null;
   }
 }

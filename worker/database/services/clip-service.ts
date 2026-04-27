@@ -170,7 +170,11 @@ export class ClipService {
     if (userPlan === "agency") editLimit = 10;
     if (userPlan === "unlimited") editLimit = 999;
 
-    if ((clip.editCount ?? 0) >= editLimit) {
+    // Only count substantive edits (not title-only changes)
+    const substantiveFields: (keyof Clip)[] = ["startSec", "endSec", "captionStyle", "selectedHook", "hasAudio", "audioUrl"];
+    const hasSubstantiveChange = substantiveFields.some((f) => f in updates);
+
+    if (hasSubstantiveChange && (clip.editCount ?? 0) >= editLimit) {
       return { clip: null, error: `Edit limit reached (${editLimit} max for ${userPlan} tier)` };
     }
 
@@ -178,7 +182,7 @@ export class ClipService {
       .update(clips)
       .set({
         ...updates,
-        editCount: (clip.editCount ?? 0) + 1,
+        editCount: hasSubstantiveChange ? (clip.editCount ?? 0) + 1 : (clip.editCount ?? 0),
         updatedAt: new Date(),
       })
       .where(eq(clips.id, clipId))

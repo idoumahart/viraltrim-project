@@ -1,15 +1,16 @@
 export const securityHeadersPlugin = async (c: any, next: any) => {
   await next();
+  const r2Base = c.env?.R2_PUBLIC_URL || "https://media.viraltrim.com";
   c.header(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'", 
+      "script-src 'self' 'unsafe-inline' https://www.youtube.com https://js.stripe.com",
       "style-src 'self' 'unsafe-inline' https://api.fontshare.com",
       "font-src 'self' https://api.fontshare.com data:",
       "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://raw.githubusercontent.com",
       "media-src 'self' blob: https:",
-      "connect-src 'self' https://generativelanguage.googleapis.com https://api.stripe.com",
+      `connect-src 'self' https://generativelanguage.googleapis.com https://api.stripe.com ${r2Base}`,
       "frame-src https://www.youtube.com https://js.stripe.com",
       "object-src 'none'",
       "base-uri 'self'",
