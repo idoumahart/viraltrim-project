@@ -1,0 +1,2428 @@
+[
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {},
+      "authenticationInfo": {
+        "principalEmail": "idoumahart@gmail.com",
+        "principalSubject": "user:idoumahart@gmail.com",
+        "oauthInfo": {
+          "oauthClientId": "32555940559.apps.googleusercontent.com"
+        }
+      },
+      "requestMetadata": {
+        "callerIp": "198.58.147.184",
+        "callerSuppliedUserAgent": "google-cloud-sdk gcloud/564.0.0 command/gcloud.run.services.update invocation-id/7056c6b9e55b44b99623eb0fe69cdce0 environment/None environment-version/None client-os/WINDOWS client-os-ver/10.0.26200 client-pltf-arch/x86_64 interactive/True from-script/False python/3.13.12 term/  (Windows NT 10.0.26200),gzip(gfe)",
+        "requestAttributes": {
+          "time": "2026-04-27T20:10:06.235730Z",
+          "auth": {}
+        },
+        "destinationAttributes": {}
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "google.cloud.run.v1.Services.ReplaceService",
+      "authorizationInfo": [
+        {
+          "resource": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+          "permission": "run.services.update",
+          "granted": true,
+          "resourceAttributes": {},
+          "permissionType": "ADMIN_WRITE"
+        },
+        {
+          "resource": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+          "permission": "run.services.update",
+          "granted": true,
+          "resourceAttributes": {
+            "service": "run.googleapis.com/",
+            "name": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+            "type": "run.googleapis.com/Service"
+          },
+          "permissionType": "ADMIN_WRITE"
+        }
+      ],
+      "resourceName": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+      "request": {
+        "name": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+        "service": {
+          "kind": "Service",
+          "apiVersion": "serving.knative.dev/v1",
+          "spec": {
+            "traffic": [
+              {
+                "percent": 100,
+                "latestRevision": true
+              }
+            ],
+            "template": {
+              "spec": {
+                "containers": [
+                  {
+                    "resources": {
+                      "limits": {
+                        "memory": "2Gi",
+                        "cpu": "2000m"
+                      }
+                    },
+                    "name": "viraltrim-renderer-1",
+                    "image": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer@sha256:890cb45acfb9807084856da6cd7cca4e9dbbfb740e51173e834c64302a9669ec"
+                  }
+                ],
+                "containerConcurrency": 1,
+                "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+                "timeoutSeconds": 600
+              },
+              "metadata": {
+                "annotations": {
+                  "autoscaling.knative.dev/minScale": "1",
+                  "run.googleapis.com/startup-cpu-boost": "true",
+                  "autoscaling.knative.dev/maxScale": "5",
+                  "run.googleapis.com/client-name": "gcloud",
+                  "run.googleapis.com/client-version": "564.0.0",
+                  "run.googleapis.com/execution-environment": "gen2"
+                },
+                "labels": {
+                  "run.googleapis.com/startupProbeType": "Default",
+                  "client.knative.dev/nonce": "ijcckznquf"
+                }
+              }
+            }
+          },
+          "status": {
+            "traffic": [
+              {
+                "revisionName": "viraltrim-renderer-00018-9pc",
+                "latestRevision": true,
+                "percent": 100
+              }
+            ],
+            "conditions": [
+              {
+                "type": "Ready",
+                "lastTransitionTime": "2026-04-18T10:38:05.138984Z",
+                "status": "True"
+              },
+              {
+                "status": "True",
+                "type": "ConfigurationsReady",
+                "lastTransitionTime": "2026-04-18T10:38:01.681993Z"
+              },
+              {
+                "status": "True",
+                "type": "RoutesReady",
+                "lastTransitionTime": "2026-04-18T10:38:05.109038Z"
+              }
+            ],
+            "latestCreatedRevisionName": "viraltrim-renderer-00018-9pc",
+            "latestReadyRevisionName": "viraltrim-renderer-00018-9pc",
+            "observedGeneration": 18,
+            "url": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app"
+          },
+          "metadata": {
+            "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/services/viraltrim-renderer",
+            "annotations": {
+              "run.googleapis.com/build-image-uri": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer",
+              "run.googleapis.com/maxScale": "3",
+              "serving.knative.dev/lastModifier": "idoumahart@gmail.com",
+              "run.googleapis.com/client-name": "gcloud",
+              "run.googleapis.com/build-enable-automatic-updates": "false",
+              "run.googleapis.com/build-id": "5624abc4-7f90-407a-9241-286a406dfab9",
+              "serving.knative.dev/creator": "idoumahart@gmail.com",
+              "run.googleapis.com/ingress-status": "all",
+              "run.googleapis.com/ingress": "all",
+              "run.googleapis.com/operation-id": "5e9bc090-7f29-4031-8cb5-da21a8a52fc5",
+              "run.googleapis.com/urls": "[\"https://viraltrim-renderer-734039841201.us-central1.run.app\",\"https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app\"]",
+              "run.googleapis.com/build-name": "projects/734039841201/locations/us-central1/builds/5624abc4-7f90-407a-9241-286a406dfab9",
+              "run.googleapis.com/client-version": "564.0.0",
+              "run.googleapis.com/build-source-location": "gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-renderer/1776508538.1678-b0a3dff8b6584a19a3ee33ca2253ec73.zip#1776508537489684"
+            },
+            "namespace": "734039841201",
+            "generation": 18,
+            "name": "viraltrim-renderer",
+            "uid": "9e1db8b4-c03b-4a9a-b5fc-581c23deed1d",
+            "resourceVersion": "AAZPuakePCg",
+            "creationTimestamp": "2026-04-14T11:07:56.595866Z",
+            "labels": {
+              "cloud.googleapis.com/location": "us-central1"
+            }
+          }
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.ReplaceServiceRequest"
+      },
+      "resourceLocation": {
+        "currentLocations": [
+          "us-central1"
+        ]
+      }
+    },
+    "insertId": "1v6gulvd6x4h",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-renderer",
+        "revision_name": "",
+        "location": "us-central1",
+        "configuration_name": "",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-27T20:10:05.900810Z",
+    "severity": "NOTICE",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Factivity",
+    "receiveTimestamp": "2026-04-27T20:10:06.549535258Z"
+  },
+  {
+    "textPayload": "Starting new instance. Reason: DEPLOYMENT_ROLLOUT - Instance started due to traffic shifting between revisions due to deployment, traffic split adjustment, or deployment health check.",
+    "insertId": "69efc32000004fe3fcf40299",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:16.020451Z",
+    "severity": "INFO",
+    "labels": {
+      "scaling_reason": "DEPLOYMENT_ROLLOUT",
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-04-27T20:12:16.028704745Z"
+  },
+  {
+    "textPayload": "[2026-04-27 20:12:16 +0000] [1] [INFO] Starting gunicorn 22.0.0",
+    "insertId": "69efc320000cc0d3722088c5",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:16.835795Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-27T20:12:16.840664454Z"
+  },
+  {
+    "textPayload": "[2026-04-27 20:12:16 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)",
+    "insertId": "69efc320000cc0eb09c28eb7",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:16.835819Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-27T20:12:16.840664454Z"
+  },
+  {
+    "textPayload": "[2026-04-27 20:12:16 +0000] [1] [INFO] Using worker: gthread",
+    "insertId": "69efc320000cc0f037029f1c",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:16.835824Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-27T20:12:16.840664454Z"
+  },
+  {
+    "textPayload": "Default STARTUP TCP probe succeeded after 1 attempt for container \"viraltrim-renderer-1\" on port 8080.",
+    "insertId": "69efc320000cc238f832aa16",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:16.836152Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-04-27T20:12:17.024562006Z"
+  },
+  {
+    "textPayload": "[2026-04-27 20:12:16 +0000] [9] [INFO] Booting worker with pid: 9",
+    "insertId": "69efc320000ccfda4410d209",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:16.839642Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-27T20:12:17.177963635Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Revision viraltrim-renderer-00019-jsr with message: Deploying revision succeeded in 2m10.62s."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/revisions/viraltrim-renderer-00019-jsr",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-renderer-00019-jsr",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/revisions/viraltrim-renderer-00019-jsr",
+          "uid": "ed9ab229-18db-41dd-b9c3-42a79058d222",
+          "resourceVersion": "AAZQdrsszLg",
+          "generation": 1,
+          "creationTimestamp": "2026-04-27T20:10:06.284952Z",
+          "labels": {
+            "client.knative.dev/nonce": "ijcckznquf",
+            "serving.knative.dev/configuration": "viraltrim-renderer",
+            "serving.knative.dev/configurationGeneration": "19",
+            "serving.knative.dev/service": "viraltrim-renderer",
+            "serving.knative.dev/serviceUid": "9e1db8b4-c03b-4a9a-b5fc-581c23deed1d",
+            "serving.knative.dev/route": "viraltrim-renderer",
+            "cloud.googleapis.com/location": "us-central1",
+            "run.googleapis.com/startupProbeType": "Default"
+          },
+          "annotations": {
+            "autoscaling.knative.dev/maxScale": "5",
+            "autoscaling.knative.dev/minScale": "1",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/execution-environment": "gen2",
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "run.googleapis.com/build-source-location": "{\"viraltrim-renderer-1\":\"gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-renderer/1776508538.1678-b0a3dff8b6584a19a3ee33ca2253ec73.zip#1776508537489684\"}",
+            "run.googleapis.com/operation-id": "396bca40-0693-4a7c-aece-eb264564b891",
+            "run.googleapis.com/startup-cpu-boost": "true"
+          },
+          "ownerReferences": [
+            {
+              "kind": "Configuration",
+              "name": "viraltrim-renderer",
+              "uid": "c4e8b6da-b72a-416f-98a7-af1ca2457a1f",
+              "apiVersion": "serving.knative.dev/v1",
+              "controller": true,
+              "blockOwnerDeletion": true
+            }
+          ]
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Revision",
+        "spec": {
+          "containerConcurrency": 1,
+          "timeoutSeconds": 600,
+          "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+          "containers": [
+            {
+              "name": "viraltrim-renderer-1",
+              "image": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer@sha256:890cb45acfb9807084856da6cd7cca4e9dbbfb740e51173e834c64302a9669ec",
+              "ports": [
+                {
+                  "name": "http1",
+                  "containerPort": 8080
+                }
+              ],
+              "env": [
+                {
+                  "name": "INTERNAL_SECRET",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_INTERNAL_SECRET"
+                    }
+                  }
+                },
+                {
+                  "name": "WEBSHARE_PROXY_URL",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_WEBSHARE_PROXY"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_ACCOUNT_ID",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_ACCOUNT_ID"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_ACCESS_KEY",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_ACCESS_KEY"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_SECRET_KEY",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_SECRET_KEY"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_BUCKET",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_BUCKET"
+                    }
+                  }
+                },
+                {
+                  "name": "FORCE_REDEPLOY",
+                  "value": "1"
+                }
+              ],
+              "resources": {
+                "limits": {
+                  "cpu": "2000m",
+                  "memory": "2Gi"
+                }
+              },
+              "startupProbe": {
+                "timeoutSeconds": 240,
+                "periodSeconds": 240,
+                "failureThreshold": 1,
+                "tcpSocket": {
+                  "port": 8080
+                }
+              }
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 1,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "message": "Deploying revision succeeded in 2m10.62s.",
+              "lastTransitionTime": "2026-04-27T20:12:16.902328Z"
+            },
+            {
+              "type": "ContainerHealthy",
+              "status": "True",
+              "message": "Containers became healthy.",
+              "lastTransitionTime": "2026-04-27T20:12:16.846337Z"
+            },
+            {
+              "type": "ContainerReady",
+              "status": "True",
+              "message": "Container image import completed.",
+              "lastTransitionTime": "2026-04-27T20:10:07.182657Z"
+            },
+            {
+              "type": "ResourcesAvailable",
+              "status": "True",
+              "message": "Provisioning imported containers completed in 2m8.73s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+              "lastTransitionTime": "2026-04-27T20:12:15.909875Z"
+            }
+          ],
+          "logUrl": "https://console.cloud.google.com/logs/viewer?project=viraltrim-renderer&resource=cloud_run_revision/service_name/viraltrim-renderer/revision_name/viraltrim-renderer-00019-jsr&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22viraltrim-renderer%22%0Aresource.labels.revision_name%3D%22viraltrim-renderer-00019-jsr%22",
+          "imageDigest": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer@sha256:890cb45acfb9807084856da6cd7cca4e9dbbfb740e51173e834c64302a9669ec",
+          "containerStatuses": [
+            {
+              "name": "viraltrim-renderer-1",
+              "imageDigest": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer@sha256:890cb45acfb9807084856da6cd7cca4e9dbbfb740e51173e834c64302a9669ec"
+            }
+          ],
+          "desiredReplicas": 1
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Revision"
+      }
+    },
+    "insertId": "l4ny7jdysjo",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:16.916812Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-27T20:12:17.577645209Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Revision viraltrim-renderer-00019-jsr with message: Updating revision scaling succeeded in 2m10.86s."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/revisions/viraltrim-renderer-00019-jsr",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-renderer-00019-jsr",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/revisions/viraltrim-renderer-00019-jsr",
+          "uid": "ed9ab229-18db-41dd-b9c3-42a79058d222",
+          "resourceVersion": "AAZQdrtCDK0",
+          "generation": 1,
+          "creationTimestamp": "2026-04-27T20:10:06.284952Z",
+          "labels": {
+            "client.knative.dev/nonce": "ijcckznquf",
+            "serving.knative.dev/configuration": "viraltrim-renderer",
+            "serving.knative.dev/configurationGeneration": "19",
+            "serving.knative.dev/service": "viraltrim-renderer",
+            "serving.knative.dev/serviceUid": "9e1db8b4-c03b-4a9a-b5fc-581c23deed1d",
+            "serving.knative.dev/route": "viraltrim-renderer",
+            "cloud.googleapis.com/location": "us-central1",
+            "run.googleapis.com/startupProbeType": "Default"
+          },
+          "annotations": {
+            "autoscaling.knative.dev/maxScale": "5",
+            "autoscaling.knative.dev/minScale": "1",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/execution-environment": "gen2",
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "run.googleapis.com/build-source-location": "{\"viraltrim-renderer-1\":\"gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-renderer/1776508538.1678-b0a3dff8b6584a19a3ee33ca2253ec73.zip#1776508537489684\"}",
+            "run.googleapis.com/operation-id": "396bca40-0693-4a7c-aece-eb264564b891",
+            "run.googleapis.com/startup-cpu-boost": "true"
+          },
+          "ownerReferences": [
+            {
+              "kind": "Configuration",
+              "name": "viraltrim-renderer",
+              "uid": "c4e8b6da-b72a-416f-98a7-af1ca2457a1f",
+              "apiVersion": "serving.knative.dev/v1",
+              "controller": true,
+              "blockOwnerDeletion": true
+            }
+          ]
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Revision",
+        "spec": {
+          "containerConcurrency": 1,
+          "timeoutSeconds": 600,
+          "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+          "containers": [
+            {
+              "name": "viraltrim-renderer-1",
+              "image": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer@sha256:890cb45acfb9807084856da6cd7cca4e9dbbfb740e51173e834c64302a9669ec",
+              "ports": [
+                {
+                  "name": "http1",
+                  "containerPort": 8080
+                }
+              ],
+              "env": [
+                {
+                  "name": "INTERNAL_SECRET",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_INTERNAL_SECRET"
+                    }
+                  }
+                },
+                {
+                  "name": "WEBSHARE_PROXY_URL",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_WEBSHARE_PROXY"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_ACCOUNT_ID",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_ACCOUNT_ID"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_ACCESS_KEY",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_ACCESS_KEY"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_SECRET_KEY",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_SECRET_KEY"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_BUCKET",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_BUCKET"
+                    }
+                  }
+                },
+                {
+                  "name": "FORCE_REDEPLOY",
+                  "value": "1"
+                }
+              ],
+              "resources": {
+                "limits": {
+                  "cpu": "2000m",
+                  "memory": "2Gi"
+                }
+              },
+              "startupProbe": {
+                "timeoutSeconds": 240,
+                "periodSeconds": 240,
+                "failureThreshold": 1,
+                "tcpSocket": {
+                  "port": 8080
+                }
+              }
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 1,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "message": "Updating revision scaling succeeded in 2m10.86s.",
+              "lastTransitionTime": "2026-04-27T20:12:18.294957Z"
+            },
+            {
+              "type": "Active",
+              "status": "True",
+              "lastTransitionTime": "2026-04-27T20:12:16.971522Z",
+              "severity": "Info"
+            },
+            {
+              "type": "ContainerHealthy",
+              "status": "True",
+              "message": "Containers became healthy.",
+              "lastTransitionTime": "2026-04-27T20:12:16.846337Z"
+            },
+            {
+              "type": "ContainerReady",
+              "status": "True",
+              "message": "Container image import completed.",
+              "lastTransitionTime": "2026-04-27T20:10:07.182657Z"
+            },
+            {
+              "type": "MinInstancesProvisioned",
+              "status": "True",
+              "message": "Min instances provisioned successfully  in 2m10.81s.",
+              "lastTransitionTime": "2026-04-27T20:12:18.251054Z"
+            },
+            {
+              "type": "ResourcesAvailable",
+              "status": "True",
+              "message": "Provisioning imported containers completed in 2m8.73s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+              "lastTransitionTime": "2026-04-27T20:12:15.909875Z"
+            }
+          ],
+          "logUrl": "https://console.cloud.google.com/logs/viewer?project=viraltrim-renderer&resource=cloud_run_revision/service_name/viraltrim-renderer/revision_name/viraltrim-renderer-00019-jsr&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22viraltrim-renderer%22%0Aresource.labels.revision_name%3D%22viraltrim-renderer-00019-jsr%22",
+          "imageDigest": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer@sha256:890cb45acfb9807084856da6cd7cca4e9dbbfb740e51173e834c64302a9669ec",
+          "containerStatuses": [
+            {
+              "name": "viraltrim-renderer-1",
+              "imageDigest": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer@sha256:890cb45acfb9807084856da6cd7cca4e9dbbfb740e51173e834c64302a9669ec"
+            }
+          ],
+          "desiredReplicas": 1
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Revision"
+      }
+    },
+    "insertId": "-8uds6se2y59e",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:18.304513Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-27T20:12:19.152625710Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Service viraltrim-renderer."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-renderer",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/services/viraltrim-renderer",
+          "uid": "9e1db8b4-c03b-4a9a-b5fc-581c23deed1d",
+          "resourceVersion": "AAZQdrv7//I",
+          "generation": 19,
+          "creationTimestamp": "2026-04-14T11:07:56.595866Z",
+          "labels": {
+            "cloud.googleapis.com/location": "us-central1"
+          },
+          "annotations": {
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "serving.knative.dev/lastModifier": "idoumahart@gmail.com",
+            "run.googleapis.com/build-enable-automatic-updates": "false",
+            "run.googleapis.com/build-id": "5624abc4-7f90-407a-9241-286a406dfab9",
+            "run.googleapis.com/build-image-uri": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer",
+            "run.googleapis.com/build-name": "projects/734039841201/locations/us-central1/builds/5624abc4-7f90-407a-9241-286a406dfab9",
+            "run.googleapis.com/build-source-location": "gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-renderer/1776508538.1678-b0a3dff8b6584a19a3ee33ca2253ec73.zip#1776508537489684",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/operation-id": "396bca40-0693-4a7c-aece-eb264564b891",
+            "run.googleapis.com/ingress": "all",
+            "run.googleapis.com/ingress-status": "all",
+            "run.googleapis.com/maxScale": "3",
+            "run.googleapis.com/urls": "[\"https://viraltrim-renderer-734039841201.us-central1.run.app\",\"https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app\"]"
+          }
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Service",
+        "spec": {
+          "template": {
+            "metadata": {
+              "labels": {
+                "client.knative.dev/nonce": "ijcckznquf",
+                "run.googleapis.com/startupProbeType": "Default"
+              },
+              "annotations": {
+                "autoscaling.knative.dev/maxScale": "5",
+                "autoscaling.knative.dev/minScale": "1",
+                "run.googleapis.com/client-name": "gcloud",
+                "run.googleapis.com/client-version": "564.0.0",
+                "run.googleapis.com/execution-environment": "gen2",
+                "run.googleapis.com/startup-cpu-boost": "true"
+              }
+            },
+            "spec": {
+              "containerConcurrency": 1,
+              "timeoutSeconds": 600,
+              "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+              "containers": [
+                {
+                  "name": "viraltrim-renderer-1",
+                  "image": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer@sha256:890cb45acfb9807084856da6cd7cca4e9dbbfb740e51173e834c64302a9669ec",
+                  "ports": [
+                    {
+                      "name": "http1",
+                      "containerPort": 8080
+                    }
+                  ],
+                  "env": [
+                    {
+                      "name": "INTERNAL_SECRET",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_INTERNAL_SECRET"
+                        }
+                      }
+                    },
+                    {
+                      "name": "WEBSHARE_PROXY_URL",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_WEBSHARE_PROXY"
+                        }
+                      }
+                    },
+                    {
+                      "name": "R2_ACCOUNT_ID",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_R2_ACCOUNT_ID"
+                        }
+                      }
+                    },
+                    {
+                      "name": "R2_ACCESS_KEY",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_R2_ACCESS_KEY"
+                        }
+                      }
+                    },
+                    {
+                      "name": "R2_SECRET_KEY",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_R2_SECRET_KEY"
+                        }
+                      }
+                    },
+                    {
+                      "name": "R2_BUCKET",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_R2_BUCKET"
+                        }
+                      }
+                    },
+                    {
+                      "name": "FORCE_REDEPLOY",
+                      "value": "1"
+                    }
+                  ],
+                  "resources": {
+                    "limits": {
+                      "cpu": "2000m",
+                      "memory": "2Gi"
+                    }
+                  },
+                  "startupProbe": {
+                    "timeoutSeconds": 240,
+                    "periodSeconds": 240,
+                    "failureThreshold": 1,
+                    "tcpSocket": {
+                      "port": 8080
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "traffic": [
+            {
+              "percent": 100,
+              "latestRevision": true
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 19,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "lastTransitionTime": "2026-04-27T20:12:30.481394Z"
+            },
+            {
+              "type": "ConfigurationsReady",
+              "status": "True",
+              "lastTransitionTime": "2026-04-27T20:10:07.383383Z"
+            },
+            {
+              "type": "RoutesReady",
+              "status": "True",
+              "lastTransitionTime": "2026-04-27T20:12:30.427304Z"
+            }
+          ],
+          "latestReadyRevisionName": "viraltrim-renderer-00019-jsr",
+          "latestCreatedRevisionName": "viraltrim-renderer-00019-jsr",
+          "traffic": [
+            {
+              "revisionName": "viraltrim-renderer-00019-jsr",
+              "percent": 100,
+              "latestRevision": true
+            }
+          ],
+          "url": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app",
+          "address": {
+            "url": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app"
+          }
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Service"
+      }
+    },
+    "insertId": "-7zfbaye2hnia",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:30.499255Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-27T20:12:31.478959668Z"
+  },
+  {
+    "insertId": "69f0179d000ef7f077761837",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app/transcript",
+      "requestSize": "583",
+      "status": 500,
+      "responseSize": "520",
+      "remoteIp": "172.70.80.163",
+      "serverIp": "34.143.76.2",
+      "latency": "4.066575565s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:41.905235Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/bb3dff291188a366f6bb925675b2c1b1",
+    "receiveTimestamp": "2026-04-28T02:12:45.987067079Z",
+    "spanId": "87bce4cafe43e828",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing",
+    "insertId": "69f0179d000eb68008a07867",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:45.964224Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T02:12:45.971688084Z"
+  },
+  {
+    "textPayload": "ERROR: [youtube] KsrALI7Pxc8: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0179d000ee7fa68788326",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:45.976890Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T02:12:46.305234609Z"
+  },
+  {
+    "insertId": "69f017a40002ce08405c5e15",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app/transcript",
+      "requestSize": "585",
+      "status": 500,
+      "responseSize": "520",
+      "remoteIp": "172.70.80.163",
+      "serverIp": "34.143.75.2",
+      "latency": "3.138103196s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:49.043541Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/57653c34edc7bc02b513d4f6d8457f3e",
+    "receiveTimestamp": "2026-04-28T02:12:52.316211273Z",
+    "spanId": "ca2b81c9631e774b"
+  },
+  {
+    "textPayload": "WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing",
+    "insertId": "69f017a40002b0303c662521",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:52.176176Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T02:12:52.298451513Z"
+  },
+  {
+    "textPayload": "ERROR: [youtube] KsrALI7Pxc8: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f017a40002bac58d64813f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:52.178885Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T02:12:52.298451513Z"
+  },
+  {
+    "insertId": "69f0d71a000005b159c2100e",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app/transcript",
+      "requestSize": "584",
+      "status": 500,
+      "responseSize": "520",
+      "remoteIp": "162.158.159.97",
+      "serverIp": "34.143.78.2",
+      "latency": "2.146975278s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:43.847558Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/aaf2e79498c99b813d874da288a8ff57",
+    "receiveTimestamp": "2026-04-28T15:49:46.012614736Z",
+    "spanId": "15335d6327485620",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing",
+    "insertId": "69f0d719000f2640d65816b5",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:45.992832Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T15:49:45.999202693Z"
+  },
+  {
+    "textPayload": "ERROR: [youtube] CJrpWOLZFFY: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0d719000f30fc7adb58a5",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:45.995580Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T15:49:46.334009666Z"
+  },
+  {
+    "insertId": "69f0d71f0008fa53ae6a7343",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app/transcript",
+      "requestSize": "584",
+      "status": 500,
+      "responseSize": "355",
+      "remoteIp": "162.158.159.97",
+      "serverIp": "34.143.78.2",
+      "latency": "2.543513783s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:49.042838Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/d85dec78a1bfdf513d874da288a8fe23",
+    "receiveTimestamp": "2026-04-28T15:49:51.672543584Z",
+    "spanId": "8f617a8d95ca1d06"
+  },
+  {
+    "textPayload": "ERROR: [youtube] CJrpWOLZFFY: The uploader has not made this video available in your country",
+    "insertId": "69f0d71f0008ea21ccf7bd61",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:51.584225Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T15:49:51.662133287Z"
+  },
+  {
+    "textPayload": "This video is available in Canada, United States.",
+    "insertId": "69f0d71f0008ea32d4626295",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:51.584242Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T15:49:51.662133287Z"
+  },
+  {
+    "textPayload": "You might want to use a VPN or a proxy server (with --proxy) to workaround.",
+    "insertId": "69f0d71f0008ea3822802439",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:51.584248Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T15:49:51.662133287Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {},
+      "authenticationInfo": {
+        "principalEmail": "idoumahart@gmail.com",
+        "principalSubject": "user:idoumahart@gmail.com",
+        "oauthInfo": {
+          "oauthClientId": "32555940559.apps.googleusercontent.com"
+        }
+      },
+      "requestMetadata": {
+        "callerIp": "198.58.147.184",
+        "callerSuppliedUserAgent": "google-cloud-sdk gcloud/564.0.0 command/gcloud.run.deploy invocation-id/7edf8af2bcd34dfd9ad01e0a7123b882 environment/None environment-version/None client-os/WINDOWS client-os-ver/10.0.26200 client-pltf-arch/x86_64 interactive/True from-script/False python/3.13.12 term/  (Windows NT 10.0.26200),gzip(gfe)",
+        "requestAttributes": {
+          "time": "2026-04-28T17:16:32.277261Z",
+          "auth": {}
+        },
+        "destinationAttributes": {}
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "google.cloud.run.v1.Services.ReplaceService",
+      "authorizationInfo": [
+        {
+          "resource": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+          "permission": "run.services.update",
+          "granted": true,
+          "resourceAttributes": {},
+          "permissionType": "ADMIN_WRITE"
+        },
+        {
+          "resource": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+          "permission": "run.services.update",
+          "granted": true,
+          "resourceAttributes": {
+            "service": "run.googleapis.com/",
+            "name": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+            "type": "run.googleapis.com/Service"
+          },
+          "permissionType": "ADMIN_WRITE"
+        }
+      ],
+      "resourceName": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+      "request": {
+        "name": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+        "@type": "type.googleapis.com/google.cloud.run.v1.ReplaceServiceRequest",
+        "service": {
+          "kind": "Service",
+          "apiVersion": "serving.knative.dev/v1",
+          "metadata": {
+            "uid": "9e1db8b4-c03b-4a9a-b5fc-581c23deed1d",
+            "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/services/viraltrim-renderer",
+            "name": "viraltrim-renderer",
+            "generation": 19,
+            "namespace": "734039841201",
+            "resourceVersion": "AAZQdrv7//I",
+            "labels": {
+              "cloud.googleapis.com/location": "us-central1"
+            },
+            "annotations": {
+              "run.googleapis.com/client-version": "564.0.0",
+              "run.googleapis.com/client-name": "gcloud",
+              "run.googleapis.com/maxScale": "3",
+              "run.googleapis.com/build-id": "5624abc4-7f90-407a-9241-286a406dfab9",
+              "serving.knative.dev/lastModifier": "idoumahart@gmail.com",
+              "run.googleapis.com/ingress": "all",
+              "serving.knative.dev/creator": "idoumahart@gmail.com",
+              "run.googleapis.com/build-name": "projects/734039841201/locations/us-central1/builds/5624abc4-7f90-407a-9241-286a406dfab9",
+              "run.googleapis.com/build-source-location": "gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-renderer/1776508538.1678-b0a3dff8b6584a19a3ee33ca2253ec73.zip#1776508537489684",
+              "run.googleapis.com/operation-id": "396bca40-0693-4a7c-aece-eb264564b891",
+              "run.googleapis.com/ingress-status": "all",
+              "run.googleapis.com/build-image-uri": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer",
+              "run.googleapis.com/build-enable-automatic-updates": "false",
+              "run.googleapis.com/urls": "[\"https://viraltrim-renderer-734039841201.us-central1.run.app\",\"https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app\"]"
+            },
+            "creationTimestamp": "2026-04-14T11:07:56.595866Z"
+          },
+          "status": {
+            "url": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app",
+            "latestReadyRevisionName": "viraltrim-renderer-00019-jsr",
+            "traffic": [
+              {
+                "revisionName": "viraltrim-renderer-00019-jsr",
+                "latestRevision": true,
+                "percent": 100
+              }
+            ],
+            "latestCreatedRevisionName": "viraltrim-renderer-00019-jsr",
+            "observedGeneration": 19,
+            "conditions": [
+              {
+                "type": "Ready",
+                "lastTransitionTime": "2026-04-27T20:12:30.481394Z",
+                "status": "True"
+              },
+              {
+                "type": "ConfigurationsReady",
+                "lastTransitionTime": "2026-04-27T20:10:07.383383Z",
+                "status": "True"
+              },
+              {
+                "type": "RoutesReady",
+                "lastTransitionTime": "2026-04-27T20:12:30.427304Z",
+                "status": "True"
+              }
+            ]
+          },
+          "spec": {
+            "template": {
+              "metadata": {
+                "annotations": {
+                  "run.googleapis.com/execution-environment": "gen2",
+                  "run.googleapis.com/client-version": "564.0.0",
+                  "autoscaling.knative.dev/maxScale": "5",
+                  "autoscaling.knative.dev/minScale": "1",
+                  "run.googleapis.com/client-name": "gcloud",
+                  "run.googleapis.com/startup-cpu-boost": "true"
+                },
+                "labels": {
+                  "client.knative.dev/nonce": "rilkbivead",
+                  "run.googleapis.com/startupProbeType": "Default"
+                }
+              },
+              "spec": {
+                "timeoutSeconds": 600,
+                "containerConcurrency": 1,
+                "containers": [
+                  {
+                    "name": "viraltrim-renderer-1",
+                    "resources": {
+                      "limits": {
+                        "memory": "2Gi",
+                        "cpu": "2000m"
+                      }
+                    },
+                    "image": "gcr.io/viraltrim-renderer/viraltrim-renderer"
+                  }
+                ],
+                "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com"
+              }
+            },
+            "traffic": [
+              {
+                "latestRevision": true,
+                "percent": 100
+              }
+            ]
+          }
+        }
+      },
+      "resourceLocation": {
+        "currentLocations": [
+          "us-central1"
+        ]
+      }
+    },
+    "insertId": "1eixv3ve3f61o",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "",
+        "revision_name": "",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:16:32.072640Z",
+    "severity": "NOTICE",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Factivity",
+    "receiveTimestamp": "2026-04-28T17:16:33.107789696Z"
+  },
+  {
+    "textPayload": "Starting new instance. Reason: MANUAL_OR_CUSTOMER_MIN_INSTANCE - Instance started because of customer-configured min-instances or manual scaling.",
+    "insertId": "69f0eb86000103a98b0583d1",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:16:54.066473Z",
+    "severity": "INFO",
+    "labels": {
+      "scaling_reason": "MANUAL_OR_CUSTOMER_MIN_INSTANCE",
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-04-28T17:16:54.079127501Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:16:54 +0000] [1] [INFO] Starting gunicorn 22.0.0",
+    "insertId": "69f0eb860008dc16d1b345a4",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:16:54.580630Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:16:54.586324192Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:16:54 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)",
+    "insertId": "69f0eb860008dc238476bcb0",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh"
+      }
+    },
+    "timestamp": "2026-04-28T17:16:54.580643Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:16:54.586324192Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:16:54 +0000] [1] [INFO] Using worker: gthread",
+    "insertId": "69f0eb860008dc26309055e3",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh"
+      }
+    },
+    "timestamp": "2026-04-28T17:16:54.580646Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:16:54.586324192Z"
+  },
+  {
+    "textPayload": "Default STARTUP TCP probe succeeded after 1 attempt for container \"viraltrim-renderer-1\" on port 8080.",
+    "insertId": "69f0eb860008dd69fbd977dc",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh"
+      }
+    },
+    "timestamp": "2026-04-28T17:16:54.580969Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-04-28T17:16:54.740302651Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:16:54 +0000] [9] [INFO] Booting worker with pid: 9",
+    "insertId": "69f0eb860008f4099b7e52de",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:16:54.586761Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:16:54.924925833Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Revision viraltrim-renderer-00020-5mh with message: Deploying revision succeeded in 23.7s."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/revisions/viraltrim-renderer-00020-5mh",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-renderer-00020-5mh",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/revisions/viraltrim-renderer-00020-5mh",
+          "uid": "0ff3b1d3-be69-494b-a9f0-210a0c5355fd",
+          "resourceVersion": "AAZQiGXs1Gk",
+          "generation": 1,
+          "creationTimestamp": "2026-04-28T17:16:32.355229Z",
+          "labels": {
+            "client.knative.dev/nonce": "rilkbivead",
+            "serving.knative.dev/configuration": "viraltrim-renderer",
+            "serving.knative.dev/configurationGeneration": "20",
+            "serving.knative.dev/service": "viraltrim-renderer",
+            "serving.knative.dev/serviceUid": "9e1db8b4-c03b-4a9a-b5fc-581c23deed1d",
+            "serving.knative.dev/route": "viraltrim-renderer",
+            "cloud.googleapis.com/location": "us-central1",
+            "run.googleapis.com/startupProbeType": "Default"
+          },
+          "annotations": {
+            "autoscaling.knative.dev/maxScale": "5",
+            "autoscaling.knative.dev/minScale": "1",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/execution-environment": "gen2",
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "run.googleapis.com/operation-id": "dfd69983-40db-4671-b010-bf954aeb51be",
+            "run.googleapis.com/startup-cpu-boost": "true"
+          },
+          "ownerReferences": [
+            {
+              "kind": "Configuration",
+              "name": "viraltrim-renderer",
+              "uid": "c4e8b6da-b72a-416f-98a7-af1ca2457a1f",
+              "apiVersion": "serving.knative.dev/v1",
+              "controller": true,
+              "blockOwnerDeletion": true
+            }
+          ]
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Revision",
+        "spec": {
+          "containerConcurrency": 1,
+          "timeoutSeconds": 600,
+          "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+          "containers": [
+            {
+              "name": "viraltrim-renderer-1",
+              "image": "gcr.io/viraltrim-renderer/viraltrim-renderer@sha256:80995e64e206a5c3e7cb4139f78e5c08c294e7564875f26843dbcdcdc9f353ba",
+              "ports": [
+                {
+                  "name": "http1",
+                  "containerPort": 8080
+                }
+              ],
+              "env": [
+                {
+                  "name": "INTERNAL_SECRET",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_INTERNAL_SECRET"
+                    }
+                  }
+                },
+                {
+                  "name": "WEBSHARE_PROXY_URL",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_WEBSHARE_PROXY"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_ACCOUNT_ID",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_ACCOUNT_ID"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_ACCESS_KEY",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_ACCESS_KEY"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_SECRET_KEY",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_SECRET_KEY"
+                    }
+                  }
+                },
+                {
+                  "name": "R2_BUCKET",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_R2_BUCKET"
+                    }
+                  }
+                },
+                {
+                  "name": "FORCE_REDEPLOY",
+                  "value": "1"
+                }
+              ],
+              "resources": {
+                "limits": {
+                  "cpu": "2000m",
+                  "memory": "2Gi"
+                }
+              },
+              "startupProbe": {
+                "timeoutSeconds": 240,
+                "periodSeconds": 240,
+                "failureThreshold": 1,
+                "tcpSocket": {
+                  "port": 8080
+                }
+              }
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 1,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "message": "Deploying revision succeeded in 23.7s.",
+              "lastTransitionTime": "2026-04-28T17:16:56.057961Z"
+            },
+            {
+              "type": "ContainerHealthy",
+              "status": "True",
+              "message": "Containers became healthy.",
+              "lastTransitionTime": "2026-04-28T17:16:54.777720Z"
+            },
+            {
+              "type": "ContainerReady",
+              "status": "True",
+              "message": "Container image import completed in 14.23s.",
+              "lastTransitionTime": "2026-04-28T17:16:47.470699Z"
+            },
+            {
+              "type": "MinInstancesProvisioned",
+              "status": "True",
+              "message": "Min instances provisioned successfully  in 8.32s.",
+              "lastTransitionTime": "2026-04-28T17:16:55.994546Z"
+            },
+            {
+              "type": "ResourcesAvailable",
+              "status": "True",
+              "message": "Provisioning imported containers completed in 7.2s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+              "lastTransitionTime": "2026-04-28T17:16:54.672567Z"
+            }
+          ],
+          "logUrl": "https://console.cloud.google.com/logs/viewer?project=viraltrim-renderer&resource=cloud_run_revision/service_name/viraltrim-renderer/revision_name/viraltrim-renderer-00020-5mh&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22viraltrim-renderer%22%0Aresource.labels.revision_name%3D%22viraltrim-renderer-00020-5mh%22",
+          "imageDigest": "gcr.io/viraltrim-renderer/viraltrim-renderer@sha256:80995e64e206a5c3e7cb4139f78e5c08c294e7564875f26843dbcdcdc9f353ba",
+          "containerStatuses": [
+            {
+              "name": "viraltrim-renderer-1",
+              "imageDigest": "gcr.io/viraltrim-renderer/viraltrim-renderer@sha256:80995e64e206a5c3e7cb4139f78e5c08c294e7564875f26843dbcdcdc9f353ba"
+            }
+          ],
+          "desiredReplicas": 1
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Revision"
+      }
+    },
+    "insertId": "tz9caue1cnh6",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh"
+      }
+    },
+    "timestamp": "2026-04-28T17:16:56.074722Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-28T17:16:57.119869307Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Service viraltrim-renderer."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/services/viraltrim-renderer",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-renderer",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/services/viraltrim-renderer",
+          "uid": "9e1db8b4-c03b-4a9a-b5fc-581c23deed1d",
+          "resourceVersion": "AAZQiGYJR3k",
+          "generation": 20,
+          "creationTimestamp": "2026-04-14T11:07:56.595866Z",
+          "labels": {
+            "cloud.googleapis.com/location": "us-central1"
+          },
+          "annotations": {
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "serving.knative.dev/lastModifier": "idoumahart@gmail.com",
+            "run.googleapis.com/build-enable-automatic-updates": "false",
+            "run.googleapis.com/build-id": "5624abc4-7f90-407a-9241-286a406dfab9",
+            "run.googleapis.com/build-image-uri": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-renderer",
+            "run.googleapis.com/build-name": "projects/734039841201/locations/us-central1/builds/5624abc4-7f90-407a-9241-286a406dfab9",
+            "run.googleapis.com/build-source-location": "gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-renderer/1776508538.1678-b0a3dff8b6584a19a3ee33ca2253ec73.zip#1776508537489684",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/operation-id": "dfd69983-40db-4671-b010-bf954aeb51be",
+            "run.googleapis.com/ingress": "all",
+            "run.googleapis.com/ingress-status": "all",
+            "run.googleapis.com/maxScale": "3",
+            "run.googleapis.com/urls": "[\"https://viraltrim-renderer-734039841201.us-central1.run.app\",\"https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app\"]"
+          }
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Service",
+        "spec": {
+          "template": {
+            "metadata": {
+              "labels": {
+                "client.knative.dev/nonce": "rilkbivead",
+                "run.googleapis.com/startupProbeType": "Default"
+              },
+              "annotations": {
+                "autoscaling.knative.dev/maxScale": "5",
+                "autoscaling.knative.dev/minScale": "1",
+                "run.googleapis.com/client-name": "gcloud",
+                "run.googleapis.com/client-version": "564.0.0",
+                "run.googleapis.com/execution-environment": "gen2",
+                "run.googleapis.com/startup-cpu-boost": "true"
+              }
+            },
+            "spec": {
+              "containerConcurrency": 1,
+              "timeoutSeconds": 600,
+              "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+              "containers": [
+                {
+                  "name": "viraltrim-renderer-1",
+                  "image": "gcr.io/viraltrim-renderer/viraltrim-renderer",
+                  "ports": [
+                    {
+                      "name": "http1",
+                      "containerPort": 8080
+                    }
+                  ],
+                  "env": [
+                    {
+                      "name": "INTERNAL_SECRET",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_INTERNAL_SECRET"
+                        }
+                      }
+                    },
+                    {
+                      "name": "WEBSHARE_PROXY_URL",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_WEBSHARE_PROXY"
+                        }
+                      }
+                    },
+                    {
+                      "name": "R2_ACCOUNT_ID",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_R2_ACCOUNT_ID"
+                        }
+                      }
+                    },
+                    {
+                      "name": "R2_ACCESS_KEY",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_R2_ACCESS_KEY"
+                        }
+                      }
+                    },
+                    {
+                      "name": "R2_SECRET_KEY",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_R2_SECRET_KEY"
+                        }
+                      }
+                    },
+                    {
+                      "name": "R2_BUCKET",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_R2_BUCKET"
+                        }
+                      }
+                    },
+                    {
+                      "name": "FORCE_REDEPLOY",
+                      "value": "1"
+                    }
+                  ],
+                  "resources": {
+                    "limits": {
+                      "cpu": "2000m",
+                      "memory": "2Gi"
+                    }
+                  },
+                  "startupProbe": {
+                    "timeoutSeconds": 240,
+                    "periodSeconds": 240,
+                    "failureThreshold": 1,
+                    "tcpSocket": {
+                      "port": 8080
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "traffic": [
+            {
+              "percent": 100,
+              "latestRevision": true
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 20,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "lastTransitionTime": "2026-04-28T17:16:57.922425Z"
+            },
+            {
+              "type": "ConfigurationsReady",
+              "status": "True",
+              "lastTransitionTime": "2026-04-28T17:16:47.635049Z"
+            },
+            {
+              "type": "RoutesReady",
+              "status": "True",
+              "lastTransitionTime": "2026-04-28T17:16:57.883159Z"
+            }
+          ],
+          "latestReadyRevisionName": "viraltrim-renderer-00020-5mh",
+          "latestCreatedRevisionName": "viraltrim-renderer-00020-5mh",
+          "traffic": [
+            {
+              "revisionName": "viraltrim-renderer-00020-5mh",
+              "percent": 100,
+              "latestRevision": true
+            }
+          ],
+          "url": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app",
+          "address": {
+            "url": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app"
+          }
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Service"
+      }
+    },
+    "insertId": "-9nmps1diom8",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "",
+        "location": "us-central1",
+        "revision_name": "",
+        "service_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:16:57.937166Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-28T17:16:58.237821526Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:18:56 +0000] [1] [INFO] Handling signal: term",
+    "insertId": "69f0ec00000642fef3231548",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:18:56.410366Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:18:56.415932275Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:18:56 +0000] [9] [INFO] Worker exiting (pid: 9)",
+    "insertId": "69f0ec00000f16adecd3c0cd",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:18:56.988845Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:18:57.082992626Z"
+  },
+  {
+    "textPayload": "Transcript Error: ERROR: [youtube] KsrALI7Pxc8: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0ec00000f171c14053200",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:18:56.988956Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:18:56.996078176Z"
+  },
+  {
+    "textPayload": "Transcript Error: ERROR: [youtube] KsrALI7Pxc8: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0ec00000f172b610c320c",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:18:56.988971Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:18:56.996078176Z"
+  },
+  {
+    "textPayload": "Transcript Error: ERROR: [youtube] CJrpWOLZFFY: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0ec00000f17327b50018a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:18:56.988978Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:18:56.996078176Z"
+  },
+  {
+    "textPayload": "Transcript Error: ERROR: [youtube] CJrpWOLZFFY: The uploader has not made this video available in your country",
+    "insertId": "69f0ec00000f173766434803",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:18:56.988983Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:18:56.996078176Z"
+  },
+  {
+    "textPayload": "This video is available in Canada, United States.",
+    "insertId": "69f0ec00000f17399621d14a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:18:56.988985Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:18:56.996078176Z"
+  },
+  {
+    "textPayload": "You might want to use a VPN or a proxy server (with --proxy) to workaround.",
+    "insertId": "69f0ec00000f173d1b5603b1",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00019-jsr",
+        "service_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:18:56.988989Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:18:56.996078176Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:18:57 +0000] [1] [INFO] Shutting down: Master",
+    "insertId": "69f0ec0100034ad9b8850eb6",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00019-jsr"
+      }
+    },
+    "timestamp": "2026-04-28T17:18:57.215769Z",
+    "labels": {
+      "instanceId": "0007b734d91a7681469dd5aae6636cc64b03d43d65dc54e4ee3cc9d902cdeb5a1beff378f2b3e1f422f88f03424d9a6e22d05d0cfd40d1b8a7d80bdca9c71f631a7dd9772e047810ab25f445cdb393"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:18:57.413702907Z"
+  },
+  {
+    "insertId": "69f0ee07000332bd727e44c3",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app/transcript",
+      "requestSize": "585",
+      "status": 500,
+      "responseSize": "520",
+      "remoteIp": "172.70.80.162",
+      "serverIp": "34.143.74.2",
+      "latency": "3.680687642s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:31.521258Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/8217fd5620e16ddc93e7e2321201e1bc",
+    "receiveTimestamp": "2026-04-28T17:27:35.215571982Z",
+    "spanId": "4f8df3fd1051cc4a",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing",
+    "insertId": "69f0ee070002ef3cdd1b4156",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "service_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:35.192316Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:35.199426754Z"
+  },
+  {
+    "textPayload": "ERROR: [youtube] aiREm-2JrNM: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0ee0700031218f2f12f0c",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:35.201240Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:35.532764716Z"
+  },
+  {
+    "textPayload": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1698, in wrapper\n    return func(self, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1833, in __extract_info\n    ie_result = ie.extract(url)\n                ^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/extractor/common.py\", line 765, in extract\n    ie_result = self._real_extract(url)\n                ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/extractor/youtube/_video.py\", line 4061, in _real_extract\n    self.raise_no_formats(reason, expected=True)\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/extractor/common.py\", line 1277, in raise_no_formats\n    raise ExtractorError(msg, expected=expected, video_id=video_id)\nyt_dlp.utils.ExtractorError: [youtube] aiREm-2JrNM: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0ee0700032dda39981630",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:35.208346Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:35.532764716Z",
+    "errorGroups": [
+      {
+        "id": "CJWclvOB3piqswE"
+      }
+    ]
+  },
+  {
+    "textPayload": "During handling of the above exception, another exception occurred:",
+    "insertId": "69f0ee0700032de4c4a61501",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "service_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:35.208356Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:35.532764716Z"
+  },
+  {
+    "textPayload": "Traceback (most recent call last):\n  File \"/app/app.py\", line 91, in extract_transcript\n    info = ydl.extract_info(url, download=False)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1687, in extract_info\n    return self.__extract_info(url, self.get_info_extractor(key), download, extra_info, process)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1716, in wrapper\n    self.report_error(str(e), e.format_traceback())\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1154, in report_error\n    self.trouble(f'{self._format_err(\"ERROR:\", self.Styles.ERROR)} {message}', *args, **kwargs)\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1093, in trouble\n    raise DownloadError(message, exc_info)\nyt_dlp.utils.DownloadError: ERROR: [youtube] aiREm-2JrNM: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0ee0700032df78229fe66",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:35.208375Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:35.532764716Z",
+    "errorGroups": [
+      {
+        "id": "CM_j4Zz9sv3hkgE"
+      }
+    ]
+  },
+  {
+    "insertId": "69f0ee0d000a1232d94938bf",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-renderer-j4azuiqzuq-uc.a.run.app/transcript",
+      "requestSize": "584",
+      "status": 500,
+      "responseSize": "520",
+      "remoteIp": "172.70.80.163",
+      "serverIp": "34.143.78.2",
+      "latency": "3.374226605s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:38.283371Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/5a1527a61c238f58f2a710b2976a907a",
+    "receiveTimestamp": "2026-04-28T17:27:41.876137021Z",
+    "spanId": "353d1a4a693aab3a"
+  },
+  {
+    "textPayload": "WARNING: [youtube] Unable to download webpage: HTTP Error 429: Too Many Requests (caused by <HTTPError 429: Too Many Requests>)",
+    "insertId": "69f0ee0c000373183ee0106f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:40.226072Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:40.528677822Z"
+  },
+  {
+    "textPayload": "WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing",
+    "insertId": "69f0ee0d0009fce85c0b0681",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:41.654568Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:41.857603529Z"
+  },
+  {
+    "textPayload": "ERROR: [youtube] aiREm-2JrNM: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0ee0d000a03254fe0dffb",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "service_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:41.656165Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:41.857603529Z"
+  },
+  {
+    "textPayload": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1698, in wrapper\n    return func(self, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1833, in __extract_info\n    ie_result = ie.extract(url)\n                ^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/extractor/common.py\", line 765, in extract\n    ie_result = self._real_extract(url)\n                ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/extractor/youtube/_video.py\", line 4061, in _real_extract\n    self.raise_no_formats(reason, expected=True)\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/extractor/common.py\", line 1277, in raise_no_formats\n    raise ExtractorError(msg, expected=expected, video_id=video_id)\nyt_dlp.utils.ExtractorError: [youtube] aiREm-2JrNM: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0ee0d000a0bff1f8dd498",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-renderer-00020-5mh",
+        "service_name": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:41.658431Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:41.857603529Z",
+    "errorGroups": [
+      {
+        "id": "CJWclvOB3piqswE"
+      }
+    ]
+  },
+  {
+    "textPayload": "During handling of the above exception, another exception occurred:",
+    "insertId": "69f0ee0d000a0c0891eee007",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:41.658440Z",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:41.857603529Z"
+  },
+  {
+    "textPayload": "Traceback (most recent call last):\n  File \"/app/app.py\", line 91, in extract_transcript\n    info = ydl.extract_info(url, download=False)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1687, in extract_info\n    return self.__extract_info(url, self.get_info_extractor(key), download, extra_info, process)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1716, in wrapper\n    self.report_error(str(e), e.format_traceback())\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1154, in report_error\n    self.trouble(f'{self._format_err(\"ERROR:\", self.Styles.ERROR)} {message}', *args, **kwargs)\n  File \"/usr/local/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py\", line 1093, in trouble\n    raise DownloadError(message, exc_info)\nyt_dlp.utils.DownloadError: ERROR: [youtube] aiREm-2JrNM: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0ee0d000a0d08172dd465",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-renderer",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-renderer",
+        "revision_name": "viraltrim-renderer-00020-5mh"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:41.658696Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d98719e553cb97de8f15e457ae6238cf34ecced1e841b9114fc0e1f959f134d406ccc652efadb5ea27541f8466fb21f42abd8c1488f946a2b384f5efc559fbe55c3a039f4e2eb64934ae531b854f07"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:27:41.857603529Z",
+    "errorGroups": [
+      {
+        "id": "CM_j4Zz9sv3hkgE"
+      }
+    ]
+  }
+]

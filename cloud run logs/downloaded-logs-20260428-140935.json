@@ -1,0 +1,2505 @@
+[
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {},
+      "authenticationInfo": {
+        "principalEmail": "idoumahart@gmail.com",
+        "principalSubject": "user:idoumahart@gmail.com",
+        "oauthInfo": {
+          "oauthClientId": "32555940559.apps.googleusercontent.com"
+        }
+      },
+      "requestMetadata": {
+        "callerIp": "198.58.147.184",
+        "callerSuppliedUserAgent": "google-cloud-sdk gcloud/564.0.0 command/gcloud.run.services.update invocation-id/9cb7ffb382f641aeaa4e54ca9f34e4da environment/None environment-version/None client-os/WINDOWS client-os-ver/10.0.26200 client-pltf-arch/x86_64 interactive/True from-script/False python/3.13.12 term/  (Windows NT 10.0.26200),gzip(gfe)",
+        "requestAttributes": {
+          "time": "2026-04-27T20:12:35.417775Z",
+          "auth": {}
+        },
+        "destinationAttributes": {}
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "google.cloud.run.v1.Services.ReplaceService",
+      "authorizationInfo": [
+        {
+          "resource": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+          "permission": "run.services.update",
+          "granted": true,
+          "resourceAttributes": {},
+          "permissionType": "ADMIN_WRITE"
+        },
+        {
+          "resource": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+          "permission": "run.services.update",
+          "granted": true,
+          "resourceAttributes": {
+            "service": "run.googleapis.com/",
+            "name": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+            "type": "run.googleapis.com/Service"
+          },
+          "permissionType": "ADMIN_WRITE"
+        }
+      ],
+      "resourceName": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+      "request": {
+        "@type": "type.googleapis.com/google.cloud.run.v1.ReplaceServiceRequest",
+        "service": {
+          "status": {
+            "latestCreatedRevisionName": "viraltrim-whisper-00014-ncb",
+            "traffic": [
+              {
+                "latestRevision": true,
+                "percent": 100,
+                "revisionName": "viraltrim-whisper-00014-ncb"
+              }
+            ],
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-04-18T10:39:49.662519Z",
+                "status": "True",
+                "type": "Ready"
+              },
+              {
+                "type": "ConfigurationsReady",
+                "lastTransitionTime": "2026-04-18T10:39:48.391392Z",
+                "status": "True"
+              },
+              {
+                "type": "RoutesReady",
+                "status": "True",
+                "lastTransitionTime": "2026-04-18T10:39:49.622915Z"
+              }
+            ],
+            "url": "https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app",
+            "observedGeneration": 14,
+            "latestReadyRevisionName": "viraltrim-whisper-00014-ncb"
+          },
+          "metadata": {
+            "namespace": "734039841201",
+            "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/services/viraltrim-whisper",
+            "resourceVersion": "AAZPua9ZIzc",
+            "labels": {
+              "cloud.googleapis.com/location": "us-central1"
+            },
+            "annotations": {
+              "run.googleapis.com/urls": "[\"https://viraltrim-whisper-734039841201.us-central1.run.app\",\"https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app\"]",
+              "serving.knative.dev/creator": "idoumahart@gmail.com",
+              "run.googleapis.com/build-source-location": "gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-whisper/1776508535.936687-78639f126c1b45498d32d50fc6d25854.zip#1776508535295106",
+              "run.googleapis.com/build-id": "0402f019-5a54-4780-8815-9da6bc6e3fd4",
+              "run.googleapis.com/client-version": "564.0.0",
+              "run.googleapis.com/ingress-status": "all",
+              "run.googleapis.com/operation-id": "9484c274-6cdd-4afc-bd44-a55f9798bde7",
+              "run.googleapis.com/ingress": "all",
+              "serving.knative.dev/lastModifier": "idoumahart@gmail.com",
+              "run.googleapis.com/maxScale": "10",
+              "run.googleapis.com/client-name": "gcloud",
+              "run.googleapis.com/build-image-uri": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper",
+              "run.googleapis.com/build-enable-automatic-updates": "false",
+              "run.googleapis.com/build-name": "projects/734039841201/locations/us-central1/builds/0402f019-5a54-4780-8815-9da6bc6e3fd4"
+            },
+            "creationTimestamp": "2026-04-17T17:08:30.067335Z",
+            "uid": "3c31a08c-16b5-40c7-bf2c-0498ef30d77d",
+            "generation": 14,
+            "name": "viraltrim-whisper"
+          },
+          "apiVersion": "serving.knative.dev/v1",
+          "kind": "Service",
+          "spec": {
+            "template": {
+              "metadata": {
+                "annotations": {
+                  "run.googleapis.com/client-version": "564.0.0",
+                  "run.googleapis.com/startup-cpu-boost": "true",
+                  "autoscaling.knative.dev/minScale": "1",
+                  "autoscaling.knative.dev/maxScale": "10",
+                  "run.googleapis.com/execution-environment": "gen2",
+                  "run.googleapis.com/client-name": "gcloud"
+                },
+                "labels": {
+                  "client.knative.dev/nonce": "pmnqbuiswh",
+                  "run.googleapis.com/startupProbeType": "Default"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "resources": {
+                      "limits": {
+                        "memory": "4Gi",
+                        "cpu": "2"
+                      }
+                    },
+                    "name": "viraltrim-whisper-1",
+                    "image": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper@sha256:e923acc3c72e64b40e3e4a435d590b55dde3e2c171ad9845dc3232139b8f4a37"
+                  }
+                ],
+                "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+                "containerConcurrency": 1,
+                "timeoutSeconds": 600
+              }
+            },
+            "traffic": [
+              {
+                "latestRevision": true,
+                "percent": 100
+              }
+            ]
+          }
+        },
+        "name": "namespaces/viraltrim-renderer/services/viraltrim-whisper"
+      },
+      "resourceLocation": {
+        "currentLocations": [
+          "us-central1"
+        ]
+      }
+    },
+    "insertId": "zspuy7e15i1i",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "",
+        "revision_name": "",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-27T20:12:35.226942Z",
+    "severity": "NOTICE",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Factivity",
+    "receiveTimestamp": "2026-04-27T20:12:36.353783804Z"
+  },
+  {
+    "textPayload": "Starting new instance. Reason: DEPLOYMENT_ROLLOUT - Instance started due to traffic shifting between revisions due to deployment, traffic split adjustment, or deployment health check.",
+    "insertId": "69efc3b400093d262c3b3b75",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "configuration_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:44.605478Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534",
+      "scaling_reason": "DEPLOYMENT_ROLLOUT"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-04-27T20:14:44.614790813Z"
+  },
+  {
+    "textPayload": "[startup] Starting gunicorn on port 8080...",
+    "insertId": "69efc3b4000c45ce1b83ba20",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:44.804302Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-27T20:14:44.816092372Z"
+  },
+  {
+    "textPayload": "[2026-04-27 20:14:45 +0000] [1] [INFO] Starting gunicorn 22.0.0",
+    "insertId": "69efc3b500059f1dfa197ded",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:45.368413Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-27T20:14:45.377675637Z"
+  },
+  {
+    "textPayload": "[2026-04-27 20:14:45 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)",
+    "insertId": "69efc3b500059f803b7d9cb3",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:45.368512Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-27T20:14:45.707822785Z"
+  },
+  {
+    "textPayload": "[2026-04-27 20:14:45 +0000] [1] [INFO] Using worker: gthread",
+    "insertId": "69efc3b500059fda00b46f47",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:45.368602Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-27T20:14:45.707822785Z"
+  },
+  {
+    "textPayload": "Default STARTUP TCP probe succeeded after 1 attempt for container \"viraltrim-whisper-1\" on port 8080.",
+    "insertId": "69efc3b50005a1a6beee21ff",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:45.369062Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-04-27T20:14:45.611333753Z"
+  },
+  {
+    "textPayload": "[2026-04-27 20:14:45 +0000] [9] [INFO] Booting worker with pid: 9",
+    "insertId": "69efc3b50005ade281ed02a9",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:45.372194Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-27T20:14:45.707822785Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Revision viraltrim-whisper-00015-8qd with message: Deploying revision succeeded in 2m9.97s."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/revisions/viraltrim-whisper-00015-8qd",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-whisper-00015-8qd",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/revisions/viraltrim-whisper-00015-8qd",
+          "uid": "f220bd13-bdf6-4c17-a448-4afb91d01f73",
+          "resourceVersion": "AAZQdsQHSXQ",
+          "generation": 1,
+          "creationTimestamp": "2026-04-27T20:12:35.463554Z",
+          "labels": {
+            "client.knative.dev/nonce": "pmnqbuiswh",
+            "serving.knative.dev/configuration": "viraltrim-whisper",
+            "serving.knative.dev/configurationGeneration": "15",
+            "serving.knative.dev/service": "viraltrim-whisper",
+            "serving.knative.dev/serviceUid": "3c31a08c-16b5-40c7-bf2c-0498ef30d77d",
+            "serving.knative.dev/route": "viraltrim-whisper",
+            "cloud.googleapis.com/location": "us-central1",
+            "run.googleapis.com/startupProbeType": "Default"
+          },
+          "annotations": {
+            "autoscaling.knative.dev/maxScale": "10",
+            "autoscaling.knative.dev/minScale": "1",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/execution-environment": "gen2",
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "run.googleapis.com/build-source-location": "{\"viraltrim-whisper-1\":\"gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-whisper/1776508535.936687-78639f126c1b45498d32d50fc6d25854.zip#1776508535295106\"}",
+            "run.googleapis.com/operation-id": "09374370-eaf6-4e8e-9e9f-f98fb9f1d237",
+            "run.googleapis.com/startup-cpu-boost": "true"
+          },
+          "ownerReferences": [
+            {
+              "kind": "Configuration",
+              "name": "viraltrim-whisper",
+              "uid": "7c6a7289-dd31-41a7-b4c2-a0dc7ebd0dcc",
+              "apiVersion": "serving.knative.dev/v1",
+              "controller": true,
+              "blockOwnerDeletion": true
+            }
+          ]
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Revision",
+        "spec": {
+          "containerConcurrency": 1,
+          "timeoutSeconds": 600,
+          "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+          "containers": [
+            {
+              "name": "viraltrim-whisper-1",
+              "image": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper@sha256:e923acc3c72e64b40e3e4a435d590b55dde3e2c171ad9845dc3232139b8f4a37",
+              "ports": [
+                {
+                  "name": "http1",
+                  "containerPort": 8080
+                }
+              ],
+              "env": [
+                {
+                  "name": "INTERNAL_SECRET",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_INTERNAL_SECRET"
+                    }
+                  }
+                },
+                {
+                  "name": "WEBSHARE_PROXY_URL",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_WEBSHARE_PROXY"
+                    }
+                  }
+                },
+                {
+                  "name": "FORCE_REDEPLOY",
+                  "value": "1"
+                }
+              ],
+              "resources": {
+                "limits": {
+                  "cpu": "2",
+                  "memory": "4Gi"
+                }
+              },
+              "startupProbe": {
+                "timeoutSeconds": 240,
+                "periodSeconds": 240,
+                "failureThreshold": 1,
+                "tcpSocket": {
+                  "port": 8080
+                }
+              }
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 1,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "message": "Deploying revision succeeded in 2m9.97s.",
+              "lastTransitionTime": "2026-04-27T20:14:45.438836Z"
+            },
+            {
+              "type": "ContainerHealthy",
+              "status": "True",
+              "message": "Containers became healthy.",
+              "lastTransitionTime": "2026-04-27T20:14:45.377463Z"
+            },
+            {
+              "type": "ContainerReady",
+              "status": "True",
+              "message": "Container image import completed.",
+              "lastTransitionTime": "2026-04-27T20:12:36.303078Z"
+            },
+            {
+              "type": "ResourcesAvailable",
+              "status": "True",
+              "message": "Provisioning imported containers completed in 2m8.18s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+              "lastTransitionTime": "2026-04-27T20:14:44.479277Z"
+            }
+          ],
+          "logUrl": "https://console.cloud.google.com/logs/viewer?project=viraltrim-renderer&resource=cloud_run_revision/service_name/viraltrim-whisper/revision_name/viraltrim-whisper-00015-8qd&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22viraltrim-whisper%22%0Aresource.labels.revision_name%3D%22viraltrim-whisper-00015-8qd%22",
+          "imageDigest": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper@sha256:e923acc3c72e64b40e3e4a435d590b55dde3e2c171ad9845dc3232139b8f4a37",
+          "containerStatuses": [
+            {
+              "name": "viraltrim-whisper-1",
+              "imageDigest": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper@sha256:e923acc3c72e64b40e3e4a435d590b55dde3e2c171ad9845dc3232139b8f4a37"
+            }
+          ],
+          "desiredReplicas": 1
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Revision"
+      }
+    },
+    "insertId": "-d1f4k7e1de4g",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:45.451135Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-27T20:14:46.578938961Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Revision viraltrim-whisper-00015-8qd with message: Updating revision scaling succeeded in 2m10.65s."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/revisions/viraltrim-whisper-00015-8qd",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-whisper-00015-8qd",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/revisions/viraltrim-whisper-00015-8qd",
+          "uid": "f220bd13-bdf6-4c17-a448-4afb91d01f73",
+          "resourceVersion": "AAZQdsQhIWE",
+          "generation": 1,
+          "creationTimestamp": "2026-04-27T20:12:35.463554Z",
+          "labels": {
+            "client.knative.dev/nonce": "pmnqbuiswh",
+            "serving.knative.dev/configuration": "viraltrim-whisper",
+            "serving.knative.dev/configurationGeneration": "15",
+            "serving.knative.dev/service": "viraltrim-whisper",
+            "serving.knative.dev/serviceUid": "3c31a08c-16b5-40c7-bf2c-0498ef30d77d",
+            "serving.knative.dev/route": "viraltrim-whisper",
+            "cloud.googleapis.com/location": "us-central1",
+            "run.googleapis.com/startupProbeType": "Default"
+          },
+          "annotations": {
+            "autoscaling.knative.dev/maxScale": "10",
+            "autoscaling.knative.dev/minScale": "1",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/execution-environment": "gen2",
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "run.googleapis.com/build-source-location": "{\"viraltrim-whisper-1\":\"gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-whisper/1776508535.936687-78639f126c1b45498d32d50fc6d25854.zip#1776508535295106\"}",
+            "run.googleapis.com/operation-id": "09374370-eaf6-4e8e-9e9f-f98fb9f1d237",
+            "run.googleapis.com/startup-cpu-boost": "true"
+          },
+          "ownerReferences": [
+            {
+              "kind": "Configuration",
+              "name": "viraltrim-whisper",
+              "uid": "7c6a7289-dd31-41a7-b4c2-a0dc7ebd0dcc",
+              "apiVersion": "serving.knative.dev/v1",
+              "controller": true,
+              "blockOwnerDeletion": true
+            }
+          ]
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Revision",
+        "spec": {
+          "containerConcurrency": 1,
+          "timeoutSeconds": 600,
+          "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+          "containers": [
+            {
+              "name": "viraltrim-whisper-1",
+              "image": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper@sha256:e923acc3c72e64b40e3e4a435d590b55dde3e2c171ad9845dc3232139b8f4a37",
+              "ports": [
+                {
+                  "name": "http1",
+                  "containerPort": 8080
+                }
+              ],
+              "env": [
+                {
+                  "name": "INTERNAL_SECRET",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_INTERNAL_SECRET"
+                    }
+                  }
+                },
+                {
+                  "name": "WEBSHARE_PROXY_URL",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_WEBSHARE_PROXY"
+                    }
+                  }
+                },
+                {
+                  "name": "FORCE_REDEPLOY",
+                  "value": "1"
+                }
+              ],
+              "resources": {
+                "limits": {
+                  "cpu": "2",
+                  "memory": "4Gi"
+                }
+              },
+              "startupProbe": {
+                "timeoutSeconds": 240,
+                "periodSeconds": 240,
+                "failureThreshold": 1,
+                "tcpSocket": {
+                  "port": 8080
+                }
+              }
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 1,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "message": "Updating revision scaling succeeded in 2m10.65s.",
+              "lastTransitionTime": "2026-04-27T20:14:47.132513Z"
+            },
+            {
+              "type": "Active",
+              "status": "True",
+              "lastTransitionTime": "2026-04-27T20:14:45.522518Z",
+              "severity": "Info"
+            },
+            {
+              "type": "ContainerHealthy",
+              "status": "True",
+              "message": "Containers became healthy.",
+              "lastTransitionTime": "2026-04-27T20:14:45.377463Z"
+            },
+            {
+              "type": "ContainerReady",
+              "status": "True",
+              "message": "Container image import completed.",
+              "lastTransitionTime": "2026-04-27T20:12:36.303078Z"
+            },
+            {
+              "type": "MinInstancesProvisioned",
+              "status": "True",
+              "message": "Min instances provisioned successfully  in 2m10.58s.",
+              "lastTransitionTime": "2026-04-27T20:14:47.065716Z"
+            },
+            {
+              "type": "ResourcesAvailable",
+              "status": "True",
+              "message": "Provisioning imported containers completed in 2m8.18s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+              "lastTransitionTime": "2026-04-27T20:14:44.479277Z"
+            }
+          ],
+          "logUrl": "https://console.cloud.google.com/logs/viewer?project=viraltrim-renderer&resource=cloud_run_revision/service_name/viraltrim-whisper/revision_name/viraltrim-whisper-00015-8qd&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22viraltrim-whisper%22%0Aresource.labels.revision_name%3D%22viraltrim-whisper-00015-8qd%22",
+          "imageDigest": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper@sha256:e923acc3c72e64b40e3e4a435d590b55dde3e2c171ad9845dc3232139b8f4a37",
+          "containerStatuses": [
+            {
+              "name": "viraltrim-whisper-1",
+              "imageDigest": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper@sha256:e923acc3c72e64b40e3e4a435d590b55dde3e2c171ad9845dc3232139b8f4a37"
+            }
+          ],
+          "desiredReplicas": 1
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Revision"
+      }
+    },
+    "insertId": "a9zw60e19cew",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:47.150018Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-27T20:14:47.493671329Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Service viraltrim-whisper."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-whisper",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/services/viraltrim-whisper",
+          "uid": "3c31a08c-16b5-40c7-bf2c-0498ef30d77d",
+          "resourceVersion": "AAZQdsTIJ8I",
+          "generation": 15,
+          "creationTimestamp": "2026-04-17T17:08:30.067335Z",
+          "labels": {
+            "cloud.googleapis.com/location": "us-central1"
+          },
+          "annotations": {
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "serving.knative.dev/lastModifier": "idoumahart@gmail.com",
+            "run.googleapis.com/build-enable-automatic-updates": "false",
+            "run.googleapis.com/build-id": "0402f019-5a54-4780-8815-9da6bc6e3fd4",
+            "run.googleapis.com/build-image-uri": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper",
+            "run.googleapis.com/build-name": "projects/734039841201/locations/us-central1/builds/0402f019-5a54-4780-8815-9da6bc6e3fd4",
+            "run.googleapis.com/build-source-location": "gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-whisper/1776508535.936687-78639f126c1b45498d32d50fc6d25854.zip#1776508535295106",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/operation-id": "09374370-eaf6-4e8e-9e9f-f98fb9f1d237",
+            "run.googleapis.com/ingress": "all",
+            "run.googleapis.com/ingress-status": "all",
+            "run.googleapis.com/maxScale": "10",
+            "run.googleapis.com/urls": "[\"https://viraltrim-whisper-734039841201.us-central1.run.app\",\"https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app\"]"
+          }
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Service",
+        "spec": {
+          "template": {
+            "metadata": {
+              "labels": {
+                "client.knative.dev/nonce": "pmnqbuiswh",
+                "run.googleapis.com/startupProbeType": "Default"
+              },
+              "annotations": {
+                "autoscaling.knative.dev/maxScale": "10",
+                "autoscaling.knative.dev/minScale": "1",
+                "run.googleapis.com/client-name": "gcloud",
+                "run.googleapis.com/client-version": "564.0.0",
+                "run.googleapis.com/execution-environment": "gen2",
+                "run.googleapis.com/startup-cpu-boost": "true"
+              }
+            },
+            "spec": {
+              "containerConcurrency": 1,
+              "timeoutSeconds": 600,
+              "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+              "containers": [
+                {
+                  "name": "viraltrim-whisper-1",
+                  "image": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper@sha256:e923acc3c72e64b40e3e4a435d590b55dde3e2c171ad9845dc3232139b8f4a37",
+                  "ports": [
+                    {
+                      "name": "http1",
+                      "containerPort": 8080
+                    }
+                  ],
+                  "env": [
+                    {
+                      "name": "INTERNAL_SECRET",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_INTERNAL_SECRET"
+                        }
+                      }
+                    },
+                    {
+                      "name": "WEBSHARE_PROXY_URL",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_WEBSHARE_PROXY"
+                        }
+                      }
+                    },
+                    {
+                      "name": "FORCE_REDEPLOY",
+                      "value": "1"
+                    }
+                  ],
+                  "resources": {
+                    "limits": {
+                      "cpu": "2",
+                      "memory": "4Gi"
+                    }
+                  },
+                  "startupProbe": {
+                    "timeoutSeconds": 240,
+                    "periodSeconds": 240,
+                    "failureThreshold": 1,
+                    "tcpSocket": {
+                      "port": 8080
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "traffic": [
+            {
+              "percent": 100,
+              "latestRevision": true
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 15,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "lastTransitionTime": "2026-04-27T20:14:58.078658Z"
+            },
+            {
+              "type": "ConfigurationsReady",
+              "status": "True",
+              "lastTransitionTime": "2026-04-27T20:12:36.402842Z"
+            },
+            {
+              "type": "RoutesReady",
+              "status": "True",
+              "lastTransitionTime": "2026-04-27T20:14:58.025959Z"
+            }
+          ],
+          "latestReadyRevisionName": "viraltrim-whisper-00015-8qd",
+          "latestCreatedRevisionName": "viraltrim-whisper-00015-8qd",
+          "traffic": [
+            {
+              "revisionName": "viraltrim-whisper-00015-8qd",
+              "percent": 100,
+              "latestRevision": true
+            }
+          ],
+          "url": "https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app",
+          "address": {
+            "url": "https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app"
+          }
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Service"
+      }
+    },
+    "insertId": "-d1f4k7e1de68",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-27T20:14:58.097473Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-27T20:14:58.467951708Z"
+  },
+  {
+    "insertId": "69f0179200084b7b7ea85eff",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-whisper-734039841201.us-central1.run.app/transcribe",
+      "requestSize": "600",
+      "status": 500,
+      "responseSize": "358",
+      "remoteIp": "172.70.80.172",
+      "serverIp": "34.143.78.2",
+      "latency": "7.017932160s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:27.519119Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/7c8a7cff6922196b0e370958ada3fc28",
+    "receiveTimestamp": "2026-04-28T02:12:34.550256548Z",
+    "spanId": "367591a26879ab26",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "[whisper] Downloading audio from: https://www.youtube.com/watch?v=KsrALI7Pxc8",
+    "insertId": "69f0179200084b6d599778bc",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "configuration_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:34.543597Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:34.550729786Z"
+  },
+  {
+    "textPayload": "[whisper] yt-dlp failed: WARNING: [youtube] [jsc] Remote components challenge solver script (deno) and NPM package (deno) were skipped. These may be required to solve JS challenges. You can enable these downloads with  --remote-components ejs:github  (recommended) or  --remote-components ejs:npm , respectively. For more information and alternatives, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS",
+    "insertId": "69f0179200084b7f01083053",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:34.543615Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:34.550729786Z"
+  },
+  {
+    "textPayload": "WARNING: [youtube] KsrALI7Pxc8: n challenge solving failed: Some formats may be missing. Ensure you have a supported JavaScript runtime and challenge solver script distribution installed. Review any warnings presented before this message. For more details, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS",
+    "insertId": "69f0179200084b83b0224404",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:34.543619Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:34.550729786Z"
+  },
+  {
+    "textPayload": "ERROR: Postprocessing: WARNING: unable to obtain file audio codec with ffprobe",
+    "insertId": "69f0179200084b85f6505cef",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:34.543621Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:34.550729786Z"
+  },
+  {
+    "textPayload": "[whisper] Purged temp file: /tmp/tmp225_jc1c.wav",
+    "insertId": "69f0179200084b89d771f3cd",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:34.543625Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:34.550729786Z"
+  },
+  {
+    "textPayload": "169.254.169.126 - - [28/Apr/2026:02:12:34 +0000] \"POST /transcribe HTTP/1.1\" 500 236 \"-\" \"-\"",
+    "insertId": "69f0179200084b8b74dfb20a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:34.543627Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:34.550729786Z"
+  },
+  {
+    "insertId": "69f01799000bb735bafa6020",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-whisper-734039841201.us-central1.run.app/transcribe",
+      "requestSize": "599",
+      "status": 500,
+      "responseSize": "358",
+      "remoteIp": "172.70.80.236",
+      "serverIp": "34.143.72.2",
+      "latency": "4.158937661s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:37.606824Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/98a5299140d40700cf7cde3f4702201a",
+    "receiveTimestamp": "2026-04-28T02:12:41.877352563Z",
+    "spanId": "66134ff35d0fdfef",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "[whisper] Downloading audio from: https://www.youtube.com/watch?v=KsrALI7Pxc8",
+    "insertId": "69f01799000bb788dc02ac4f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:41.767880Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:41.879803694Z"
+  },
+  {
+    "textPayload": "[whisper] yt-dlp failed: WARNING: [youtube] [jsc] Remote components challenge solver script (deno) and NPM package (deno) were skipped. These may be required to solve JS challenges. You can enable these downloads with  --remote-components ejs:github  (recommended) or  --remote-components ejs:npm , respectively. For more information and alternatives, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS",
+    "insertId": "69f01799000bb79469111917",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:41.767892Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:41.879803694Z"
+  },
+  {
+    "textPayload": "WARNING: [youtube] KsrALI7Pxc8: n challenge solving failed: Some formats may be missing. Ensure you have a supported JavaScript runtime and challenge solver script distribution installed. Review any warnings presented before this message. For more details, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS",
+    "insertId": "69f01799000bb79987b8b87e",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:41.767897Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:41.879803694Z"
+  },
+  {
+    "textPayload": "ERROR: Postprocessing: WARNING: unable to obtain file audio codec with ffprobe",
+    "insertId": "69f01799000bb79c2ae5ee30",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:41.767900Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:41.879803694Z"
+  },
+  {
+    "textPayload": "[whisper] Purged temp file: /tmp/tmp5nl6yju8.wav",
+    "insertId": "69f01799000bb7a1641a2b04",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "configuration_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:41.767905Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:41.879803694Z"
+  },
+  {
+    "textPayload": "169.254.169.126 - - [28/Apr/2026:02:12:41 +0000] \"POST /transcribe HTTP/1.1\" 500 236 \"-\" \"-\"",
+    "insertId": "69f01799000bb7a4029d5bb8",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd"
+      }
+    },
+    "timestamp": "2026-04-28T02:12:41.767908Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T02:12:41.879803694Z"
+  },
+  {
+    "insertId": "69f0d711000785e73c1e741f",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-whisper-734039841201.us-central1.run.app/transcribe",
+      "requestSize": "601",
+      "status": 500,
+      "responseSize": "360",
+      "remoteIp": "162.158.158.43",
+      "serverIp": "34.143.79.2",
+      "latency": "2.985717747s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:34.499730Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/786a0c23c7538466cdc823e078a4aed1",
+    "receiveTimestamp": "2026-04-28T15:49:37.499500083Z",
+    "spanId": "503a96f7bbc95624",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "[whisper] Downloading audio from: https://www.youtube.com/watch?v=CJrpWOLZFFY",
+    "insertId": "69f0d711000785e86ac23dbc",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:37.493032Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:37.501910467Z"
+  },
+  {
+    "textPayload": "[whisper] yt-dlp failed: ERROR: [youtube] CJrpWOLZFFY: The uploader has not made this video available in your country",
+    "insertId": "69f0d711000785fd24ee1999",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:37.493053Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:37.501910467Z"
+  },
+  {
+    "textPayload": "This video is available in Canada, United States.",
+    "insertId": "69f0d71100078601fbdfa802",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:37.493057Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:37.501910467Z"
+  },
+  {
+    "textPayload": "You might want to use a VPN or a proxy server (with --proxy) to workaround.",
+    "insertId": "69f0d711000786033c3e3a4a",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:37.493059Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:37.501910467Z"
+  },
+  {
+    "textPayload": "[whisper] Purged temp file: /tmp/tmpraqc55b8.wav",
+    "insertId": "69f0d7110007860724ec80ba",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:37.493063Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:37.501910467Z"
+  },
+  {
+    "textPayload": "169.254.169.126 - - [28/Apr/2026:15:49:37 +0000] \"POST /transcribe HTTP/1.1\" 500 238 \"-\" \"-\"",
+    "insertId": "69f0d7110007860bcc259da2",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:37.493067Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:37.501910467Z"
+  },
+  {
+    "insertId": "69f0d717000af642f502148b",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-whisper-734039841201.us-central1.run.app/transcribe",
+      "requestSize": "600",
+      "status": 500,
+      "responseSize": "360",
+      "remoteIp": "162.158.158.109",
+      "serverIp": "34.143.72.2",
+      "latency": "3.121297361s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:40.595492Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/54ed61ac581dddbee7ceee57786e9e33",
+    "receiveTimestamp": "2026-04-28T15:49:43.828869935Z",
+    "spanId": "c9208df0827d90d9"
+  },
+  {
+    "textPayload": "[whisper] Downloading audio from: https://www.youtube.com/watch?v=CJrpWOLZFFY",
+    "insertId": "69f0d717000af66a575c1db0",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:43.718442Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:43.826971798Z"
+  },
+  {
+    "textPayload": "[whisper] yt-dlp failed: ERROR: [youtube] CJrpWOLZFFY: The uploader has not made this video available in your country",
+    "insertId": "69f0d717000af6725b6712db",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:43.718450Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:43.826971798Z"
+  },
+  {
+    "textPayload": "This video is available in Canada, United States.",
+    "insertId": "69f0d717000af6753f5401f0",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:43.718453Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:43.826971798Z"
+  },
+  {
+    "textPayload": "You might want to use a VPN or a proxy server (with --proxy) to workaround.",
+    "insertId": "69f0d717000af677c256f226",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:43.718455Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:43.826971798Z"
+  },
+  {
+    "textPayload": "[whisper] Purged temp file: /tmp/tmpjcwpcsfg.wav",
+    "insertId": "69f0d717000af67ae0f1b43d",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:43.718458Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:43.826971798Z"
+  },
+  {
+    "textPayload": "169.254.169.126 - - [28/Apr/2026:15:49:43 +0000] \"POST /transcribe HTTP/1.1\" 500 238 \"-\" \"-\"",
+    "insertId": "69f0d717000af67c83871458",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd"
+      }
+    },
+    "timestamp": "2026-04-28T15:49:43.718460Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T15:49:43.826971798Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {},
+      "authenticationInfo": {
+        "principalEmail": "idoumahart@gmail.com",
+        "principalSubject": "user:idoumahart@gmail.com",
+        "oauthInfo": {
+          "oauthClientId": "32555940559.apps.googleusercontent.com"
+        }
+      },
+      "requestMetadata": {
+        "callerIp": "198.58.147.184",
+        "callerSuppliedUserAgent": "google-cloud-sdk gcloud/564.0.0 command/gcloud.run.deploy invocation-id/678edb2979e14508bdebfb2ba26a41ca environment/None environment-version/None client-os/WINDOWS client-os-ver/10.0.26200 client-pltf-arch/x86_64 interactive/True from-script/False python/3.13.12 term/  (Windows NT 10.0.26200),gzip(gfe)",
+        "requestAttributes": {
+          "time": "2026-04-28T17:21:38.971846Z",
+          "auth": {}
+        },
+        "destinationAttributes": {}
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "google.cloud.run.v1.Services.ReplaceService",
+      "authorizationInfo": [
+        {
+          "resource": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+          "permission": "run.services.update",
+          "granted": true,
+          "resourceAttributes": {},
+          "permissionType": "ADMIN_WRITE"
+        },
+        {
+          "resource": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+          "permission": "run.services.update",
+          "granted": true,
+          "resourceAttributes": {
+            "service": "run.googleapis.com/",
+            "name": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+            "type": "run.googleapis.com/Service"
+          },
+          "permissionType": "ADMIN_WRITE"
+        }
+      ],
+      "resourceName": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+      "request": {
+        "name": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+        "service": {
+          "apiVersion": "serving.knative.dev/v1",
+          "metadata": {
+            "uid": "3c31a08c-16b5-40c7-bf2c-0498ef30d77d",
+            "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/services/viraltrim-whisper",
+            "creationTimestamp": "2026-04-17T17:08:30.067335Z",
+            "namespace": "734039841201",
+            "labels": {
+              "cloud.googleapis.com/location": "us-central1"
+            },
+            "generation": 15,
+            "resourceVersion": "AAZQdsTIJ8I",
+            "name": "viraltrim-whisper",
+            "annotations": {
+              "run.googleapis.com/build-id": "0402f019-5a54-4780-8815-9da6bc6e3fd4",
+              "run.googleapis.com/ingress": "all",
+              "run.googleapis.com/build-source-location": "gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-whisper/1776508535.936687-78639f126c1b45498d32d50fc6d25854.zip#1776508535295106",
+              "run.googleapis.com/build-name": "projects/734039841201/locations/us-central1/builds/0402f019-5a54-4780-8815-9da6bc6e3fd4",
+              "run.googleapis.com/build-enable-automatic-updates": "false",
+              "run.googleapis.com/urls": "[\"https://viraltrim-whisper-734039841201.us-central1.run.app\",\"https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app\"]",
+              "run.googleapis.com/maxScale": "10",
+              "serving.knative.dev/lastModifier": "idoumahart@gmail.com",
+              "run.googleapis.com/ingress-status": "all",
+              "serving.knative.dev/creator": "idoumahart@gmail.com",
+              "run.googleapis.com/client-version": "564.0.0",
+              "run.googleapis.com/build-image-uri": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper",
+              "run.googleapis.com/operation-id": "09374370-eaf6-4e8e-9e9f-f98fb9f1d237",
+              "run.googleapis.com/client-name": "gcloud"
+            }
+          },
+          "status": {
+            "latestCreatedRevisionName": "viraltrim-whisper-00015-8qd",
+            "observedGeneration": 15,
+            "traffic": [
+              {
+                "revisionName": "viraltrim-whisper-00015-8qd",
+                "latestRevision": true,
+                "percent": 100
+              }
+            ],
+            "latestReadyRevisionName": "viraltrim-whisper-00015-8qd",
+            "conditions": [
+              {
+                "type": "Ready",
+                "status": "True",
+                "lastTransitionTime": "2026-04-27T20:14:58.078658Z"
+              },
+              {
+                "lastTransitionTime": "2026-04-27T20:12:36.402842Z",
+                "status": "True",
+                "type": "ConfigurationsReady"
+              },
+              {
+                "type": "RoutesReady",
+                "lastTransitionTime": "2026-04-27T20:14:58.025959Z",
+                "status": "True"
+              }
+            ],
+            "url": "https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app"
+          },
+          "kind": "Service",
+          "spec": {
+            "traffic": [
+              {
+                "latestRevision": true,
+                "percent": 100
+              }
+            ],
+            "template": {
+              "metadata": {
+                "annotations": {
+                  "run.googleapis.com/execution-environment": "gen2",
+                  "autoscaling.knative.dev/minScale": "1",
+                  "run.googleapis.com/client-name": "gcloud",
+                  "run.googleapis.com/client-version": "564.0.0",
+                  "run.googleapis.com/startup-cpu-boost": "true",
+                  "autoscaling.knative.dev/maxScale": "10"
+                },
+                "labels": {
+                  "client.knative.dev/nonce": "iielqdnkan",
+                  "run.googleapis.com/startupProbeType": "Default"
+                }
+              },
+              "spec": {
+                "containerConcurrency": 1,
+                "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+                "containers": [
+                  {
+                    "image": "gcr.io/viraltrim-renderer/viraltrim-whisper",
+                    "resources": {
+                      "limits": {
+                        "cpu": "2",
+                        "memory": "4Gi"
+                      }
+                    },
+                    "name": "viraltrim-whisper-1"
+                  }
+                ],
+                "timeoutSeconds": 600
+              }
+            }
+          }
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.ReplaceServiceRequest"
+      },
+      "resourceLocation": {
+        "currentLocations": [
+          "us-central1"
+        ]
+      }
+    },
+    "insertId": "au3u82e3f3xx",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:21:38.775459Z",
+    "severity": "NOTICE",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Factivity",
+    "receiveTimestamp": "2026-04-28T17:21:39.580128625Z"
+  },
+  {
+    "textPayload": "Starting new instance. Reason: MANUAL_OR_CUSTOMER_MIN_INSTANCE - Instance started because of customer-configured min-instances or manual scaling.",
+    "insertId": "69f0ecbd00081df7614aeea0",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:22:05.531959Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca",
+      "scaling_reason": "MANUAL_OR_CUSTOMER_MIN_INSTANCE"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-04-28T17:22:05.539984765Z"
+  },
+  {
+    "textPayload": "[startup] Starting gunicorn on port 8080...",
+    "insertId": "69f0ecbd000b5831545d9f88",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "configuration_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:22:05.743473Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:22:05.748909982Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:22:06 +0000] [1] [INFO] Starting gunicorn 22.0.0",
+    "insertId": "69f0ecbe0003b217578e4bca",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:22:06.242199Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:22:06.248462860Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:22:06 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)",
+    "insertId": "69f0ecbe0003c1981d5f555b",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:22:06.246168Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:22:06.581265513Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:22:06 +0000] [1] [INFO] Using worker: gthread",
+    "insertId": "69f0ecbe0003c1a12a640afa",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:22:06.246177Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:22:06.581265513Z"
+  },
+  {
+    "textPayload": "Default STARTUP TCP probe succeeded after 1 attempt for container \"viraltrim-whisper-1\" on port 8080.",
+    "insertId": "69f0ecbe0003c616a6f843d1",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:22:06.247318Z",
+    "severity": "INFO",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fvarlog%2Fsystem",
+    "receiveTimestamp": "2026-04-28T17:22:06.537593423Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:22:06 +0000] [10] [INFO] Booting worker with pid: 10",
+    "insertId": "69f0ecbe0003d3cfe3c1c2f2",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:22:06.250831Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:22:06.581265513Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Revision viraltrim-whisper-00016-p9b with message: Deploying revision succeeded in 28.62s."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/revisions/viraltrim-whisper-00016-p9b",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-whisper-00016-p9b",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/revisions/viraltrim-whisper-00016-p9b",
+          "uid": "5bd9e0f1-a56a-4730-af82-ab01d6463fad",
+          "resourceVersion": "AAZQiHh/dAc",
+          "generation": 1,
+          "creationTimestamp": "2026-04-28T17:21:39.029581Z",
+          "labels": {
+            "client.knative.dev/nonce": "iielqdnkan",
+            "serving.knative.dev/configuration": "viraltrim-whisper",
+            "serving.knative.dev/configurationGeneration": "16",
+            "serving.knative.dev/service": "viraltrim-whisper",
+            "serving.knative.dev/serviceUid": "3c31a08c-16b5-40c7-bf2c-0498ef30d77d",
+            "serving.knative.dev/route": "viraltrim-whisper",
+            "cloud.googleapis.com/location": "us-central1",
+            "run.googleapis.com/startupProbeType": "Default"
+          },
+          "annotations": {
+            "autoscaling.knative.dev/maxScale": "10",
+            "autoscaling.knative.dev/minScale": "1",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/execution-environment": "gen2",
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "run.googleapis.com/operation-id": "6697788b-a9eb-4ca1-b427-67a6dbcdc7df",
+            "run.googleapis.com/startup-cpu-boost": "true"
+          },
+          "ownerReferences": [
+            {
+              "kind": "Configuration",
+              "name": "viraltrim-whisper",
+              "uid": "7c6a7289-dd31-41a7-b4c2-a0dc7ebd0dcc",
+              "apiVersion": "serving.knative.dev/v1",
+              "controller": true,
+              "blockOwnerDeletion": true
+            }
+          ]
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Revision",
+        "spec": {
+          "containerConcurrency": 1,
+          "timeoutSeconds": 600,
+          "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+          "containers": [
+            {
+              "name": "viraltrim-whisper-1",
+              "image": "gcr.io/viraltrim-renderer/viraltrim-whisper@sha256:c78476431f56f70d5ec88a9cd56e047067e039eb16a988e7b0abb6999ea8ef50",
+              "ports": [
+                {
+                  "name": "http1",
+                  "containerPort": 8080
+                }
+              ],
+              "env": [
+                {
+                  "name": "INTERNAL_SECRET",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_INTERNAL_SECRET"
+                    }
+                  }
+                },
+                {
+                  "name": "WEBSHARE_PROXY_URL",
+                  "valueFrom": {
+                    "secretKeyRef": {
+                      "key": "latest",
+                      "name": "VT_WEBSHARE_PROXY"
+                    }
+                  }
+                },
+                {
+                  "name": "FORCE_REDEPLOY",
+                  "value": "1"
+                }
+              ],
+              "resources": {
+                "limits": {
+                  "cpu": "2",
+                  "memory": "4Gi"
+                }
+              },
+              "startupProbe": {
+                "timeoutSeconds": 240,
+                "periodSeconds": 240,
+                "failureThreshold": 1,
+                "tcpSocket": {
+                  "port": 8080
+                }
+              }
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 1,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "message": "Deploying revision succeeded in 28.62s.",
+              "lastTransitionTime": "2026-04-28T17:22:07.656967Z"
+            },
+            {
+              "type": "ContainerHealthy",
+              "status": "True",
+              "message": "Containers became healthy.",
+              "lastTransitionTime": "2026-04-28T17:22:06.451332Z"
+            },
+            {
+              "type": "ContainerReady",
+              "status": "True",
+              "message": "Container image import completed in 22.65s.",
+              "lastTransitionTime": "2026-04-28T17:22:02.306685Z"
+            },
+            {
+              "type": "MinInstancesProvisioned",
+              "status": "True",
+              "message": "Min instances provisioned successfully  in 4.87s.",
+              "lastTransitionTime": "2026-04-28T17:22:07.585895Z"
+            },
+            {
+              "type": "ResourcesAvailable",
+              "status": "True",
+              "message": "Provisioning imported containers completed in 4.07s. Checking container health. This will wait for up to 4m for the configured startup probe, including an initial delay of 0s.",
+              "lastTransitionTime": "2026-04-28T17:22:06.377536Z"
+            }
+          ],
+          "logUrl": "https://console.cloud.google.com/logs/viewer?project=viraltrim-renderer&resource=cloud_run_revision/service_name/viraltrim-whisper/revision_name/viraltrim-whisper-00016-p9b&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22viraltrim-whisper%22%0Aresource.labels.revision_name%3D%22viraltrim-whisper-00016-p9b%22",
+          "imageDigest": "gcr.io/viraltrim-renderer/viraltrim-whisper@sha256:c78476431f56f70d5ec88a9cd56e047067e039eb16a988e7b0abb6999ea8ef50",
+          "containerStatuses": [
+            {
+              "name": "viraltrim-whisper-1",
+              "imageDigest": "gcr.io/viraltrim-renderer/viraltrim-whisper@sha256:c78476431f56f70d5ec88a9cd56e047067e039eb16a988e7b0abb6999ea8ef50"
+            }
+          ],
+          "desiredReplicas": 1
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Revision"
+      }
+    },
+    "insertId": "-j4tbpqe40as0",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:22:07.669831Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-28T17:22:07.930428065Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {
+        "message": "Ready condition status changed to True for Service viraltrim-whisper."
+      },
+      "serviceName": "run.googleapis.com",
+      "methodName": "/Services.ReplaceService",
+      "resourceName": "namespaces/viraltrim-renderer/services/viraltrim-whisper",
+      "response": {
+        "metadata": {
+          "name": "viraltrim-whisper",
+          "namespace": "734039841201",
+          "selfLink": "/apis/serving.knative.dev/v1/namespaces/734039841201/services/viraltrim-whisper",
+          "uid": "3c31a08c-16b5-40c7-bf2c-0498ef30d77d",
+          "resourceVersion": "AAZQiHikAuc",
+          "generation": 16,
+          "creationTimestamp": "2026-04-17T17:08:30.067335Z",
+          "labels": {
+            "cloud.googleapis.com/location": "us-central1"
+          },
+          "annotations": {
+            "serving.knative.dev/creator": "idoumahart@gmail.com",
+            "serving.knative.dev/lastModifier": "idoumahart@gmail.com",
+            "run.googleapis.com/build-enable-automatic-updates": "false",
+            "run.googleapis.com/build-id": "0402f019-5a54-4780-8815-9da6bc6e3fd4",
+            "run.googleapis.com/build-image-uri": "us-central1-docker.pkg.dev/viraltrim-renderer/cloud-run-source-deploy/viraltrim-whisper",
+            "run.googleapis.com/build-name": "projects/734039841201/locations/us-central1/builds/0402f019-5a54-4780-8815-9da6bc6e3fd4",
+            "run.googleapis.com/build-source-location": "gs://run-sources-viraltrim-renderer-us-central1/services/viraltrim-whisper/1776508535.936687-78639f126c1b45498d32d50fc6d25854.zip#1776508535295106",
+            "run.googleapis.com/client-name": "gcloud",
+            "run.googleapis.com/client-version": "564.0.0",
+            "run.googleapis.com/operation-id": "6697788b-a9eb-4ca1-b427-67a6dbcdc7df",
+            "run.googleapis.com/ingress": "all",
+            "run.googleapis.com/ingress-status": "all",
+            "run.googleapis.com/maxScale": "10",
+            "run.googleapis.com/urls": "[\"https://viraltrim-whisper-734039841201.us-central1.run.app\",\"https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app\"]"
+          }
+        },
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Service",
+        "spec": {
+          "template": {
+            "metadata": {
+              "labels": {
+                "client.knative.dev/nonce": "iielqdnkan",
+                "run.googleapis.com/startupProbeType": "Default"
+              },
+              "annotations": {
+                "autoscaling.knative.dev/maxScale": "10",
+                "autoscaling.knative.dev/minScale": "1",
+                "run.googleapis.com/client-name": "gcloud",
+                "run.googleapis.com/client-version": "564.0.0",
+                "run.googleapis.com/execution-environment": "gen2",
+                "run.googleapis.com/startup-cpu-boost": "true"
+              }
+            },
+            "spec": {
+              "containerConcurrency": 1,
+              "timeoutSeconds": 600,
+              "serviceAccountName": "viraltrim-compute-sa@viraltrim-renderer.iam.gserviceaccount.com",
+              "containers": [
+                {
+                  "name": "viraltrim-whisper-1",
+                  "image": "gcr.io/viraltrim-renderer/viraltrim-whisper",
+                  "ports": [
+                    {
+                      "name": "http1",
+                      "containerPort": 8080
+                    }
+                  ],
+                  "env": [
+                    {
+                      "name": "INTERNAL_SECRET",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_INTERNAL_SECRET"
+                        }
+                      }
+                    },
+                    {
+                      "name": "WEBSHARE_PROXY_URL",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "latest",
+                          "name": "VT_WEBSHARE_PROXY"
+                        }
+                      }
+                    },
+                    {
+                      "name": "FORCE_REDEPLOY",
+                      "value": "1"
+                    }
+                  ],
+                  "resources": {
+                    "limits": {
+                      "cpu": "2",
+                      "memory": "4Gi"
+                    }
+                  },
+                  "startupProbe": {
+                    "timeoutSeconds": 240,
+                    "periodSeconds": 240,
+                    "failureThreshold": 1,
+                    "tcpSocket": {
+                      "port": 8080
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "traffic": [
+            {
+              "percent": 100,
+              "latestRevision": true
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 16,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "lastTransitionTime": "2026-04-28T17:22:10.052839Z"
+            },
+            {
+              "type": "ConfigurationsReady",
+              "status": "True",
+              "lastTransitionTime": "2026-04-28T17:22:02.390044Z"
+            },
+            {
+              "type": "RoutesReady",
+              "status": "True",
+              "lastTransitionTime": "2026-04-28T17:22:10.018065Z"
+            }
+          ],
+          "latestReadyRevisionName": "viraltrim-whisper-00016-p9b",
+          "latestCreatedRevisionName": "viraltrim-whisper-00016-p9b",
+          "traffic": [
+            {
+              "revisionName": "viraltrim-whisper-00016-p9b",
+              "percent": 100,
+              "latestRevision": true
+            }
+          ],
+          "url": "https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app",
+          "address": {
+            "url": "https://viraltrim-whisper-j4azuiqzuq-uc.a.run.app"
+          }
+        },
+        "@type": "type.googleapis.com/google.cloud.run.v1.Service"
+      }
+    },
+    "insertId": "5b6adxe10osw",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "",
+        "configuration_name": ""
+      }
+    },
+    "timestamp": "2026-04-28T17:22:10.071802Z",
+    "severity": "INFO",
+    "logName": "projects/viraltrim-renderer/logs/cloudaudit.googleapis.com%2Fsystem_event",
+    "receiveTimestamp": "2026-04-28T17:22:10.843185011Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:24:02 +0000] [1] [INFO] Handling signal: term",
+    "insertId": "69f0ed320000ce51f213a103",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd"
+      }
+    },
+    "timestamp": "2026-04-28T17:24:02.052817Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:24:02.059477341Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:24:02 +0000] [9] [INFO] Worker exiting (pid: 9)",
+    "insertId": "69f0ed32000975690b97a5a0",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:24:02.619881Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:24:02.725965463Z"
+  },
+  {
+    "textPayload": "[2026-04-28 17:24:02 +0000] [1] [INFO] Shutting down: Master",
+    "insertId": "69f0ed32000e91ac06323a72",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00015-8qd",
+        "configuration_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:24:02.954796Z",
+    "labels": {
+      "instanceId": "0007b734d9b0dafd8e7139783baa8b72949d4f9e5254cc9a5bcaf1d0898bce13e35f2ed31e12f857df0d8478875c8a2091e6e59fc05e61c6f0f3cd1e706409fe08ce0b005d97cf97f7ccae85b3fa0338a534"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstderr",
+    "receiveTimestamp": "2026-04-28T17:24:03.060935522Z"
+  },
+  {
+    "insertId": "69f0edfc00047d39f5e3c385",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-whisper-734039841201.us-central1.run.app/transcribe",
+      "requestSize": "601",
+      "status": 500,
+      "responseSize": "359",
+      "remoteIp": "172.70.80.236",
+      "serverIp": "34.143.73.2",
+      "latency": "6.351494891s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:17.935710Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/f8317a811d8785d9c37170ac09ef8fbb",
+    "receiveTimestamp": "2026-04-28T17:27:24.300500235Z",
+    "spanId": "f59293a03290de48",
+    "traceSampled": true
+  },
+  {
+    "textPayload": "[whisper] Downloading audio from: https://www.youtube.com/watch?v=aiREm-2JrNM",
+    "insertId": "69f0edfc00047e22ba91ebf1",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:24.294434Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:24.301743035Z"
+  },
+  {
+    "textPayload": "[whisper] yt-dlp failed: WARNING: [youtube] Unable to download webpage: HTTP Error 429: Too Many Requests (caused by <HTTPError 429: Too Many Requests>)",
+    "insertId": "69f0edfc00047e47905909d0",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:24.294471Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:24.301743035Z"
+  },
+  {
+    "textPayload": "WARNING: [youtube] Unable to fetch GVS PO Token for web_safari client: Missing required Visitor Data. You may need to pass Visitor Data with --extractor-args \"youtube:visitor_data=XXX\"",
+    "insertId": "69f0edfc00047e4d2b956011",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:24.294477Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:24.301743035Z"
+  },
+  {
+    "textPayload": "WARNING: [youtube] [jsc] Remote components challenge solver script (deno) and NPM package (deno) were skipped. These may be required to solve JS challenges. You can enable these downloads with  --remote-components ejs:github  (recommended) or  --remote-components ejs:npm , respectively. For more information and alternatives, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS",
+    "insertId": "69f0edfc00047e53f1e3c4a9",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:24.294483Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:24.301743035Z"
+  },
+  {
+    "textPayload": "WARNING: [youtube] aiREm-2JrNM: n challenge solving failed: Some formats may be missing. Ensure you have a supported JavaScript runtime and challenge solver script distribution installed. Review any warnings presented before this message. For more details, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS",
+    "insertId": "69f0edfc00047e580266350b",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:24.294488Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:24.301743035Z"
+  },
+  {
+    "textPayload": "ERROR: [youtube] aiREm-2JrNM: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+    "insertId": "69f0edfc00047e5c8efe3464",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:24.294492Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:24.301743035Z"
+  },
+  {
+    "textPayload": "[whisper] Purged temp file: /tmp/tmpp40ahj5w.wav",
+    "insertId": "69f0edfc00047e62b695313d",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:24.294498Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:24.301743035Z"
+  },
+  {
+    "textPayload": "169.254.169.126 - - [28/Apr/2026:17:27:24 +0000] \"POST /transcribe HTTP/1.1\" 500 237 \"-\" \"-\"",
+    "insertId": "69f0edfc00047e65faa33752",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:24.294501Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:24.301743035Z"
+  },
+  {
+    "insertId": "69f0ee030005837c25c0f27c",
+    "httpRequest": {
+      "requestMethod": "POST",
+      "requestUrl": "https://viraltrim-whisper-734039841201.us-central1.run.app/transcribe",
+      "requestSize": "601",
+      "status": 500,
+      "responseSize": "358",
+      "remoteIp": "172.70.80.236",
+      "serverIp": "34.143.75.2",
+      "latency": "3.986601583s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:27.372840Z",
+    "severity": "ERROR",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Frequests",
+    "trace": "projects/viraltrim-renderer/traces/01c4db7b6855f9f0a1fffa7427e07c1e",
+    "receiveTimestamp": "2026-04-28T17:27:31.626447275Z",
+    "spanId": "52c8114595e3e0aa"
+  },
+  {
+    "textPayload": "[whisper] Downloading audio from: https://www.youtube.com/watch?v=aiREm-2JrNM",
+    "insertId": "69f0ee03000583d4e1c624ba",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper",
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:31.361428Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:31.628834012Z"
+  },
+  {
+    "textPayload": "[whisper] yt-dlp failed: WARNING: [youtube] [jsc] Remote components challenge solver script (deno) and NPM package (deno) were skipped. These may be required to solve JS challenges. You can enable these downloads with  --remote-components ejs:github  (recommended) or  --remote-components ejs:npm , respectively. For more information and alternatives, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS",
+    "insertId": "69f0ee03000583e111862730",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:31.361441Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:31.628834012Z"
+  },
+  {
+    "textPayload": "WARNING: [youtube] aiREm-2JrNM: n challenge solving failed: Some formats may be missing. Ensure you have a supported JavaScript runtime and challenge solver script distribution installed. Review any warnings presented before this message. For more details, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS",
+    "insertId": "69f0ee03000583e635181f25",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "configuration_name": "viraltrim-whisper",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:31.361446Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:31.628834012Z"
+  },
+  {
+    "textPayload": "ERROR: Postprocessing: WARNING: unable to obtain file audio codec with ffprobe",
+    "insertId": "69f0ee03000583ea841aae5f",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "configuration_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:31.361450Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:31.628834012Z"
+  },
+  {
+    "textPayload": "[whisper] Purged temp file: /tmp/tmprz1v65xd.wav",
+    "insertId": "69f0ee03000583f0e0915217",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "location": "us-central1",
+        "project_id": "viraltrim-renderer",
+        "service_name": "viraltrim-whisper",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:31.361456Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:31.628834012Z"
+  },
+  {
+    "textPayload": "169.254.169.126 - - [28/Apr/2026:17:27:31 +0000] \"POST /transcribe HTTP/1.1\" 500 236 \"-\" \"-\"",
+    "insertId": "69f0ee03000583f35d675e94",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "project_id": "viraltrim-renderer",
+        "location": "us-central1",
+        "revision_name": "viraltrim-whisper-00016-p9b",
+        "service_name": "viraltrim-whisper",
+        "configuration_name": "viraltrim-whisper"
+      }
+    },
+    "timestamp": "2026-04-28T17:27:31.361459Z",
+    "labels": {
+      "instanceId": "0007b734d92b411aa432c444e4dbed73bf4a135ab1799839dff7bff51653d70d827d83febbadee3034c0f64119f844ed9d3149a4d864ca582e3c85832b4fa9675ee2c5de17f48588f55426e7a3b34312271d3bca"
+    },
+    "logName": "projects/viraltrim-renderer/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-28T17:27:31.628834012Z"
+  }
+]

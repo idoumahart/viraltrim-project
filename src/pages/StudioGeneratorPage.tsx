@@ -189,7 +189,10 @@ export function StudioGeneratorPage() {
         setProgress(0);
         setStatus("Transcript unavailable.");
         console.error("[generator] Transcript still null after", maxAttempts, "polling attempts for video", v.id);
-        toast.error("We couldn't transcribe this video automatically. Our transcription service may be temporarily unavailable. Please paste a transcript manually below.", { duration: 30000 });
+        toast.error(
+          "YouTube is blocking automated video downloads from our servers. Please paste the transcript manually — click the video on YouTube, open the transcript panel (⋯ → Show transcript), copy it, and paste it below.",
+          { duration: 45000 }
+        );
         setShowTranscriptInput(true);
         return;
       }
@@ -488,10 +491,21 @@ export function StudioGeneratorPage() {
               {showTranscriptInput && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
                   <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-                    <p className="text-xs text-amber-400 font-semibold mb-1">Automatic transcription failed</p>
-                    <p className="text-[10px] text-amber-500/70">
-                      Paste a transcript below and we'll analyze it for viral moments.
+                    <p className="text-xs text-amber-400 font-semibold mb-1">YouTube is blocking auto-transcription</p>
+                    <p className="text-[10px] text-amber-500/80 leading-relaxed">
+                      Due to YouTube restrictions, our servers can't download videos for transcription right now. You can still generate clips by pasting the transcript manually.
                     </p>
+                  </div>
+                  <div className="rounded-lg bg-white/5 p-3 space-y-1.5">
+                    <p className="text-[10px] font-semibold text-white/60 uppercase tracking-wider">How to get the transcript</p>
+                    <ol className="text-[10px] text-white/50 space-y-0.5 list-decimal list-inside">
+                      <li>Open the video on <strong className="text-white/70">YouTube</strong></li>
+                      <li>Click <strong className="text-white/70">⋯ (More)</strong> below the video</li>
+                      <li>Select <strong className="text-white/70">Show transcript</strong></li>
+                      <li>Click <strong className="text-white/70">⋮</strong> in the transcript panel → <strong className="text-white/70">Toggle timestamps</strong> (off)</li>
+                      <li>Select all text (Ctrl+A / Cmd+A) and copy</li>
+                      <li>Paste it below and click <strong className="text-white/70">Analyze Transcript</strong></li>
+                    </ol>
                   </div>
                   <textarea
                     value={manualTranscript}
@@ -531,7 +545,12 @@ export function StudioGeneratorPage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold">Ready to Generate</h3>
-                <p className="text-sm text-muted-foreground max-w-xs mx-auto">AI will analyze the transcript and find the best viral moments for you.</p>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                  AI will analyze the transcript and find the best viral moments for you.
+                </p>
+                <p className="text-[10px] text-amber-500/60 max-w-xs mx-auto mt-1">
+                  YouTube sometimes blocks automated transcription. If that happens, you can paste the transcript manually — no worries.
+                </p>
               </div>
               <Button className="btn-gradient" onClick={() => handleStartGeneration(video)}>
                 Run AI Analysis

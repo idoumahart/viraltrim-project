@@ -78,7 +78,9 @@ def extract_transcript():
             'writesubtitles': True,
             'writeautomaticsub': True,
             'subtitleslangs': ['en'],
-            'quiet': True
+            'quiet': True,
+            'remote_components': 'ejs:github',
+            'nocheckcertificate': True,
         }
         
         proxy = get_proxy()
@@ -183,6 +185,8 @@ def process_video():
                 "--force-keyframes-at-cuts",
                 "-o", raw_path,
                 "--no-playlist",
+                "--remote-components", "ejs:github",
+                "--no-check-certificates",
             ]
             proxy = get_proxy()
             if proxy:

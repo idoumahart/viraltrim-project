@@ -114,6 +114,8 @@ def track():
             "-o", video_path,
             "--quiet",
             "--no-playlist",
+            "--remote-components", "ejs:github",
+            "--no-check-certificates",
         ]
         
         proxy = get_proxy()

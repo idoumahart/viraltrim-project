@@ -107,6 +107,8 @@ def transcribe():
             "-o", audio_path,
             "--no-playlist",
             "--quiet",
+            "--remote-components", "ejs:github",
+            "--no-check-certificates",
         ]
 
         # Apply proxy if configured (helps with geo-restricted content)
