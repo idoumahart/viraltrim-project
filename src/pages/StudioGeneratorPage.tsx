@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactPlayer from "react-player";
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Loader2,
@@ -17,7 +16,6 @@ import {
   Play,
   Pause,
   Save,
-  Trash2,
   CheckCircle,
   Video,
   ChevronRight,
@@ -25,10 +23,10 @@ import {
   Clock,
   ArrowLeft,
   Info,
-  Download,
   Copy,
   RefreshCw,
   Link2,
+  AlertTriangle,
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -43,19 +41,24 @@ interface Suggestion {
   viralScore: number;
   reasoning: string;
   caption: string;
-  selected?: boolean;
+  clipId?: string;
+  jobId?: string;
+  renderStatus?: "pending" | "ready" | "failed";
+  videoUrl?: string;
+  renderAttempts?: number;
+  renderError?: string;
 }
 
 export function StudioGeneratorPage() {
   const { videoId } = useParams();
   const navigate = useNavigate();
   const [video, setVideo] = useState<any>(null);
-  const [loading, setLoading] = useState(!!videoId); // only show loader if we have a videoId
+  const [loading, setLoading] = useState(!!videoId);
   const [generating, setGenerating] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState<string>("Initializing AI...");
-  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<string>("Initializing AI…");
+  const [selectingId, setSelectingId] = useState<string | null>(null);
 
   // Landing state (no videoId)
   const [pasteUrl, setPasteUrl] = useState("");
@@ -65,6 +68,9 @@ export function StudioGeneratorPage() {
   const playerRef = useRef<ReactPlayer>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+
+  // Poll render jobs
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!videoId) return;
@@ -86,10 +92,51 @@ export function StudioGeneratorPage() {
     })();
   }, [videoId]);
 
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const startPollingJobs = useCallback((hooks: Suggestion[]) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    pollRef.current = setInterval(async () => {
+      const jobsToPoll = hooks.filter(h => h.jobId && h.renderStatus !== "ready" && h.renderStatus !== "failed");
+      if (jobsToPoll.length === 0) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        return;
+      }
+
+      await Promise.all(jobsToPoll.map(async (hook) => {
+        if (!hook.jobId) return;
+        try {
+          const res = await api.getRenderJob(hook.jobId);
+          if (res.success && res.data) {
+            setSuggestions(prev => prev.map(s => {
+              if (s.id !== hook.id) return s;
+              return {
+                ...s,
+                renderStatus: res.data!.status as "pending" | "ready" | "failed",
+                videoUrl: res.data!.videoUrl || s.videoUrl,
+                renderAttempts: res.data!.attempts,
+                renderError: res.data!.error || undefined,
+              };
+            }));
+          }
+        } catch {
+          // Ignore polling errors
+        }
+      }));
+    }, 2000);
+  }, []);
+
   const handleStartGeneration = async (v: any) => {
     setGenerating(true);
     setSuggestions([]);
     setProgress(10);
+    if (pollRef.current) clearInterval(pollRef.current);
 
     // Poll for transcript if not ready yet
     if (!v.transcript) {
@@ -124,19 +171,23 @@ export function StudioGeneratorPage() {
     }, 1500);
 
     try {
-      const res = await api.generateHooks(v.url, v.id);
+      const res = await api.generateHooks(v.url, v.id, true); // true = preRender
       if (res.success && res.data) {
-        setSuggestions(res.data.map((s: any, i: number) => ({
+        const mapped = res.data.map((s: any, i: number) => ({
           ...s,
           id: s.id || `suggest-${i}-${Date.now()}`,
           durationSeconds: s.durationSeconds || (s.endSec - s.startSec) || 0,
           viralScore: s.viralScore || s.viral_score || 0,
           title: s.title || s.concept || `Viral Moment ${i + 1}`,
-          selected: true,
-        })));
+          clipId: s.clipId,
+          jobId: s.jobId,
+          renderStatus: s.jobId ? "pending" : undefined,
+        }));
+        setSuggestions(mapped);
         setProgress(100);
-        setStatus("Generation complete!");
-        toast.success(`AI found ${res.data.length} high-potential clips!`);
+        setStatus("Generation complete! Rendering previews…");
+        toast.success(`AI found ${res.data.length} high-potential clips! Rendering previews now…`);
+        startPollingJobs(mapped);
       } else {
         throw new Error(res.error || "Generation failed");
       }
@@ -170,47 +221,26 @@ export function StudioGeneratorPage() {
     }
   };
 
-  const handleToggleSelect = (id: string) => {
-    setSuggestions(prev => prev.map(s => s.id === id ? { ...s, selected: !s.selected } : s));
-  };
-
   const handlePreview = (s: Suggestion) => {
     setPreviewingId(s.id);
     playerRef.current?.seekTo(s.startSec, "seconds");
     setPlaying(true);
   };
 
-  const handleSaveSelected = async () => {
-    const selected = suggestions.filter(s => s.selected);
-    if (selected.length === 0) {
-      toast.error("Please select at least one clip to save.");
-      return;
-    }
-    if (!video) {
-      toast.error("Source video lost. Please refresh.");
-      return;
-    }
-    setSaving(true);
-    toast.info(`Saving ${selected.length} clips to your library…`);
+  const handleSelectClip = async (suggestion: Suggestion) => {
+    if (!suggestion.clipId) return;
+    setSelectingId(suggestion.id);
     try {
-      let savedCount = 0;
-      for (const s of selected) {
-        const res = await api.generateClip({
-          source_url: video.url,
-          source_channel: video.title || "ViralTrim",
-          requested_start_seconds: s.startSec,
-          requested_end_seconds: s.endSec,
-          title: s.title || s.concept || "Viral Clip",
-          viralScore: s.viralScore,
-        });
-        if (res.success) savedCount++;
+      const res = await api.selectClip(suggestion.clipId);
+      if (res.success && res.data) {
+        toast.success("Clip saved to your library!");
+        navigate(`/studio/editor/${suggestion.clipId}`);
+      } else {
+        throw new Error(res.error || "Failed to select clip");
       }
-      toast.success(`Successfully saved ${savedCount} clips!`);
-      navigate("/studio/clips");
-    } catch {
-      toast.error("Failed to save some clips. Please try again.");
-    } finally {
-      setSaving(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to select clip. Please try again.");
+      setSelectingId(null);
     }
   };
 
@@ -301,7 +331,8 @@ export function StudioGeneratorPage() {
     );
   }
 
-  const selectedCount = suggestions.filter(s => s.selected).length;
+  const readyCount = suggestions.filter(s => s.renderStatus === "ready").length;
+  const pendingCount = suggestions.filter(s => s.renderStatus === "pending").length;
 
   return (
     <AppLayout container contentClassName="max-w-6xl space-y-8 pb-20">
@@ -326,21 +357,13 @@ export function StudioGeneratorPage() {
 
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={() => navigate("/studio/videos")}>Cancel</Button>
-          <Button
-            className="btn-gradient px-6 font-bold"
-            onClick={handleSaveSelected}
-            disabled={saving || generating || selectedCount === 0}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Save {selectedCount} Clips
-          </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: Source Preview & Progress */}
         <div className="lg:col-span-1 space-y-6">
-          {/* AI Methodology — shown at top of left column */}
+          {/* AI Methodology */}
           <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-widest text-white/30">AI Methodology</h3>
             <div className="space-y-3">
@@ -407,7 +430,11 @@ export function StudioGeneratorPage() {
                   <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-semibold text-green-400">Analysis Complete</p>
-                    <p className="text-xs text-green-500/70">Found {suggestions.length} viral hooks with high potential.</p>
+                    <p className="text-xs text-green-500/70">
+                      {readyCount === suggestions.length
+                        ? "All previews rendered! Pick your favorite."
+                        : `${readyCount}/${suggestions.length} previews ready. ${pendingCount > 0 ? `${pendingCount} still rendering…` : ""}`}
+                    </p>
                   </div>
                 </div>
               )}
@@ -454,30 +481,55 @@ export function StudioGeneratorPage() {
               >
                 <Card className={cn(
                   "relative group border border-border/60 overflow-hidden transition-all duration-300",
-                  s.selected ? "bg-[#5865F2]/5 border-[#5865F2]/40" : "bg-card hover:border-border"
+                  selectingId === s.id ? "bg-[#5865F2]/5 border-[#5865F2]/40" : "bg-card hover:border-border"
                 )}>
-                  <div className="absolute top-4 left-4 z-10">
-                    <Checkbox
-                      checked={s.selected}
-                      onCheckedChange={() => handleToggleSelect(s.id)}
-                      className="h-5 w-5 rounded border-white/20 data-[state=checked]:bg-[#5865F2] data-[state=checked]:border-[#5865F2]"
-                    />
-                  </div>
-
                   <div className="flex flex-col md:flex-row">
-                    <div className="w-full md:w-56 shrink-0 relative aspect-video md:aspect-auto bg-black flex items-center justify-center">
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-[1]" />
-                      <div className="z-[2] text-center space-y-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
-                          onClick={() => handlePreview(s)}
-                        >
-                          {previewingId === s.id && playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
-                        </Button>
-                        <p className="text-[10px] font-mono text-white/50">{fmt(s.startSec)} - {fmt(s.endSec)}</p>
-                      </div>
+                    {/* Video / Thumbnail Area */}
+                    <div className="w-full md:w-64 shrink-0 relative aspect-[9/16] md:aspect-auto bg-black overflow-hidden">
+                      {s.renderStatus === "ready" && s.videoUrl ? (
+                        <ReactPlayer
+                          url={s.videoUrl}
+                          playing={previewingId === s.id && playing}
+                          controls
+                          width="100%"
+                          height="100%"
+                          style={{ position: "absolute", top: 0, left: 0 }}
+                          onEnded={() => setPlaying(false)}
+                        />
+                      ) : (
+                        <>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-[1]" />
+                          <div className="absolute inset-0 flex items-center justify-center z-[2]">
+                            {s.renderStatus === "pending" ? (
+                              <div className="text-center space-y-2">
+                                <Loader2 className="h-8 w-8 animate-spin text-[#5865F2] mx-auto" />
+                                <p className="text-[10px] font-mono text-white/50">
+                                  Rendering… {s.renderAttempts ? `(attempt ${s.renderAttempts})` : ""}
+                                </p>
+                              </div>
+                            ) : s.renderStatus === "failed" ? (
+                              <div className="text-center space-y-2 px-4">
+                                <AlertTriangle className="h-8 w-8 text-red-400 mx-auto" />
+                                <p className="text-[10px] font-mono text-red-300/70">
+                                  Render failed
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="text-center space-y-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
+                                  onClick={() => handlePreview(s)}
+                                >
+                                  {previewingId === s.id && playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+                                </Button>
+                                <p className="text-[10px] font-mono text-white/50">{fmt(s.startSec)} - {fmt(s.endSec)}</p>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
                       <Badge className="absolute bottom-2 right-2 bg-black/60 text-white border-white/10 text-[10px]">
                         {s.durationSeconds}s
                       </Badge>
@@ -510,6 +562,42 @@ export function StudioGeneratorPage() {
                       <p className="text-xs text-white/30 leading-relaxed line-clamp-2">
                         {s.reasoning}
                       </p>
+
+                      {/* Action Button */}
+                      <div className="pt-1">
+                        {s.renderStatus === "ready" ? (
+                          <Button
+                            className="btn-gradient shadow-[0_0_15px_rgba(88,101,242,0.3)] w-full md:w-auto"
+                            onClick={() => handleSelectClip(s)}
+                            disabled={selectingId !== null}
+                          >
+                            {selectingId === s.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            {selectingId === s.id ? "Saving…" : "Use This Clip"}
+                          </Button>
+                        ) : s.renderStatus === "failed" ? (
+                          <Button
+                            variant="outline"
+                            className="w-full md:w-auto border-red-500/30 text-red-400 hover:bg-red-500/10"
+                            disabled
+                          >
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Render Failed
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            className="w-full md:w-auto border-white/10 text-white/40"
+                            disabled
+                          >
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Rendering Preview…
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -518,20 +606,20 @@ export function StudioGeneratorPage() {
           </div>
 
           <AnimatePresence>
-            {suggestions.length > 0 && (
+            {suggestions.length > 0 && readyCount > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center justify-between p-6 rounded-3xl bg-gradient-to-r from-[#5865F2]/10 to-[#00D4AA]/10 border border-white/10"
               >
                 <div>
-                  <p className="text-sm font-bold text-white">Ready to proceed?</p>
-                  <p className="text-xs text-white/50">You've selected {selectedCount} viral moments to save.</p>
+                  <p className="text-sm font-bold text-white">Pick your favorite</p>
+                  <p className="text-xs text-white/50">
+                    {readyCount === suggestions.length
+                      ? "All previews are ready. Choose one to edit and export."
+                      : `${readyCount} of ${suggestions.length} ready. You can select now or wait for the rest.`}
+                  </p>
                 </div>
-                <Button className="btn-gradient shadow-[0_0_20px_rgba(88,101,242,0.4)]" onClick={handleSaveSelected} disabled={saving || selectedCount === 0}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                  Save Selected Clips
-                </Button>
               </motion.div>
             )}
           </AnimatePresence>

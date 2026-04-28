@@ -153,6 +153,99 @@ export class ClipService {
     return clip ?? null;
   }
 
+  async createPreRenderedClip(
+    userId: string,
+    data: {
+      title: string;
+      platform: string;
+      durationSeconds: number;
+      caption: string;
+      requiredCredit: string;
+      viralScore: number;
+      sourceUrl: string;
+      sourceChannel: string;
+      thumbnail?: string | null;
+      videoUrl?: string | null;
+      startSec?: number;
+      endSec?: number;
+      captionLines?: string[];
+      textStyle?: string;
+      videoId?: string | null;
+      aspectRatio?: string | null;
+    },
+  ): Promise<Clip> {
+    const id = generateId();
+    const [clip] = await this.db
+      .insert(clips)
+      .values({
+        id,
+        userId,
+        title: data.title,
+        platform: data.platform,
+        duration: `${Math.round(data.durationSeconds)}s`,
+        durationSeconds: Math.round(data.durationSeconds),
+        editCount: 0,
+        status: "preview",
+        views: "—",
+        engagement: "—",
+        thumbnail: data.thumbnail ?? null,
+        videoUrl: data.videoUrl ?? data.sourceUrl,
+        viralScore: data.viralScore,
+        caption: data.caption,
+        requiredCredit: data.requiredCredit,
+        sourceUrl: data.sourceUrl,
+        sourceChannel: data.sourceChannel,
+        startSec: data.startSec,
+        endSec: data.endSec,
+        captionLines: data.captionLines,
+        textStyle: data.textStyle,
+        videoId: data.videoId,
+        aspectRatio: data.aspectRatio ?? "9/16",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    if (!clip) {
+      throw new Error("Failed to create pre-rendered clip");
+    }
+    await this.logActivity(userId, "clip_preview_created", { clipId: clip.id });
+    return clip;
+  }
+
+  async selectPreRenderedClip(
+    clipId: string,
+    user: User,
+  ): Promise<{ clip: Clip | null; error?: string }> {
+    const clip = await this.getClipById(clipId, user.id);
+    if (!clip) {
+      return { clip: null, error: "Clip not found" };
+    }
+    if (clip.status !== "preview") {
+      return { clip: null, error: "Clip is not in preview state" };
+    }
+    const limit = clipQuotaForPlan(user.plan);
+    if ((user.clipsUsedThisMonth ?? 0) >= limit) {
+      return { clip: null, error: `Monthly clip quota exceeded (${limit} max for ${user.plan} tier)` };
+    }
+    const [updated] = await this.db
+      .update(clips)
+      .set({ status: "ready", updatedAt: new Date() })
+      .where(eq(clips.id, clipId))
+      .returning();
+    if (!updated) {
+      return { clip: null, error: "Failed to update clip" };
+    }
+    await this.db
+      .update(users)
+      .set({
+        clipsUsedThisMonth: (user.clipsUsedThisMonth ?? 0) + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+    await this.logActivity(user.id, "clip_selected", { clipId: updated.id });
+    return { clip: updated };
+  }
+
   async updateClip(
     clipId: string,
     userId: string,

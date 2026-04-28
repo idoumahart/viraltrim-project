@@ -3,7 +3,7 @@ import { Context, Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { and, count, eq, or } from "drizzle-orm";
 import { createSession, extractBearerToken, generateId, revokeSession, validateSession, validateApiKey } from "./auth";
-import { createDatabase } from "./database";
+import { createDatabase, type Database } from "./database";
 import { affiliateReferrals, affiliates, apiKeys, clips, dmcaReports, users, processedWebhookEvents, importedLinks, sessions, renderJobs } from "./database/schema";
 import { createClipService } from "./database/services/clip-service";
 import { createSubscriptionService, syncUserPlanFromSubscription } from "./database/services/subscription-service";
@@ -47,6 +47,121 @@ function publicUser(u: {
   };
 }
 
+
+/**
+ * Queue a clip render job in the background.
+ * Returns the jobId immediately; rendering happens async via waitUntil.
+ */
+async function queueClipRender(
+  db: Database,
+  clipId: string,
+  userId: string,
+  env: Env,
+  executionCtx: { waitUntil?: (promise: Promise<any>) => void } | undefined,
+  options?: { isPreview?: boolean },
+): Promise<string> {
+  const jobId = generateId();
+  await db.insert(renderJobs).values({
+    id: jobId,
+    clipId,
+    userId,
+    status: "pending",
+    attempts: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const runRender = async () => {
+    let lastErr: string | null = null;
+    const secret = env.INTERNAL_WEBHOOK_SECRET;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await db.update(renderJobs).set({ attempts: attempt, updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
+
+        const [freshClip] = await db.select().from(clips).where(eq(clips.id, clipId)).limit(1);
+        if (!freshClip) {
+          lastErr = "Clip deleted during render";
+          break;
+        }
+
+        let cropCenterX: number | undefined;
+        if (env.VISION_URL) {
+          try {
+            const visionResp = await fetch(`${env.VISION_URL}/track`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(secret ? { "X-Internal-Secret": secret } : {}),
+              },
+              body: JSON.stringify({
+                url: freshClip.sourceUrl ?? freshClip.videoUrl,
+                start_time: freshClip.startSec ?? 0,
+                end_time: freshClip.endSec ?? 30,
+              }),
+              signal: AbortSignal.timeout(25000),
+            });
+            if (visionResp.ok) {
+              const visionData = await visionResp.json() as any;
+              if (visionData.crop_center_x !== undefined) {
+                cropCenterX = visionData.crop_center_x;
+              }
+            }
+          } catch (e) {
+            console.error("[render:bg] Vision error:", e);
+          }
+        }
+
+        const renderResp = await fetch(`${env.RENDERER_URL}/render`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(secret ? { "X-Internal-Secret": secret } : {}),
+          },
+          body: JSON.stringify({
+            url: freshClip.sourceUrl ?? freshClip.videoUrl,
+            start_time: freshClip.startSec ?? 0,
+            end_time: freshClip.endSec ?? 30,
+            crop_center_x: cropCenterX,
+            aspect_ratio: freshClip.aspectRatio || "9/16",
+          }),
+          signal: AbortSignal.timeout(25000),
+        });
+
+        if (!renderResp.ok) {
+          const errText = await renderResp.text();
+          lastErr = `Renderer HTTP ${renderResp.status}: ${errText}`;
+          console.error(`[render:bg] attempt ${attempt} failed:`, lastErr);
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
+          continue;
+        }
+
+        const data = await renderResp.json() as any;
+        if (data.success && data.url) {
+          const clipUpdate: Record<string, unknown> = { videoUrl: data.url, updatedAt: new Date() };
+          if (!options?.isPreview) {
+            clipUpdate.status = "ready";
+          }
+          await db.update(clips).set(clipUpdate).where(eq(clips.id, clipId));
+          await db.update(renderJobs).set({ status: "ready", videoUrl: data.url, updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
+          console.log(`[render:bg] job ${jobId} completed`);
+          return;
+        } else {
+          lastErr = data.error || "Renderer returned no URL";
+          console.error(`[render:bg] attempt ${attempt} bad response:`, lastErr);
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+      } catch (e: any) {
+        lastErr = e?.message || String(e);
+        console.error(`[render:bg] attempt ${attempt} exception:`, lastErr);
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
+      }
+    }
+    await db.update(renderJobs).set({ status: "failed", error: lastErr || "All render attempts failed", updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
+  };
+
+  executionCtx?.waitUntil?.(runRender());
+  return jobId;
+}
 
 function sessionTtlSeconds(env: Env): number {
   const n = Number.parseInt(String(env.SESSION_TTL || "604800"), 10);
@@ -498,22 +613,73 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const transcript = String(body.transcript ?? "");
     const targetLength = Number(body.targetLength ?? 30);
     const thumbnailUrl = typeof body.thumbnailUrl === "string" ? body.thumbnailUrl : undefined;
+    const preRender = body.preRender === true;
+    const sourceUrl = typeof body.sourceUrl === "string" ? body.sourceUrl : undefined;
+    const sourceChannel = typeof body.sourceChannel === "string" ? body.sourceChannel : "Unknown channel";
+    const videoId = typeof body.videoId === "string" ? body.videoId : undefined;
     
     if (!transcript) {
       return c.json({ success: false, error: "Transcript is required to generate hooks" }, 400);
+    }
+    if (preRender && !sourceUrl) {
+      return c.json({ success: false, error: "sourceUrl is required for pre-render" }, 400);
     }
 
     try {
       const rawHooks = await generateHookSuggestions(key, c.env.GEMINI_MODEL, transcript, targetLength, thumbnailUrl);
       
       // Code-Enforced Trim: Ensure no AI drift beyond target limit
-      const hooks = rawHooks.map(hook => {
+      let hooks = rawHooks.map(hook => {
         const duration = hook.endSec - hook.startSec;
         if (duration > targetLength) {
            return { ...hook, endSec: hook.startSec + targetLength };
         }
         return hook;
       });
+
+      // ── Pre-render mode: create preview clips + queue renders ─────────────────
+      if (preRender) {
+        const db = createDatabase(c.env.DB);
+        const user = c.get("user");
+        const clipSvc = createClipService(db);
+
+        hooks = await Promise.all(hooks.map(async (hook) => {
+          const duration = hook.endSec - hook.startSec;
+          const words = hook.caption.split(/[\s\n]+/);
+          const generatedCaptionLines = [];
+          for (let i = 0; i < words.length; i += 4) {
+            generatedCaptionLines.push(words.slice(i, i + 4).join(" "));
+          }
+
+          const ytId = extractYoutubeId(sourceUrl!);
+          const thumbnailFallback = ytId
+            ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
+            : "/placeholder-thumbnail.jpg";
+
+          const clip = await clipSvc.createPreRenderedClip(user.id, {
+            title: hook.title || "New clip",
+            platform: "TikTok (9:16)",
+            durationSeconds: Math.round(duration),
+            caption: hook.caption,
+            requiredCredit: `Original video by ${sourceChannel}`,
+            viralScore: hook.viralScore ?? 85,
+            sourceUrl: sourceUrl!,
+            sourceChannel,
+            thumbnail: thumbnailUrl || thumbnailFallback,
+            videoUrl: sourceUrl!,
+            startSec: hook.startSec,
+            endSec: hook.endSec,
+            captionLines: generatedCaptionLines.length ? generatedCaptionLines : [hook.caption],
+            textStyle: "gradient",
+            videoId,
+            aspectRatio: "9/16",
+          });
+
+          const jobId = await queueClipRender(db, clip.id, user.id, c.env, c.executionCtx, { isPreview: true });
+
+          return { ...hook, clipId: clip.id, jobId };
+        }));
+      }
       
       return c.json({ success: true, data: hooks });
     } catch (e) {
@@ -838,101 +1004,48 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const clip = await clipSvc.getClipById(id, user.id);
     if (!clip) return c.json({ success: false, error: "Clip not found" }, 404);
 
-    // Create render job and return immediately
-    const jobId = generateId();
-    await db.insert(renderJobs).values({
-      id: jobId,
-      clipId: id,
-      userId: user.id,
-      status: "pending",
-      attempts: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    const jobId = await queueClipRender(db, id, user.id, c.env, c.executionCtx);
+    return c.json({ success: true, data: { jobId } });
+  });
 
-    // Background render with retry
-    const runRender = async () => {
-      let lastErr: string | null = null;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          await db.update(renderJobs).set({ attempts: attempt, updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
-          
-          let cropCenterX: number | undefined;
-          if (c.env.VISION_URL) {
-            try {
-              const secret = c.env.INTERNAL_WEBHOOK_SECRET;
-              const visionResp = await fetch(`${c.env.VISION_URL}/track`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  ...(secret ? { "X-Internal-Secret": secret } : {}),
-                },
-                body: JSON.stringify({
-                  url: clip.sourceUrl ?? clip.videoUrl,
-                  start_time: clip.startSec ?? 0,
-                  end_time: clip.endSec ?? 30,
-                }),
-                signal: AbortSignal.timeout(25000),
-              });
-              if (visionResp.ok) {
-                const visionData = await visionResp.json() as any;
-                if (visionData.crop_center_x !== undefined) {
-                  cropCenterX = visionData.crop_center_x;
-                }
-              }
-            } catch (e) {
-              console.error("[render:bg] Vision error:", e);
-            }
-          }
+  api.post("/api/clips/:id/select", authMiddleware, async (c) => {
+    const db = createDatabase(c.env.DB);
+    const user = c.get("user");
+    const id = c.req.param("id");
+    const clipSvc = createClipService(db);
 
-          const secret = c.env.INTERNAL_WEBHOOK_SECRET;
-          const renderResp = await fetch(`${c.env.RENDERER_URL}/render`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(secret ? { "X-Internal-Secret": secret } : {}),
-            },
-            body: JSON.stringify({
-              url: clip.sourceUrl ?? clip.videoUrl,
-              start_time: clip.startSec ?? 0,
-              end_time: clip.endSec ?? 30,
-              crop_center_x: cropCenterX,
-              aspect_ratio: clip.aspectRatio || "9/16",
-            }),
-            signal: AbortSignal.timeout(25000),
-          });
+    const [freshUser] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+    if (!freshUser) {
+      return c.json({ success: false, error: "User not found" }, 404);
+    }
 
-          if (!renderResp.ok) {
-            const errText = await renderResp.text();
-            lastErr = `Renderer HTTP ${renderResp.status}: ${errText}`;
-            console.error(`[render:bg] attempt ${attempt} failed:`, lastErr);
-            if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
-            continue;
-          }
+    const { clip, error } = await clipSvc.selectPreRenderedClip(id, freshUser);
+    if (error || !clip) {
+      return c.json({ success: false, error: error ?? "Failed to select clip" }, 400);
+    }
 
-          const data = await renderResp.json() as any;
-          if (data.success && data.url) {
-            await db.update(clips).set({ videoUrl: data.url, status: "ready", updatedAt: new Date() }).where(eq(clips.id, id));
-            await db.update(renderJobs).set({ status: "ready", videoUrl: data.url, updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
-            console.log(`[render:bg] job ${jobId} completed`);
-            return;
-          } else {
-            lastErr = data.error || "Renderer returned no URL";
-            console.error(`[render:bg] attempt ${attempt} bad response:`, lastErr);
-            if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
-          }
-        } catch (e: any) {
-          lastErr = e?.message || String(e);
-          console.error(`[render:bg] attempt ${attempt} exception:`, lastErr);
-          if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
+    // Archive sibling preview clips so they don't clutter the UI
+    try {
+      const siblingConditions = [eq(clips.userId, user.id), eq(clips.status, "preview")];
+      if (clip.videoId) {
+        siblingConditions.push(eq(clips.videoId, clip.videoId));
+      } else if (clip.sourceUrl) {
+        siblingConditions.push(eq(clips.sourceUrl, clip.sourceUrl));
+      }
+      const siblings = await db
+        .select()
+        .from(clips)
+        .where(and(...siblingConditions));
+      for (const sib of siblings) {
+        if (sib.id !== clip.id) {
+          await db.update(clips).set({ status: "archived", updatedAt: new Date() }).where(eq(clips.id, sib.id));
         }
       }
-      // All attempts exhausted
-      await db.update(renderJobs).set({ status: "failed", error: lastErr || "All render attempts failed", updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
-    };
+    } catch (e) {
+      console.error("[select] sibling archive error:", e);
+    }
 
-    c.executionCtx?.waitUntil(runRender());
-    return c.json({ success: true, data: { jobId } });
+    return c.json({ success: true, data: clip });
   });
 
   api.get("/api/render-jobs/:id", authMiddleware, async (c) => {

@@ -463,7 +463,11 @@ export const api = {
     transcript: string;
     targetLength: number;
     thumbnailUrl?: string;
-  }): Promise<ApiResponse<Array<{ concept: string; title: string; startSec: number; endSec: number; viralScore: number; durationSeconds: number; caption: string }>>> {
+    preRender?: boolean;
+    sourceUrl?: string;
+    sourceChannel?: string;
+    videoId?: string;
+  }): Promise<ApiResponse<Array<{ concept: string; title: string; startSec: number; endSec: number; viralScore: number; durationSeconds: number; caption: string; clipId?: string; jobId?: string }>>> {
     const res = await requestJson<any[]>("/api/clips/suggest-hooks", {
       method: "POST",
       body: JSON.stringify(body),
@@ -499,12 +503,20 @@ export const api = {
     return requestJson<{ id: string; title: string; url: string; transcript: string | null; thumbnail: string | null }>(`/api/links/${id}`, { method: "GET" });
   },
 
-  async generateHooks(url: string, videoId?: string): Promise<ApiResponse<Array<any>>> {
+  async generateHooks(url: string, videoId?: string, preRender?: boolean): Promise<ApiResponse<Array<any>>> {
     // 1. If we have a videoId, try to get its transcript first
     if (videoId) {
       const v = await api.getVideo(videoId);
       if (v.success && v.data?.transcript) {
-        return api.suggestHooks({ transcript: v.data.transcript, targetLength: 60, thumbnailUrl: v.data.thumbnail || undefined });
+        return api.suggestHooks({
+          transcript: v.data.transcript,
+          targetLength: 60,
+          thumbnailUrl: v.data.thumbnail || undefined,
+          preRender,
+          sourceUrl: url,
+          sourceChannel: v.data.title || "Unknown channel",
+          videoId,
+        });
       }
       return { success: false, error: "Transcript not ready yet. Please wait for transcription to complete." };
     }
@@ -518,7 +530,15 @@ export const api = {
       return { success: false, error: "Transcript not ready yet. Please wait for transcription to complete." };
     }
     
-    return api.suggestHooks({ transcript: fresh.data.transcript, targetLength: 60, thumbnailUrl: fresh.data.thumbnail || undefined });
+    return api.suggestHooks({
+      transcript: fresh.data.transcript,
+      targetLength: 60,
+      thumbnailUrl: fresh.data.thumbnail || undefined,
+      preRender,
+      sourceUrl: url,
+      sourceChannel: fresh.data.title || "Unknown channel",
+      videoId: imp.data.id,
+    });
   },
 
   async updateClip(
@@ -580,5 +600,14 @@ export const api = {
 
   async getRenderJob(jobId: string): Promise<ApiResponse<{ status: string; videoUrl: string | null; error: string | null; attempts: number }>> {
     return requestJson(`/api/render-jobs/${jobId}`, { method: "GET" });
+  },
+
+  async selectClip(id: string): Promise<ApiResponse<Clip>> {
+    const res = await requestJson<Record<string, unknown>>(`/api/clips/${id}/select`, { method: "POST" });
+    if (res.success && res.data) {
+      const row = res.data as Record<string, unknown>;
+      res.data = { ...row, createdAt: parseDate(row.createdAt), editCount: Number(row.editCount ?? 0) } as unknown as Clip;
+    }
+    return res as ApiResponse<Clip>;
   },
 };
