@@ -22,6 +22,7 @@ import {
   WEBHOOK_EVENTS,
 } from "./stripe";
 import type { AppEnv } from "./types/app-env";
+import { fetchYoutubeTranscript, extractYoutubeId as extractYtId } from "./lib/youtube-transcript";
 
 function publicUser(u: {
   id: string;
@@ -615,13 +616,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: "AI not configured" }, 503);
     }
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const transcript = String(body.transcript ?? "");
+    let transcript = String(body.transcript ?? "");
     const targetLength = Number(body.targetLength ?? 30);
     const thumbnailUrl = typeof body.thumbnailUrl === "string" ? body.thumbnailUrl : undefined;
     const preRender = body.preRender === true;
     const sourceUrl = typeof body.sourceUrl === "string" ? body.sourceUrl : undefined;
     const sourceChannel = typeof body.sourceChannel === "string" ? body.sourceChannel : "Unknown channel";
     const videoId = typeof body.videoId === "string" ? body.videoId : undefined;
+
+    // Auto-fetch transcript via Worker JS (YouTube InnerTube API) if not provided
+    if (!transcript && sourceUrl) {
+      const ytId = extractYtId(sourceUrl);
+      if (ytId) {
+        console.log(`[suggest-hooks] Auto-fetching transcript for ${ytId}`);
+        const result = await fetchYoutubeTranscript(ytId);
+        if (result) {
+          transcript = result.text;
+          console.log(`[suggest-hooks] Auto-fetched transcript: ${transcript.length} chars`);
+        }
+      }
+    }
     
     if (!transcript) {
       return c.json({ success: false, error: "Transcript is required to generate hooks" }, 400);
@@ -785,6 +799,28 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       let bgSegments: Array<{ word: string; start: number; end: number }> = [];
       let lastError: string | null = null;
 
+      // ── Try 1: Pure-JS Worker extraction (YouTube captions via InnerTube API) ───
+      const tryWorkerJs = async () => {
+        if (platform !== "youtube") return false;
+        const ytId = extractYtId(body.url);
+        if (!ytId) return false;
+        try {
+          console.log(`[transcript:bg] Worker JS attempt for ${body.url}`);
+          const result = await fetchYoutubeTranscript(ytId);
+          if (result) {
+            bgTranscript = result.text;
+            bgSegments = result.segments;
+            console.log(`[transcript:bg] Worker JS success: ${bgTranscript.length} chars`);
+            return true;
+          }
+        } catch (e: any) {
+          lastError = e?.message || String(e);
+          console.error(`[transcript:bg] Worker JS failed:`, e);
+        }
+        return false;
+      };
+
+      // ── Try 2: Whisper (audio transcription via Cloud Run) ──────────────────────
       const tryWhisper = async () => {
         const whisperUrl = c.env.WHISPER_URL;
         if (!whisperUrl) {
@@ -826,6 +862,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return false;
       };
 
+      // ── Try 3: Renderer subtitle extraction (yt-dlp captions via Cloud Run) ─────
       const tryRenderer = async () => {
         if (!c.env.RENDERER_URL) {
           console.warn("[transcript:bg] RENDERER_URL not configured");
@@ -866,8 +903,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       };
 
       try {
-        const whisperOk = await tryWhisper();
-        if (!whisperOk) await tryRenderer();
+        const jsOk = await tryWorkerJs();
+        if (!jsOk) {
+          const whisperOk = await tryWhisper();
+          if (!whisperOk) await tryRenderer();
+        }
 
         if (bgTranscript) {
           await db.update(importedLinks)

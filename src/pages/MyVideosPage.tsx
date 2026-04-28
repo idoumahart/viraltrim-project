@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { UpgradeModal } from "@/components/ui/upgrade-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { getEmbedUrl } from "@/lib/video-utils";
 import ReactPlayer from "react-player";
 
 
@@ -183,7 +184,7 @@ export default function MyVideosPage() {
                   <div className="aspect-video relative bg-black">
                     {isExpanded ? (
                       <ReactPlayer
-                        url={link.url}
+                        url={getEmbedUrl(link.url)}
                         controls
                         width="100%"
                         height="100%"
