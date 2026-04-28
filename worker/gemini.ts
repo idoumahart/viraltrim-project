@@ -71,6 +71,24 @@ export async function fetchYouTubeVideos(
     `?part=statistics,contentDetails,status&id=${videoIds}&key=${apiKey}`;
 
   const detailRes = await fetch(detailUrl);
+  if (!detailRes.ok) {
+    console.error(`[youtube] details API failed: ${detailRes.status}`);
+    // Return search results without stats if details fail
+    return searchData.items.map((item) => ({
+      id: `yt-${item.id.videoId}`,
+      title: item.snippet.title,
+      url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+      thumbnail: item.snippet.thumbnails.high?.url ?? item.snippet.thumbnails.default?.url ?? "",
+      views: "—",
+      viralScore: 50,
+      category: item.snippet.channelTitle,
+      duration: "—",
+      durationSeconds: 0,
+      engagement: "",
+      platform: "youtube",
+      isCreativeCommons: false,
+    }));
+  }
   const detailData = (await detailRes.json()) as {
     items: Array<{
       id: string;

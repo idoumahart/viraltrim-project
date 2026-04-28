@@ -452,8 +452,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
       if (platform === "youtube" || platform === "all") {
         if (!youtubeKey) return c.json({ success: false, error: "YouTube API not configured" }, 503);
-        const yt = await fetchYouTubeVideos(category, youtubeKey);
-        results = results.concat(yt);
+        try {
+          const yt = await fetchYouTubeVideos(category, youtubeKey);
+          results = results.concat(yt);
+        } catch (e) {
+          console.error("[viral-discovery] YouTube fetch failed:", e);
+          // Don't fail the whole request — continue with other sources
+        }
       }
 
       if (platform === "reddit" || platform === "all") {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactPlayer from "react-player";
-import { getEmbedUrl } from "@/lib/video-utils";
+
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -389,7 +389,7 @@ export function StudioGeneratorPage() {
             <div className="aspect-video relative bg-black">
               <ReactPlayer
                 ref={playerRef}
-                url={getEmbedUrl(video?.url)}
+                url={video?.url}
                 playing={playing}
                 controls
                 width="100%"

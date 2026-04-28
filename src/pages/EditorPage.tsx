@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import ReactPlayer from "react-player";
-import { getEmbedUrl } from "@/lib/video-utils";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -831,7 +831,7 @@ export default function EditorPage() {
                   <>
                     <ReactPlayer
                       ref={playerRef}
-                      url={getEmbedUrl(videoUrl)}
+                      url={videoUrl}
                       playing={playing}
                       volume={muted ? 0 : volume}
                       onDuration={handleDuration}
