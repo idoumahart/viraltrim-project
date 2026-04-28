@@ -783,19 +783,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const transcribeInBackground = async () => {
       let bgTranscript = "";
       let bgSegments: Array<{ word: string; start: number; end: number }> = [];
+      let lastError: string | null = null;
 
       const tryWhisper = async () => {
         const whisperUrl = c.env.WHISPER_URL;
-        if (!whisperUrl) return false;
+        if (!whisperUrl) {
+          console.warn("[transcript:bg] WHISPER_URL not configured");
+          return false;
+        }
         for (let attempt = 1; attempt <= 2; attempt++) {
           try {
-            console.log(`[transcript:bg] Whisper attempt ${attempt}...`);
+            console.log(`[transcript:bg] Whisper attempt ${attempt} for ${body.url}`);
             const whisperResp = await fetch(`${whisperUrl}/transcribe`, {
               method: "POST",
               headers: gcHeaders,
               body: JSON.stringify({ url: body.url }),
               signal: AbortSignal.timeout(300_000),
             });
+            console.log(`[transcript:bg] Whisper HTTP ${whisperResp.status}`);
             if (whisperResp.ok) {
               const data = await whisperResp.json() as any;
               if (data.success && data.text) {
@@ -803,10 +808,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 bgSegments = Array.isArray(data.segments) ? data.segments : [];
                 console.log(`[transcript:bg] Whisper success: ${bgTranscript.length} chars`);
                 return true;
+              } else {
+                lastError = data.error || `Whisper returned success=false`;
+                console.error(`[transcript:bg] Whisper bad response:`, data);
               }
+            } else {
+              const errText = await whisperResp.text().catch(() => "unknown");
+              lastError = `Whisper HTTP ${whisperResp.status}: ${errText}`;
+              console.error(`[transcript:bg] Whisper HTTP error ${whisperResp.status}:`, errText);
             }
-          } catch (e) {
-            console.error(`[transcript:bg] Whisper attempt ${attempt} failed:`, e);
+          } catch (e: any) {
+            lastError = e?.message || String(e);
+            console.error(`[transcript:bg] Whisper attempt ${attempt} exception:`, e);
           }
           if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
         }
@@ -814,26 +827,38 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       };
 
       const tryRenderer = async () => {
-        if (!c.env.RENDERER_URL) return false;
+        if (!c.env.RENDERER_URL) {
+          console.warn("[transcript:bg] RENDERER_URL not configured");
+          return false;
+        }
         for (let attempt = 1; attempt <= 2; attempt++) {
           try {
-            console.log(`[transcript:bg] Renderer transcript attempt ${attempt}...`);
+            console.log(`[transcript:bg] Renderer transcript attempt ${attempt} for ${body.url}`);
             const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
               method: "POST",
               headers: gcHeaders,
               body: JSON.stringify({ url: body.url }),
               signal: AbortSignal.timeout(60_000),
             });
+            console.log(`[transcript:bg] Renderer HTTP ${renderResp.status}`);
             if (renderResp.ok) {
               const data = await renderResp.json() as any;
               if (data.success && data.transcript) {
                 bgTranscript = data.transcript;
                 console.log(`[transcript:bg] Renderer transcript success: ${bgTranscript.length} chars`);
                 return true;
+              } else {
+                lastError = data.error || `Renderer returned success=false`;
+                console.error(`[transcript:bg] Renderer bad response:`, data);
               }
+            } else {
+              const errText = await renderResp.text().catch(() => "unknown");
+              lastError = `Renderer HTTP ${renderResp.status}: ${errText}`;
+              console.error(`[transcript:bg] Renderer HTTP error ${renderResp.status}:`, errText);
             }
-          } catch (e) {
-            console.error(`[transcript:bg] Renderer attempt ${attempt} failed:`, e);
+          } catch (e: any) {
+            lastError = e?.message || String(e);
+            console.error(`[transcript:bg] Renderer attempt ${attempt} exception:`, e);
           }
           if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
         }
@@ -853,7 +878,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             .where(eq(importedLinks.id, id));
           console.log(`[transcript:bg] Updated record ${id} with transcript`);
         } else {
-          console.error(`[transcript:bg] All transcript methods failed for ${id}`);
+          console.error(`[transcript:bg] All transcript methods failed for ${id}. Last error: ${lastError || "unknown"}`);
         }
       } catch (e) {
         console.error("[transcript:bg] Background transcription failed:", e);

@@ -29,7 +29,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 interface Suggestion {
@@ -63,6 +63,28 @@ export function StudioGeneratorPage() {
   // Landing state (no videoId)
   const [pasteUrl, setPasteUrl] = useState("");
   const [importing, setImporting] = useState(false);
+
+  // Manual transcript input
+  const [showTranscriptInput, setShowTranscriptInput] = useState(false);
+  const [manualTranscript, setManualTranscript] = useState("");
+
+  const handlePasteTranscript = async () => {
+    if (!manualTranscript.trim() || !video) return;
+    try {
+      const res = await api.updateTranscript(video.id, manualTranscript.trim());
+      if (res.success) {
+        toast.success("Transcript saved! Starting AI analysis…");
+        setShowTranscriptInput(false);
+        video.transcript = manualTranscript.trim();
+        await handleStartGeneration(video);
+      } else {
+        toast.error(res.error || "Failed to save transcript");
+      }
+    } catch (e: any) {
+      console.error("[generator] Failed to save manual transcript:", e);
+      toast.error(e.message || "Failed to save transcript");
+    }
+  };
 
   // Player state
   const playerRef = useRef<ReactPlayer>(null);
@@ -132,11 +154,16 @@ export function StudioGeneratorPage() {
     }, 2000);
   }, []);
 
-  const handleStartGeneration = async (v: any) => {
+  const handleStartGeneration = async (v: any, manualTranscript?: string) => {
     setGenerating(true);
     setSuggestions([]);
     setProgress(10);
     if (pollRef.current) clearInterval(pollRef.current);
+
+    // Use manually pasted transcript if provided
+    if (manualTranscript) {
+      v.transcript = manualTranscript;
+    }
 
     // Poll for transcript if not ready yet
     if (!v.transcript) {
@@ -145,10 +172,14 @@ export function StudioGeneratorPage() {
       const maxAttempts = 20; // ~60 seconds
       while (attempts < maxAttempts) {
         await new Promise((r) => setTimeout(r, 3000));
-        const fresh = await api.getVideo(v.id);
-        if (fresh.success && fresh.data?.transcript) {
-          v.transcript = fresh.data.transcript;
-          break;
+        try {
+          const fresh = await api.getVideo(v.id);
+          if (fresh.success && fresh.data?.transcript) {
+            v.transcript = fresh.data.transcript;
+            break;
+          }
+        } catch (e) {
+          console.error("[generator] Failed to fetch video status during poll:", e);
         }
         attempts++;
         setProgress(10 + Math.min(40, attempts * 2));
@@ -157,7 +188,9 @@ export function StudioGeneratorPage() {
         setGenerating(false);
         setProgress(0);
         setStatus("Transcript unavailable.");
-        toast.error("Transcription is taking longer than expected. You can paste a transcript manually from the video page.");
+        console.error("[generator] Transcript still null after", maxAttempts, "polling attempts for video", v.id);
+        toast.error("We couldn't transcribe this video automatically. Our transcription service may be temporarily unavailable. Please paste a transcript manually below.", { duration: 30000 });
+        setShowTranscriptInput(true);
         return;
       }
     }
@@ -449,6 +482,41 @@ export function StudioGeneratorPage() {
                   <RefreshCw className="h-4 w-4" />
                   Generate Again
                 </Button>
+              )}
+
+              {/* Manual transcript fallback */}
+              {showTranscriptInput && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                    <p className="text-xs text-amber-400 font-semibold mb-1">Automatic transcription failed</p>
+                    <p className="text-[10px] text-amber-500/70">
+                      Paste a transcript below and we'll analyze it for viral moments.
+                    </p>
+                  </div>
+                  <textarea
+                    value={manualTranscript}
+                    onChange={(e) => setManualTranscript(e.target.value)}
+                    placeholder="Paste video transcript here…"
+                    className="w-full h-32 bg-black/40 border border-white/10 rounded-lg p-3 text-xs text-white/80 placeholder:text-white/20 resize-none focus:outline-none focus:border-[#5865F2]/50"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 btn-gradient text-xs"
+                      onClick={handlePasteTranscript}
+                      disabled={!manualTranscript.trim()}
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Analyze Transcript
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="text-xs border-white/10"
+                      onClick={() => setShowTranscriptInput(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
           </Card>

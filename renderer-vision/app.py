@@ -90,8 +90,8 @@ def track():
     
     data = request.json
     url = data.get("url")
-    start = data.get("startSec", 0)
-    end = data.get("endSec", 0)
+    start = data.get("start_time", data.get("startSec", 0))
+    end = data.get("end_time", data.get("endSec", 0))
     
     if not url or end <= start:
         return jsonify({"error": "Valid URL and timestamps required"}), 400
@@ -103,9 +103,9 @@ def track():
         os.close(fd)
         
         duration = end - start
+        print(f"[vision] Tracking face in {url} ({start}s - {end}s)")
         
         # yt-dlp to grab just a small clip
-        # We use internal downloader (not external ffmpeg) to ensure --proxy works perfectly
         download_cmd = [
             "yt-dlp",
             "-S", "res:720",
@@ -122,11 +122,20 @@ def track():
             
         download_cmd.append(url)
         
+        print(f"[vision] Running yt-dlp: {' '.join(download_cmd)}")
         result = subprocess.run(download_cmd, capture_output=True, timeout=120)
         if result.returncode != 0:
-            return jsonify({"error": "Video download for vision tracking failed"}), 500
+            stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
+            print(f"[vision] yt-dlp failed (exit={result.returncode}): {stderr}")
+            return jsonify({"error": f"Video download failed: {stderr}"}), 500
+        
+        if not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
+            print(f"[vision] Downloaded file empty or missing: {video_path}")
+            return jsonify({"error": "Downloaded video file is empty"}), 500
+        print(f"[vision] Download complete: {os.path.getsize(video_path)} bytes")
             
         crop_x = process_video_segment(video_path)
+        print(f"[vision] Face center detected at x={round(crop_x, 3)}")
         
         return jsonify({
             "success": True,
@@ -134,15 +143,17 @@ def track():
         })
         
     except Exception as e:
-        print(f"[vision] Error: {e}")
+        print(f"[vision] Unhandled error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
         
     finally:
         if video_path and os.path.exists(video_path):
             try:
                 os.remove(video_path)
-            except:
-                pass
+            except Exception as e:
+                print(f"[vision] Failed to remove temp file: {e}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)

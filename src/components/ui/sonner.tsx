@@ -2,9 +2,21 @@
 
 import * as React from "react";
 import { useTheme } from "next-themes";
-import { Toaster as Sonner, toast } from "sonner";
+import { Toaster as Sonner, toast as sonnerToast } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
+
+// Override error toasts so they stay visible long enough to read (30s).
+// Success/info toasts keep the default 4s duration.
+const toast = {
+  ...sonnerToast,
+  error: (message: string | React.ReactNode, options?: any) => {
+    return sonnerToast.error(message, { ...options, duration: options?.duration ?? 30000 });
+  },
+  warning: (message: string | React.ReactNode, options?: any) => {
+    return sonnerToast.warning(message, { ...options, duration: options?.duration ?? 30000 });
+  },
+};
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Video, Share2, Clock, Plus, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, type ScheduledPost, type Clip } from "@/lib/api-client";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 

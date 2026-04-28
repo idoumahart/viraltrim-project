@@ -6,7 +6,7 @@ import React, {
   useContext,
   type ReactNode,
 } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { api, type Subscription, type Price, type Payment } from "@/lib/api-client";
 
 interface SubscriptionState {

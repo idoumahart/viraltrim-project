@@ -16,7 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { api, type AffiliateStats } from "@/lib/api-client";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 export default function AffiliatePage() {
   const [stats, setStats] = useState<AffiliateStats | null>(null);

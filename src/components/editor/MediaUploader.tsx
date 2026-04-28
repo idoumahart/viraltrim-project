@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Upload, X, ImageIcon, Film, Music, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 const VIDEO_MAX_MB = 75;

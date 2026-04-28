@@ -3,6 +3,13 @@ import { enableMapSet } from "immer";
 
 enableMapSet();
 
+// Pre-load video element components so Vite bundles them in production.
+// ReactPlayer v3 uses dynamic imports (React.lazy) which Vite does NOT
+// automatically include in the build output. Without these static imports,
+// YouTube and TikTok players show a black screen in production.
+import "youtube-video-element/react";
+import "tiktok-video-element/react";
+
 import React, { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";

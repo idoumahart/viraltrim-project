@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { User, Bell, Shield, Link2, Video, Save, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 export default function SettingsPage() {
   const { user, updateProfile } = useAuth();

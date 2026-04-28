@@ -4,7 +4,7 @@ import { X, Zap, Crown, Rocket, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSubscription } from "@/hooks/use-subscription";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface UpgradeModalProps {
   open: boolean;

@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, type ViralVideo } from "@/lib/api-client";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { cn, decodeHTML } from "@/lib/utils";
 
 // ─── Platform config — YouTube + Reddit only ──────────────────────────────────

@@ -35,7 +35,11 @@ def verify_internal_secret(req):
             raise RuntimeError("INTERNAL_SECRET is required in production")
         print("[security] WARNING: INTERNAL_SECRET not set — all requests accepted.")
         return True
-    return req.headers.get("X-Internal-Secret", "") == INTERNAL_SECRET
+    provided = req.headers.get("X-Internal-Secret", "")
+    ok = provided == INTERNAL_SECRET
+    if not ok:
+        print(f"[security] Rejected request: secret mismatch (provided len={len(provided)}, expected len={len(INTERNAL_SECRET)})")
+    return ok
 
 def get_r2_client():
     return boto3.client(
@@ -81,6 +85,7 @@ def extract_transcript():
         if proxy:
             ydl_opts['proxy'] = proxy
 
+        print(f"[transcript] Extracting subtitles for: {url}")
         import yt_dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -104,11 +109,16 @@ def extract_transcript():
                             clean_lines.append(clean_line)
                             
                 transcript_text = " ".join(clean_lines)
+                print(f"[transcript] Success: {len(transcript_text)} chars")
                 return jsonify({'success': True, 'transcript': transcript_text})
             else:
-                return jsonify({'error': 'No English transcript found in metadata'}), 404
+                available = list(subs.keys()) if subs else []
+                print(f"[transcript] No English subtitles found. Available: {available}")
+                return jsonify({'error': f'No English transcript found. Available languages: {available}'}), 404
     except Exception as e:
-        print(f"Transcript Error: {str(e)}")
+        print(f"[transcript] Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/render', methods=['POST'])
@@ -127,7 +137,15 @@ def process_video():
     raw_path = None
     final_path = None
         
+    raw_path = None
+    final_path = None
+    
     try:
+        # Validate R2 credentials early
+        if not (R2_ACCOUNT_ID and R2_ACCESS_KEY and R2_SECRET_KEY):
+            print("[render] FATAL: R2 credentials not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY, R2_SECRET_KEY.")
+            return jsonify({'error': 'R2 storage credentials not configured'}), 503
+
         # Generate temporary files
         fd_raw, raw_path = tempfile.mkstemp(suffix='.mp4')
         os.close(fd_raw)
@@ -139,7 +157,7 @@ def process_video():
             # Internal File (GCS)
             bucket_name = url.split("/")[2]
             blob_name = "/".join(url.split("/")[3:])
-            print(f"Downloading from GCS: {bucket_name}/{blob_name}")
+            print(f"[render] Downloading from GCS: {bucket_name}/{blob_name}")
             download_from_gcs(bucket_name, blob_name, raw_path)
             
             # Trim GCS file if needed (GCS downloads entire file)
@@ -148,13 +166,18 @@ def process_video():
                 "ffmpeg", "-y", "-ss", str(start_time), "-to", str(end_time),
                 "-i", raw_path, "-c", "copy", trim_path
             ]
-            subprocess.run(trim_cmd, check=True, capture_output=True)
+            print(f"[render] Trimming GCS file: {start_time}s - {end_time}s")
+            result = subprocess.run(trim_cmd, capture_output=True)
+            if result.returncode != 0:
+                stderr = result.stderr.decode('utf-8', errors='replace')[:500]
+                print(f"[render] FFmpeg trim failed: {stderr}")
+                return jsonify({'error': f'FFmpeg trim failed: {stderr}'}), 500
             os.replace(trim_path, raw_path)
         else:
             # External File (YouTube/Direct)
-            print(f"Downloading clip via yt-dlp: {url}")
+            print(f"[render] Downloading clip via yt-dlp: {url} ({start_time}s - {end_time}s)")
             download_cmd = [
-                "yt-dlp",  # Fixed: was "yt_dlp" (underscore), CLI binary uses hyphen
+                "yt-dlp",
                 "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
                 "--download-sections", f"*{start_time}-{end_time}",
                 "--force-keyframes-at-cuts",
@@ -165,10 +188,20 @@ def process_video():
             if proxy:
                 download_cmd.extend(["--proxy", proxy])
             download_cmd.append(url)
-            subprocess.run(download_cmd, check=True, capture_output=True)
+            
+            result = subprocess.run(download_cmd, capture_output=True)
+            if result.returncode != 0:
+                stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
+                print(f"[render] yt-dlp download failed (exit={result.returncode}): {stderr}")
+                return jsonify({'error': f'Video download failed: {stderr}'}), 500
+            
+            if not os.path.exists(raw_path) or os.path.getsize(raw_path) == 0:
+                print(f"[render] Downloaded file empty or missing: {raw_path}")
+                return jsonify({'error': 'Downloaded video file is empty'}), 500
+            print(f"[render] Download complete: {os.path.getsize(raw_path)} bytes")
         
         # 2. Optimized Processing (aspect-aware crop + scale)
-        print("Rendering optimized clip...")
+        print("[render] Rendering optimized clip...")
         aspect_ratio = data.get('aspect_ratio', '9/16')
         crop_center_x = data.get('crop_center_x')
         
@@ -203,30 +236,46 @@ def process_video():
             "-c:a", "aac", "-b:a", "128k",
             final_path
         ]
-        subprocess.run(render_cmd, check=True, capture_output=True)
+        print(f"[render] Running FFmpeg: {' '.join(render_cmd)}")
+        result = subprocess.run(render_cmd, capture_output=True)
+        if result.returncode != 0:
+            stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
+            print(f"[render] FFmpeg failed (exit={result.returncode}): {stderr}")
+            return jsonify({'error': f'Video rendering failed: {stderr}'}), 500
+        
+        if not os.path.exists(final_path) or os.path.getsize(final_path) == 0:
+            print(f"[render] Rendered file empty or missing: {final_path}")
+            return jsonify({'error': 'Rendered video file is empty'}), 500
+        print(f"[render] Render complete: {os.path.getsize(final_path)} bytes")
 
         # 3. Multi-Cloud Delivery (Upload to R2)
         output_key = f"renders/{os.path.basename(final_path)}.mp4"
-        print(f"Uploading to R2: {output_key}")
+        print(f"[render] Uploading to R2: {output_key}")
         
-        if R2_ACCOUNT_ID and R2_ACCESS_KEY:
-            s3 = get_r2_client()
-            s3.upload_file(final_path, R2_BUCKET, output_key, ExtraArgs={'ContentType': 'video/mp4'})
-            final_url = f"https://media.viraltrim.com/{output_key}"
-        else:
-            final_url = "http://localhost/r2-missing-creds.mp4"
+        s3 = get_r2_client()
+        s3.upload_file(final_path, R2_BUCKET, output_key, ExtraArgs={'ContentType': 'video/mp4'})
+        final_url = f"https://media.viraltrim.com/{output_key}"
+        print(f"[render] Upload complete: {final_url}")
 
         return jsonify({'success': True, 'url': final_url})
         
     except Exception as e:
-        print(f"Render Error: {str(e)}")
+        print(f"[render] Unhandled error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
     finally:
         # 4. Immediate Purge
         if raw_path and os.path.exists(raw_path):
-            os.remove(raw_path)
+            try:
+                os.remove(raw_path)
+            except Exception as e:
+                print(f"[render] Failed to remove raw file: {e}")
         if final_path and os.path.exists(final_path):
-            os.remove(final_path)
+            try:
+                os.remove(final_path)
+            except Exception as e:
+                print(f"[render] Failed to remove final file: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))

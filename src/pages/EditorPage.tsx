@@ -11,7 +11,7 @@ import {
   Volume2, ChevronRight, Maximize2, Sparkles, X,
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { CaptionEditor, CaptionOverlay } from "@/components/editor/CaptionEditor";

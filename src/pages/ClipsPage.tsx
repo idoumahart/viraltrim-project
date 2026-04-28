@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 // ─── Edit limits by plan (spec: Free=3, Pro=10, Agency=20) ───────────────────
 const EDIT_LIMITS: Record<string, number> = { free: 3, pro: 10, agency: 20, unlimited: 999 };
