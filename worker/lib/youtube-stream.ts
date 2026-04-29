@@ -1,5 +1,5 @@
 /**
- * Fetch YouTube direct stream URLs via InnerTube API (Android client).
+ * Fetch YouTube direct stream URLs via InnerTube API.
  * These URLs point to googlevideo.com CDN and can be downloaded from
  * any IP — including Cloud Run — bypassing YouTube's datacenter IP blocks.
  */
@@ -17,16 +17,63 @@ interface StreamFormat {
 }
 
 export interface StreamInfo {
-  videoUrl: string;      // Best video+audio combined format
-  videoOnlyUrl?: string; // Best video-only format (for high quality)
-  audioOnlyUrl?: string; // Best audio-only format
+  videoUrl: string;
+  videoOnlyUrl?: string;
+  audioOnlyUrl?: string;
   itag: number;
   qualityLabel: string;
 }
 
 /**
+ * Generate a plausible visitorData protobuf for InnerTube requests.
+ * visitorData is a base64-encoded protobuf with id + timestamp fields.
+ * YouTube uses this to track sessions; providing one reduces bot flags.
+ */
+function generateVisitorData(): string {
+  // Protobuf wire format:
+  // Field 1 (string id): tag = (1 << 3) | 2 = 0x0A, then length-prefixed string
+  // Field 5 (int32 ts):  tag = (5 << 3) | 0 = 0x28, then varint
+  const idChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  let id = "";
+  for (let i = 0; i < 11; i++) {
+    id += idChars.charAt(Math.floor(Math.random() * idChars.length));
+  }
+
+  const ts = Math.floor(Date.now() / 1000);
+
+  // Encode varint for timestamp
+  const varint: number[] = [];
+  let n = ts;
+  while (n > 0x7F) {
+    varint.push((n & 0x7F) | 0x80);
+    n >>>= 7;
+  }
+  varint.push(n);
+
+  // Build protobuf bytes
+  const idBytes = new TextEncoder().encode(id);
+  const buf = new Uint8Array(1 + 1 + idBytes.length + 1 + varint.length);
+  let p = 0;
+
+  buf[p++] = 0x0A; // field 1, wire type 2 (length-delimited)
+  buf[p++] = idBytes.length;
+  buf.set(idBytes, p);
+  p += idBytes.length;
+
+  buf[p++] = 0x28; // field 5, wire type 0 (varint)
+  for (const b of varint) {
+    buf[p++] = b;
+  }
+
+  // Base64 URL-safe encode
+  const binary = String.fromCharCode(...buf.slice(0, p));
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+/**
  * Get direct stream URLs for a YouTube video.
- * Uses the Android InnerTube client which is less aggressively blocked.
+ * Uses the Android InnerTube client with visitorData to appear more like
+ * a real device and reduce bot-detection flags.
  */
 export async function getYoutubeStreamUrls(
   videoId: string
@@ -34,17 +81,28 @@ export async function getYoutubeStreamUrls(
   try {
     console.log(`[yt-stream] Fetching stream URLs for ${videoId}`);
 
+    const visitorData = generateVisitorData();
+
     const resp = await fetch(INNERTUBE_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "User-Agent": ANDROID_USER_AGENT,
+        "X-Goog-Visitor-Id": visitorData,
+        "X-YouTube-Client-Name": "3",
+        "X-YouTube-Client-Version": "20.10.38",
+        Accept: "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
       },
       body: JSON.stringify({
         context: {
           client: {
             clientName: "ANDROID",
             clientVersion: "20.10.38",
+            androidSdkVersion: 34,
+            osName: "Android",
+            osVersion: "14",
+            visitorData,
           },
         },
         videoId,
