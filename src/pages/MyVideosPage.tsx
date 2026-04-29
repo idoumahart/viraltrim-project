@@ -11,9 +11,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { UpgradeModal } from "@/components/ui/upgrade-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { getEmbedUrl } from "@/lib/video-utils";
-import ReactPlayer from "react-player";
-
 
 // Derive YouTube thumbnail from URL if thumbnail is missing
 function resolveThumbnail(link: any): string | null {
@@ -25,6 +22,20 @@ function resolveThumbnail(link: any): string | null {
     if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
   } catch {}
   return null;
+}
+
+/** Get embed URL for iframe playback — works for YouTube & TikTok */
+function getEmbedUrl(url?: string): string {
+  if (!url) return "";
+  const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  if (ytMatch && ytMatch[1]) {
+    return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&rel=0`;
+  }
+  const ttMatch = url.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|t\/|[\w.-]+\/)([\d]+)/i);
+  if (ttMatch && ttMatch[1]) {
+    return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`;
+  }
+  return url;
 }
 
 export default function MyVideosPage() {
@@ -183,17 +194,12 @@ export default function MyVideosPage() {
                   {/* Thumbnail / Player */}
                   <div className="aspect-video relative bg-black">
                     {isExpanded ? (
-                      <ReactPlayer
-                        url={getEmbedUrl(link.url)}
-                        controls
-                        width="100%"
-                        height="100%"
-                        playing={true} // Auto-play when expanded
-                        onError={() => {
-                          console.warn("Player failed to load. The video URL might be protected or unsupported. Falling back to native source link.");
-                          window.open(link.url, '_blank');
-                          setPreviewId(null);
-                        }}
+                      <iframe
+                        src={getEmbedUrl(link.url)}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={link.title || "Video preview"}
                       />
                     ) : thumbnail ? (
                       <img
