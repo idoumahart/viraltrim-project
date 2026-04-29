@@ -65,7 +65,17 @@ app.onError((err, c) => {
 app.notFound((c) => c.json({ success: false, error: "Not found" }, 404));
 
 export default {
-  fetch: app.fetch,
+  async fetch(request: Request, env: Env, ctx: any) {
+    // For API routes, let Hono handle the request
+    if (new URL(request.url).pathname.startsWith("/api/")) {
+      const response = await app.fetch(request, env, ctx);
+      return addCoopCoepHeaders(response);
+    }
+
+    // For static assets, fetch from ASSETS binding and add COOP/COEP
+    const assetResponse = await env.ASSETS.fetch(request);
+    return addCoopCoepHeaders(assetResponse);
+  },
   async scheduled(event: any, env: Env, ctx: any) {
     const db = createDatabase(env.DB);
     try {
@@ -76,3 +86,14 @@ export default {
     }
   }
 };
+
+function addCoopCoepHeaders(response: Response): Response {
+  const newHeaders = new Headers(response.headers);
+  newHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
+  newHeaders.set("Cross-Origin-Embedder-Policy", "require-corp");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
+}

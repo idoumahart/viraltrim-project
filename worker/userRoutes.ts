@@ -445,6 +445,108 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true, data: { url, key } });
   });
 
+  /**
+   * Upload a video file directly to R2.
+   * Returns the R2 key and public URL for the uploaded file.
+   */
+  api.post("/api/uploads/video", authMiddleware, async (c) => {
+    const form = await c.req.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) {
+      return c.json({ success: false, error: "file required" }, 400);
+    }
+
+    // Validate video file type
+    const allowedMimeTypes = ["video/mp4", "video/webm", "video/quicktime", "video/x-matroska"];
+    if (!allowedMimeTypes.includes(file.type)) {
+      return c.json({ success: false, error: "Invalid file type. Only MP4, WebM, MOV, and MKV are allowed." }, 400);
+    }
+
+    // Max 2GB for video uploads
+    const MAX_SIZE = 2 * 1024 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return c.json({ success: false, error: "File too large (max 2GB)" }, 400);
+    }
+
+    const user = c.get("user");
+    const id = generateId();
+    const ext = file.name.split(".").pop() || "mp4";
+    const key = `uploads/${user.id}/${id}.${ext}`;
+
+    try {
+      const buf = await file.arrayBuffer();
+      await c.env.MEDIA.put(key, buf, {
+        httpMetadata: { contentType: file.type || "video/mp4" },
+      });
+
+      const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+      const url = `${r2PublicBase}/${key}`;
+
+      return c.json({ success: true, data: { id, url, key, title: file.name } });
+    } catch (e: any) {
+      console.error("[upload:video] Failed:", e);
+      return c.json({ success: false, error: "Upload failed: " + (e?.message || String(e)) }, 500);
+    }
+  });
+
+  /**
+   * Upload a rendered clip video directly to R2.
+   * Updates the clip's videoUrl with the rendered result.
+   */
+  api.post("/api/clips/:id/upload-render", authMiddleware, async (c) => {
+    const clipId = c.req.param("id");
+    const user = c.get("user");
+    const db = createDatabase(c.env.DB);
+
+    // Verify clip ownership
+    const clipSvc = createClipService(db);
+    const clip = await clipSvc.getClipById(clipId, user.id);
+    if (!clip) {
+      return c.json({ success: false, error: "Clip not found" }, 404);
+    }
+
+    const form = await c.req.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) {
+      return c.json({ success: false, error: "file required" }, 400);
+    }
+
+    if (!file.type.startsWith("video/")) {
+      return c.json({ success: false, error: "Video file required" }, 400);
+    }
+
+    // Max 200MB for rendered clips
+    const MAX_SIZE = 200 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return c.json({ success: false, error: "File too large (max 200MB)" }, 400);
+    }
+
+    try {
+      const id = generateId();
+      const ext = file.name.split(".").pop() || "mp4";
+      const key = `renders/${user.id}/${id}.${ext}`;
+
+      const buf = await file.arrayBuffer();
+      await c.env.MEDIA.put(key, buf, {
+        httpMetadata: { contentType: file.type || "video/mp4" },
+      });
+
+      const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+      const url = `${r2PublicBase}/${key}`;
+
+      // Update clip with rendered URL
+      await clipSvc.updateClip(clipId, user.id, {
+        videoUrl: url,
+        status: "ready",
+      } as any, user.plan);
+
+      return c.json({ success: true, data: { url, key } });
+    } catch (e: any) {
+      console.error("[upload:render] Failed:", e);
+      return c.json({ success: false, error: "Upload failed: " + (e?.message || String(e)) }, 500);
+    }
+  });
+
   api.get("/api/media/*", async (c) => {
     const key = c.req.path.replace(/^\/api\/media\/?/, "");
     if (!key) {
@@ -640,6 +742,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const sourceUrl = typeof body.sourceUrl === "string" ? body.sourceUrl : undefined;
     const sourceChannel = typeof body.sourceChannel === "string" ? body.sourceChannel : "Unknown channel";
     const videoId = typeof body.videoId === "string" ? body.videoId : undefined;
+    const clipType = typeof body.clipType === "string" ? body.clipType : undefined;
 
     // Auto-fetch transcript via Worker JS (YouTube InnerTube API) if not provided
     if (!transcript && sourceUrl) {
@@ -662,7 +765,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
 
     try {
-      const rawHooks = await generateHookSuggestions(key, c.env.GEMINI_MODEL, transcript, targetLength, thumbnailUrl);
+      const rawHooks = await generateHookSuggestions(key, c.env.GEMINI_MODEL, transcript, targetLength, thumbnailUrl, clipType);
       
       // Code-Enforced Trim: Ensure no AI drift beyond target limit
       let hooks = rawHooks.map(hook => {
@@ -816,28 +919,51 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       let bgSegments: Array<{ word: string; start: number; end: number }> = [];
       let lastError: string | null = null;
 
-      // ── Try 1: Pure-JS Worker extraction (YouTube captions via InnerTube API) ───
-      const tryWorkerJs = async () => {
-        if (platform !== "youtube") return false;
-        const ytId = extractYtId(body.url);
-        if (!ytId) return false;
-        try {
-          console.log(`[transcript:bg] Worker JS attempt for ${body.url}`);
-          const result = await fetchYoutubeTranscript(ytId);
-          if (result) {
-            bgTranscript = result.text;
-            bgSegments = result.segments;
-            console.log(`[transcript:bg] Worker JS success: ${bgTranscript.length} chars`);
-            return true;
+      // ── Try 1: Renderer subtitle extraction (yt-dlp captions via Cloud Run proxy) ─
+      // This is the most reliable method because yt-dlp on Cloud Run uses rotating
+      // Webshare residential proxies to bypass YouTube's datacenter IP blocks.
+      const tryRenderer = async () => {
+        if (!c.env.RENDERER_URL) {
+          console.warn("[transcript:bg] RENDERER_URL not configured");
+          return false;
+        }
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            console.log(`[transcript:bg] Renderer transcript attempt ${attempt} for ${body.url}`);
+            const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
+              method: "POST",
+              headers: gcHeaders,
+              body: JSON.stringify({ url: body.url }),
+              signal: AbortSignal.timeout(60_000),
+            });
+            console.log(`[transcript:bg] Renderer HTTP ${renderResp.status}`);
+            if (renderResp.ok) {
+              const data = await renderResp.json() as any;
+              if (data.success && data.transcript) {
+                bgTranscript = data.transcript;
+                console.log(`[transcript:bg] Renderer transcript success: ${bgTranscript.length} chars`);
+                return true;
+              } else {
+                lastError = data.error || `Renderer returned success=false`;
+                console.error(`[transcript:bg] Renderer bad response:`, data);
+              }
+            } else {
+              const errText = await renderResp.text().catch(() => "unknown");
+              lastError = `Renderer HTTP ${renderResp.status}: ${errText}`;
+              console.error(`[transcript:bg] Renderer HTTP error ${renderResp.status}:`, errText);
+            }
+          } catch (e: any) {
+            lastError = e?.message || String(e);
+            console.error(`[transcript:bg] Renderer attempt ${attempt} exception:`, e);
           }
-        } catch (e: any) {
-          lastError = e?.message || String(e);
-          console.error(`[transcript:bg] Worker JS failed:`, e);
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
         }
         return false;
       };
 
-      // ── Try 2: Whisper (audio transcription via Cloud Run) ──────────────────────
+      // ── Try 2: Whisper (audio transcription via Cloud Run proxy) ─────────────────
+      // Downloads audio with yt-dlp + proxy, then transcribes with Faster-Whisper.
+      // Slower but works when subtitles are unavailable.
       const tryWhisper = async () => {
         const whisperUrl = c.env.WHISPER_URL;
         if (!whisperUrl) {
@@ -879,51 +1005,33 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return false;
       };
 
-      // ── Try 3: Renderer subtitle extraction (yt-dlp captions via Cloud Run) ─────
-      const tryRenderer = async () => {
-        if (!c.env.RENDERER_URL) {
-          console.warn("[transcript:bg] RENDERER_URL not configured");
-          return false;
-        }
-        for (let attempt = 1; attempt <= 2; attempt++) {
-          try {
-            console.log(`[transcript:bg] Renderer transcript attempt ${attempt} for ${body.url}`);
-            const renderResp = await fetch(`${c.env.RENDERER_URL}/transcript`, {
-              method: "POST",
-              headers: gcHeaders,
-              body: JSON.stringify({ url: body.url }),
-              signal: AbortSignal.timeout(60_000),
-            });
-            console.log(`[transcript:bg] Renderer HTTP ${renderResp.status}`);
-            if (renderResp.ok) {
-              const data = await renderResp.json() as any;
-              if (data.success && data.transcript) {
-                bgTranscript = data.transcript;
-                console.log(`[transcript:bg] Renderer transcript success: ${bgTranscript.length} chars`);
-                return true;
-              } else {
-                lastError = data.error || `Renderer returned success=false`;
-                console.error(`[transcript:bg] Renderer bad response:`, data);
-              }
-            } else {
-              const errText = await renderResp.text().catch(() => "unknown");
-              lastError = `Renderer HTTP ${renderResp.status}: ${errText}`;
-              console.error(`[transcript:bg] Renderer HTTP error ${renderResp.status}:`, errText);
-            }
-          } catch (e: any) {
-            lastError = e?.message || String(e);
-            console.error(`[transcript:bg] Renderer attempt ${attempt} exception:`, e);
+      // ── Try 3: Pure-JS Worker extraction (fast but often blocked by YouTube) ─────
+      // Only works for YouTube videos when YouTube isn't blocking Cloudflare IPs.
+      const tryWorkerJs = async () => {
+        if (platform !== "youtube") return false;
+        const ytId = extractYtId(body.url);
+        if (!ytId) return false;
+        try {
+          console.log(`[transcript:bg] Worker JS attempt for ${body.url}`);
+          const result = await fetchYoutubeTranscript(ytId);
+          if (result) {
+            bgTranscript = result.text;
+            bgSegments = result.segments;
+            console.log(`[transcript:bg] Worker JS success: ${bgTranscript.length} chars`);
+            return true;
           }
-          if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
+        } catch (e: any) {
+          lastError = e?.message || String(e);
+          console.error(`[transcript:bg] Worker JS failed:`, e);
         }
         return false;
       };
 
       try {
-        const jsOk = await tryWorkerJs();
-        if (!jsOk) {
+        const rendererOk = await tryRenderer();
+        if (!rendererOk) {
           const whisperOk = await tryWhisper();
-          if (!whisperOk) await tryRenderer();
+          if (!whisperOk) await tryWorkerJs();
         }
 
         if (bgTranscript) {

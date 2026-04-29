@@ -8,17 +8,21 @@ import { Separator } from "@/components/ui/separator";
 import {
   Play, Pause, Save, ArrowLeft, Loader2, Zap, Type,
   Film, Upload, Music, SkipBack, SkipForward, Scissors,
-  Volume2, ChevronRight, Maximize2, Sparkles, X,
+  Volume2, ChevronRight, Maximize2, Sparkles, X, ScanFace,
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { loadFFmpeg, renderClip, generateASS, shouldUseServerFallback } from "@/lib/ffmpeg-wasm";
+import { detectFaceCenterX } from "@/lib/face-detection";
+import { requestWakeLock, releaseWakeLock } from "@/lib/batch-export";
 import { CaptionEditor, CaptionOverlay } from "@/components/editor/CaptionEditor";
 import { ClipCombiner } from "@/components/editor/ClipCombiner";
 import { MediaUploader } from "@/components/editor/MediaUploader";
 import { AudioTimeline } from "@/components/editor/AudioTimeline";
 import { ScheduleModal } from "@/components/editor/ScheduleModal";
+import { TranscribeButton } from "@/components/editor/TranscribeButton";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -271,6 +275,8 @@ export default function EditorPage() {
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [hasAudio, setHasAudio] = useState(false);
   const [aspectRatio, setAspectRatio] = useState("9/16");
+  const [cropCenterX, setCropCenterX] = useState<number | undefined>(undefined);
+  const [isDetectingFace, setIsDetectingFace] = useState(false);
   const [isTimelineDragging, setIsTimelineDragging] = useState(false);
 
   // ─── Auto-save to localStorage ────────────────────────────────────────────────
@@ -374,6 +380,9 @@ export default function EditorPage() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [renderedVideoUrl, setRenderedVideoUrl] = useState<string>();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [renderStage, setRenderStage] = useState<string>("");
+  const [wakeLock, setWakeLock] = useState<WakeLockSentinel | null>(null);
 
   const handleDuration = (d: number) => {
     setDuration(d);
@@ -431,16 +440,92 @@ export default function EditorPage() {
     if (!savedClip) return;
 
     setIsRendering(true);
+    setRenderProgress(0);
+    setRenderStage("Preparing…");
     toast.info("Rendering your clip...", { duration: 3000 });
-    
+
+    // Request wake lock to keep screen on during render
+    let lock: WakeLockSentinel | null = null;
     try {
+      lock = await requestWakeLock();
+      if (lock) setWakeLock(lock);
+    } catch {
+      // Wake lock not critical
+    }
+
+    // ── Browser Rendering Path (for uploaded videos) ────────────────────────
+    const isUploadedVideo = savedClip.sourceType === "upload" || (savedClip as any).videoFileUrl;
+    const useServerFallback = shouldUseServerFallback();
+
+    if (isUploadedVideo && !useServerFallback) {
+      try {
+        setRenderStage("Fetching video…");
+        const videoResponse = await fetch(videoUrl);
+        if (!videoResponse.ok) throw new Error("Failed to fetch source video");
+        const videoBlob = await videoResponse.blob();
+        setRenderProgress(10);
+
+        setRenderStage("Building subtitles…");
+        const assContent = captionLines.length > 0
+          ? generateASS(
+              captionLines.filter(Boolean).map((text, i) => ({
+                text,
+                start: (startSec + (i * (endSec - startSec) / Math.max(1, captionLines.filter(Boolean).length))),
+                end: (startSec + ((i + 1) * (endSec - startSec) / Math.max(1, captionLines.filter(Boolean).length))),
+              }))
+            )
+          : undefined;
+        setRenderProgress(15);
+
+        setRenderStage("Loading FFmpeg…");
+        const ffmpeg = await loadFFmpeg();
+        setRenderProgress(20);
+
+        setRenderStage("Rendering in browser…");
+        const renderedBlob = await renderClip(ffmpeg, videoBlob, startSec, endSec, {
+          aspectRatio,
+          cropCenterX,
+          assContent,
+          maxHeight: 720,
+          crf: 28,
+          preset: "ultrafast",
+          onProgress: (progress) => {
+            const mapped = 20 + Math.round(progress * 60);
+            setRenderProgress(mapped);
+          },
+        });
+        setRenderProgress(85);
+
+        setRenderStage("Uploading…");
+        const uploadRes = await api.uploadRender(savedClip.id, new File([renderedBlob], "rendered.mp4", { type: "video/mp4" }));
+        if (!uploadRes.success || !uploadRes.data?.url) {
+          throw new Error(uploadRes.error || "Upload failed");
+        }
+        setRenderProgress(100);
+
+        setRenderedVideoUrl(uploadRes.data.url);
+        setIsScheduleModalOpen(true);
+        setIsRendering(false);
+        setRenderStage("");
+        clearLocalAutoSave();
+        toast.success("Ready to post!");
+        return;
+      } catch (err: any) {
+        console.error("[browser-render] Failed:", err);
+        toast.error("Browser render failed, falling back to server…");
+      }
+    }
+
+    // ── Server Rendering Path (fallback) ────────────────────────────────────
+    try {
+      setRenderStage("Starting server render…");
       const res = await api.renderClip(savedClip.id);
       if (!res.success || !res.data?.jobId) {
         throw new Error(res.error || "Rendering failed");
       }
       const jobId = res.data.jobId;
+      setRenderProgress(30);
 
-      // Poll for job completion every 2 seconds
       const poll = setInterval(async () => {
         try {
           const jobRes = await api.getRenderJob(jobId);
@@ -448,30 +533,45 @@ export default function EditorPage() {
           const job = jobRes.data;
           if (job.status === "ready" && job.videoUrl) {
             clearInterval(poll);
+            setRenderProgress(100);
             setRenderedVideoUrl(job.videoUrl);
             setIsScheduleModalOpen(true);
             setIsRendering(false);
+            setRenderStage("");
             clearLocalAutoSave();
+            await releaseWakeLock(lock);
+            setWakeLock(null);
             toast.success("Ready to post!");
           } else if (job.status === "failed") {
             clearInterval(poll);
             setIsRendering(false);
+            setRenderStage("");
+            await releaseWakeLock(lock);
+            setWakeLock(null);
             toast.error(job.error || "Rendering failed. Try again.");
+          } else if (job.status === "processing") {
+            setRenderProgress((prev) => Math.min(90, prev + 5));
+            setRenderStage("Server is processing…");
           }
         } catch (e) {
           // keep polling on transient errors
         }
       }, 2000);
 
-      // Safety: stop polling after 5 minutes
       setTimeout(() => {
         clearInterval(poll);
         setIsRendering(false);
+        setRenderStage("");
+        releaseWakeLock(lock);
+        setWakeLock(null);
         toast.error("Render is taking too long. Check your clips page later.");
       }, 300_000);
     } catch (err: any) {
       toast.error(err.message || "Could not render video. Try again.");
       setIsRendering(false);
+      setRenderStage("");
+      await releaseWakeLock(lock);
+      setWakeLock(null);
     }
   };
 
@@ -609,6 +709,17 @@ export default function EditorPage() {
               Save Draft
             </Button>
 
+            {isRendering && (
+              <div className="hidden sm:flex items-center gap-2 mr-1">
+                <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-green-400 transition-all duration-300"
+                    style={{ width: `${renderProgress}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-white/40 font-mono">{renderStage}</span>
+              </div>
+            )}
             <Button
               size="sm"
               className="h-7 text-xs bg-[#5865F2] hover:bg-[#4752C4] text-white font-semibold px-4 gap-1.5"
@@ -725,6 +836,12 @@ export default function EditorPage() {
                       {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                       {isGenerating ? "Analyzing clip…" : "Generate AI Hooks"}
                     </Button>
+                    <TranscribeButton
+                      videoUrl={videoUrl}
+                      startSec={startSec}
+                      endSec={endSec}
+                      onTranscript={(lines) => setCaptionLines(lines)}
+                    />
                     {clip && (
                       <>
                         <Separator className="bg-white/[0.07]" />
@@ -793,6 +910,42 @@ export default function EditorPage() {
                   {ar.label}
                 </button>
               ))}
+              {/* Auto-Crop Button */}
+              <div className="w-px bg-white/10 mx-1" />
+              <button
+                onClick={async () => {
+                  const video = document.querySelector("video") as HTMLVideoElement;
+                  if (!video || !video.src) {
+                    toast.error("No video loaded");
+                    return;
+                  }
+                  setIsDetectingFace(true);
+                  toast.info("Detecting face position…");
+                  try {
+                    const centerX = await detectFaceCenterX(video, 20);
+                    if (centerX !== undefined) {
+                      setCropCenterX(centerX);
+                      toast.success(`Face detected — crop centered at ${Math.round(centerX * 100)}%`);
+                    } else {
+                      toast.info("No face detected — using center crop");
+                      setCropCenterX(undefined);
+                    }
+                  } catch (e: any) {
+                    toast.error("Face detection failed: " + (e?.message || "Unknown error"));
+                  } finally {
+                    setIsDetectingFace(false);
+                  }
+                }}
+                disabled={isDetectingFace || !videoUrl}
+                className="px-2 py-0.5 text-[10px] rounded transition-colors text-white/50 hover:text-white/80 disabled:opacity-40 flex items-center gap-1"
+              >
+                {isDetectingFace ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ScanFace className="h-3 w-3" />
+                )}
+                Auto-Crop
+              </button>
             </div>
 
             {/* Portrait video wrapper — dynamic aspect ratio */}

@@ -19,10 +19,12 @@ import {
   Video,
   Loader2,
   Download,
+  Package,
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/components/ui/sonner";
+import { BatchExportModal } from "@/components/editor/BatchExportModal";
 
 // ─── Edit limits by plan (spec: Free=3, Pro=10, Agency=20) ───────────────────
 const EDIT_LIMITS: Record<string, number> = { free: 3, pro: 10, agency: 20, unlimited: 999 };
@@ -213,6 +215,7 @@ export default function ClipsPage() {
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Clip | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -272,14 +275,24 @@ export default function ClipsPage() {
           <h1 className="text-3xl font-display font-bold">Clip library</h1>
           <p className="text-muted-foreground">All generated clips for your account.</p>
         </div>
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder="Filter clips…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="border-white/10 text-white/70 hover:bg-white/5 gap-1.5"
+            onClick={() => setBatchModalOpen(true)}
+          >
+            <Package className="h-4 w-4" />
+            Batch Export
+          </Button>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Filter clips…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -329,6 +342,21 @@ export default function ClipsPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Batch Export Modal */}
+      <BatchExportModal
+        isOpen={batchModalOpen}
+        onClose={() => setBatchModalOpen(false)}
+        clips={clips.map((c) => ({
+          id: c.id,
+          title: c.title,
+          videoUrl: c.videoUrl,
+          startSec: c.startSec,
+          endSec: c.endSec,
+          captionLines: c.captionLines,
+          aspectRatio: c.aspectRatio,
+        }))}
+      />
     </AppLayout>
   );
 }

@@ -301,6 +301,15 @@ export const api = {
     });
   },
 
+  async uploadVideo(file: File): Promise<ApiResponse<{ id: string; url: string; key: string; title: string }>> {
+    const form = new FormData();
+    form.append("file", file);
+    return requestJson("/api/uploads/video", {
+      method: "POST",
+      body: form,
+    });
+  },
+
   async schedulePost(clipId: string, platform: string, scheduledFor: Date): Promise<ApiResponse> {
     return requestJson("/api/scheduled-posts", {
       method: "POST",
@@ -467,6 +476,7 @@ export const api = {
     sourceUrl?: string;
     sourceChannel?: string;
     videoId?: string;
+    clipType?: string;
   }): Promise<ApiResponse<Array<{ concept: string; title: string; startSec: number; endSec: number; viralScore: number; durationSeconds: number; caption: string; clipId?: string; jobId?: string }>>> {
     const res = await requestJson<any[]>("/api/clips/suggest-hooks", {
       method: "POST",
@@ -499,23 +509,31 @@ export const api = {
     return res as ApiResponse<Clip>;
   },
 
-  async getVideo(id: string): Promise<ApiResponse<{ id: string; title: string; url: string; transcript: string | null; thumbnail: string | null }>> {
-    return requestJson<{ id: string; title: string; url: string; transcript: string | null; thumbnail: string | null }>(`/api/links/${id}`, { method: "GET" });
+  async getVideo(id: string): Promise<ApiResponse<{ id: string; title: string; url: string; transcript: string | null; thumbnail: string | null; videoFileUrl: string | null; sourceType: string | null }>> {
+    return requestJson<{ id: string; title: string; url: string; transcript: string | null; thumbnail: string | null; videoFileUrl: string | null; sourceType: string | null }>(`/api/links/${id}`, { method: "GET" });
   },
 
-  async generateHooks(url: string, videoId?: string, preRender?: boolean): Promise<ApiResponse<Array<any>>> {
+  async generateHooks(
+    url: string,
+    videoId?: string,
+    preRender?: boolean,
+    targetLength?: number,
+    clipType?: string,
+  ): Promise<ApiResponse<Array<any>>> {
+    const length = targetLength ?? 60;
     // 1. If we have a videoId, try to get its transcript first
     if (videoId) {
       const v = await api.getVideo(videoId);
       if (v.success && v.data?.transcript) {
         return api.suggestHooks({
           transcript: v.data.transcript,
-          targetLength: 60,
+          targetLength: length,
           thumbnailUrl: v.data.thumbnail || undefined,
           preRender,
           sourceUrl: url,
           sourceChannel: v.data.title || "Unknown channel",
           videoId,
+          clipType,
         });
       }
       return { success: false, error: "Transcript not ready yet. Please wait for transcription to complete." };
@@ -532,12 +550,13 @@ export const api = {
     
     return api.suggestHooks({
       transcript: fresh.data.transcript,
-      targetLength: 60,
+      targetLength: length,
       thumbnailUrl: fresh.data.thumbnail || undefined,
       preRender,
       sourceUrl: url,
       sourceChannel: fresh.data.title || "Unknown channel",
       videoId: imp.data.id,
+      clipType,
     });
   },
 
@@ -596,6 +615,15 @@ export const api = {
 
   async renderClip(id: string): Promise<ApiResponse<{ jobId: string }>> {
     return requestJson<{ jobId: string }>(`/api/clips/${id}/render`, { method: "POST" });
+  },
+
+  async uploadRender(id: string, file: File): Promise<ApiResponse<{ url: string; key: string }>> {
+    const form = new FormData();
+    form.append("file", file);
+    return requestJson<{ url: string; key: string }>(`/api/clips/${id}/upload-render`, {
+      method: "POST",
+      body: form,
+    });
   },
 
   async getRenderJob(jobId: string): Promise<ApiResponse<{ status: string; videoUrl: string | null; error: string | null; attempts: number }>> {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Plus, Trash2, Video, Sparkles, Loader2, Play, X, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Video, Sparkles, Loader2, Play, X, ExternalLink, FileText, AlertCircle, CheckCircle2, Pencil, Upload, Link as LinkIcon } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/sonner";
@@ -45,6 +45,8 @@ export default function MyVideosPage() {
   const [url, setUrl] = useState("");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null); // expanded card id
+  const [transcriptModalId, setTranscriptModalId] = useState<string | null>(null);
+  const [manualTranscript, setManualTranscript] = useState("");
 
   const { data: res, isLoading } = useQuery({
     queryKey: ["importedLinks"],
@@ -78,6 +80,55 @@ export default function MyVideosPage() {
       }
     },
   });
+
+  const transcriptMutation = useMutation({
+    mutationFn: ({ id, transcript }: { id: string; transcript: string }) =>
+      api.updateTranscript(id, transcript),
+    onSuccess: (data, vars) => {
+      if (data.success) {
+        toast.success("Transcript saved!");
+        setTranscriptModalId(null);
+        setManualTranscript("");
+        queryClient.invalidateQueries({ queryKey: ["importedLinks"] });
+      } else {
+        toast.error(data.error || "Failed to save transcript");
+      }
+    },
+    onError: () => toast.error("Failed to save transcript"),
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => api.uploadVideo(file),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success("Video uploaded successfully!");
+        queryClient.invalidateQueries({ queryKey: ["importedLinks"] });
+      } else {
+        toast.error(data.error || "Failed to upload video");
+      }
+    },
+    onError: () => toast.error("Failed to upload video"),
+  });
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith("video/")) {
+        uploadMutation.mutate(file);
+      } else {
+        toast.error("Please upload a video file (MP4, MOV, WebM)");
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadMutation.mutate(file);
+    }
+  };
 
   const handleImport = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,35 +165,83 @@ export default function MyVideosPage() {
           </p>
         </div>
 
+        {/* Upload Zone — Primary Input */}
+        <div
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleFileDrop}
+          className={cn(
+            "relative border-2 border-dashed rounded-2xl p-8 text-center transition-all max-w-3xl",
+            uploadMutation.isPending
+              ? "border-primary/50 bg-primary/5"
+              : "border-white/10 hover:border-primary/40 hover:bg-white/[0.02] bg-white/[0.01]"
+          )}
+        >
+          <input
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+            onChange={handleFileSelect}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            disabled={uploadMutation.isPending}
+          />
+          <div className="space-y-3 pointer-events-none">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+              {uploadMutation.isPending ? (
+                <Loader2 className="h-7 w-7 text-primary animate-spin" />
+              ) : (
+                <Upload className="h-7 w-7 text-primary" />
+              )}
+            </div>
+            <div>
+              <p className="font-bold text-base">
+                {uploadMutation.isPending ? "Uploading video…" : "Drop your video here, or click to browse"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                MP4, MOV, WebM, MKV — up to 2GB
+              </p>
+            </div>
+            <p className="text-[10px] text-amber-500/60 max-w-sm mx-auto">
+              This is the fastest, most reliable way to add videos. Processing happens in your browser — no YouTube blocking issues.
+            </p>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="relative max-w-3xl">
+          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10" /></div>
+          <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">or paste a link</span></div>
+        </div>
+
+        {/* URL Import — Secondary */}
         <form onSubmit={handleImport} className="flex flex-col sm:flex-row gap-3 max-w-3xl">
           <div className="relative flex-1">
-            <Video className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="Paste video link here (YouTube, TikTok, etc.)…"
+              placeholder="Paste YouTube, TikTok, or any video link…"
               className="pl-11 h-12 bg-card border-white/10 focus:border-primary/50 transition-all text-base"
               disabled={importMutation.isPending}
             />
           </div>
           <Button
             type="submit"
-            className="h-12 px-8 btn-gradient font-bold text-base shadow-lg shadow-primary/20"
+            variant="outline"
+            className="h-12 px-8 font-bold text-base border-white/10 hover:border-primary/50"
             disabled={importMutation.isPending || !url.trim()}
           >
             {importMutation.isPending ? (
               <Loader2 className="h-5 w-5 animate-spin mr-2" />
             ) : (
-              <Plus className="h-5 w-5 mr-2" />
+              <LinkIcon className="h-5 w-5 mr-2" />
             )}
             Import Link
           </Button>
         </form>
 
-        {importMutation.isPending && (
+        {(importMutation.isPending || uploadMutation.isPending) && (
           <div className="flex items-center gap-3 text-sm text-muted-foreground bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 max-w-3xl">
             <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-            <span>Importing video and extracting transcript — this may take up to 2 minutes for long videos…</span>
+            <span>{uploadMutation.isPending ? "Uploading video to cloud storage…" : "Importing video and extracting transcript — this may take up to 2 minutes for long videos…"}</span>
           </div>
         )}
       </div>
@@ -173,8 +272,8 @@ export default function MyVideosPage() {
               <Video className="h-8 w-8 text-white/20" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">No videos imported yet</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">Paste a link above to start your viral journey.</p>
+              <h3 className="text-lg font-bold">No videos yet</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">Upload a video file or paste a YouTube link to get started.</p>
             </div>
           </div>
         ) : (
@@ -243,14 +342,44 @@ export default function MyVideosPage() {
                     )}
                   </div>
 
-                  <CardContent className="p-4 space-y-4">
+                  <CardContent className="p-4 space-y-3">
                     <div className="space-y-1">
-                      <h3 className="font-bold text-sm line-clamp-2 leading-tight group-hover:text-primary transition-colors">
-                        {link.title || "Untitled Video"}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-sm line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                          {link.title || "Untitled Video"}
+                        </h3>
+                        {link.sourceType === "upload" && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-primary/20 text-primary px-1.5 py-0.5 rounded border border-primary/30">
+                            Upload
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-                        {(() => { try { return new URL(link.url).hostname.replace("www.", ""); } catch { return "Unknown"; } })()}
+                        {link.sourceType === "upload"
+                          ? "Local File"
+                          : (() => { try { return new URL(link.url).hostname.replace("www.", ""); } catch { return "Unknown"; } })()}
                       </p>
+                    </div>
+
+                    {/* Transcript Status */}
+                    <div className="flex items-center gap-2">
+                      {link.transcript ? (
+                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-green-400/80 bg-green-500/10 px-2 py-1 rounded-md border border-green-500/20">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Transcript ready
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setTranscriptModalId(link.id);
+                            setManualTranscript("");
+                          }}
+                          className="flex items-center gap-1.5 text-[10px] font-medium text-amber-400/80 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                        >
+                          <AlertCircle className="h-3 w-3" />
+                          Transcript missing — click to paste
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 pt-1">
@@ -293,6 +422,77 @@ export default function MyVideosPage() {
           </div>
         )}
       </div>
+
+      {/* Transcript Paste Modal */}
+      {transcriptModalId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card border border-white/10 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-[#5865F2]" />
+                <h3 className="text-lg font-bold">Paste Transcript</h3>
+              </div>
+              <button
+                onClick={() => { setTranscriptModalId(null); setManualTranscript(""); }}
+                className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+              <p className="text-xs text-amber-400 font-semibold mb-1">YouTube is blocking auto-transcription</p>
+              <p className="text-[10px] text-amber-500/80 leading-relaxed">
+                Due to YouTube restrictions, our servers can't always download videos for transcription. Pasting the transcript manually lets you generate clips right away.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-white/5 p-3 space-y-1.5">
+              <p className="text-[10px] font-semibold text-white/60 uppercase tracking-wider">How to get the transcript</p>
+              <ol className="text-[10px] text-white/50 space-y-0.5 list-decimal list-inside">
+                <li>Open the video on <strong className="text-white/70">YouTube</strong></li>
+                <li>Click <strong className="text-white/70">⋯ (More)</strong> below the video</li>
+                <li>Select <strong className="text-white/70">Show transcript</strong></li>
+                <li>Click <strong className="text-white/70">⋮</strong> in the transcript panel → <strong className="text-white/70">Toggle timestamps</strong> (off)</li>
+                <li>Select all text (Ctrl+A / Cmd+A) and copy</li>
+                <li>Paste it below and click <strong className="text-white/70">Save Transcript</strong></li>
+              </ol>
+            </div>
+
+            <textarea
+              value={manualTranscript}
+              onChange={(e) => setManualTranscript(e.target.value)}
+              placeholder="Paste video transcript here…"
+              className="w-full h-40 bg-black/40 border border-white/10 rounded-lg p-3 text-xs text-white/80 placeholder:text-white/20 resize-none focus:outline-none focus:border-[#5865F2]/50"
+            />
+
+            <div className="flex gap-3">
+              <Button
+                className="flex-1 btn-gradient"
+                onClick={() => {
+                  if (!manualTranscript.trim() || !transcriptModalId) return;
+                  transcriptMutation.mutate({ id: transcriptModalId, transcript: manualTranscript.trim() });
+                }}
+                disabled={!manualTranscript.trim() || transcriptMutation.isPending}
+              >
+                {transcriptMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Pencil className="h-4 w-4 mr-2" />
+                )}
+                Save Transcript
+              </Button>
+              <Button
+                variant="outline"
+                className="border-white/10"
+                onClick={() => { setTranscriptModalId(null); setManualTranscript(""); }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <UpgradeModal
         open={showUpgradeModal}

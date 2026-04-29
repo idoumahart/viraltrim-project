@@ -27,6 +27,13 @@ import {
   RefreshCw,
   Link2,
   AlertTriangle,
+  Type,
+  Scissors,
+  Film,
+  Laugh,
+  BookOpen,
+  Heart,
+  Flame,
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
 import { toast } from "@/components/ui/sonner";
@@ -64,6 +71,11 @@ export function StudioGeneratorPage() {
   const [pasteUrl, setPasteUrl] = useState("");
   const [importing, setImporting] = useState(false);
 
+  // Clip configuration
+  const [selectedLength, setSelectedLength] = useState<number>(60);
+  const [selectedClipType, setSelectedClipType] = useState<string>("viral");
+  const [hasStarted, setHasStarted] = useState(false);
+
   // Manual transcript input
   const [showTranscriptInput, setShowTranscriptInput] = useState(false);
   const [manualTranscript, setManualTranscript] = useState("");
@@ -76,7 +88,10 @@ export function StudioGeneratorPage() {
         toast.success("Transcript saved! Starting AI analysis…");
         setShowTranscriptInput(false);
         video.transcript = manualTranscript.trim();
-        await handleStartGeneration(video);
+        await handleStartGeneration(video, {
+          targetLength: selectedLength,
+          clipType: selectedClipType,
+        });
       } else {
         toast.error(res.error || "Failed to save transcript");
       }
@@ -101,7 +116,7 @@ export function StudioGeneratorPage() {
         const res = await api.getVideo(videoId);
         if (res.success && res.data) {
           setVideo(res.data);
-          handleStartGeneration(res.data);
+          // Don't auto-start — let user configure length/type first
         } else {
           toast.error("Video not found");
           navigate("/studio/videos");
@@ -154,15 +169,22 @@ export function StudioGeneratorPage() {
     }, 2000);
   }, []);
 
-  const handleStartGeneration = async (v: any, manualTranscript?: string) => {
+  const handleStartGeneration = async (
+    v: any,
+    options?: { manualTranscript?: string; targetLength?: number; clipType?: string }
+  ) => {
     setGenerating(true);
     setSuggestions([]);
     setProgress(10);
+    setHasStarted(true);
     if (pollRef.current) clearInterval(pollRef.current);
 
+    const targetLength = options?.targetLength ?? selectedLength;
+    const clipType = options?.clipType ?? selectedClipType;
+
     // Use manually pasted transcript if provided
-    if (manualTranscript) {
-      v.transcript = manualTranscript;
+    if (options?.manualTranscript) {
+      v.transcript = options.manualTranscript;
     }
 
     // Poll for transcript if not ready yet
@@ -207,7 +229,7 @@ export function StudioGeneratorPage() {
     }, 1500);
 
     try {
-      const res = await api.generateHooks(v.url, v.id, true); // true = preRender
+      const res = await api.generateHooks(v.url, v.id, true, targetLength, clipType); // true = preRender
       if (res.success && res.data) {
         const mapped = res.data.map((s: any, i: number) => ({
           ...s,
@@ -421,6 +443,88 @@ export function StudioGeneratorPage() {
             </div>
           </div>
 
+          {/* Clip Configuration Panel */}
+          {!hasStarted && (
+            <Card className="border-border/60 shadow-xl bg-card/80 backdrop-blur-sm overflow-hidden">
+              <div className="p-5 space-y-5">
+                <div className="flex items-center gap-2">
+                  <Scissors className="h-4 w-4 text-[#5865F2]" />
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-white/50">Clip Settings</h3>
+                </div>
+
+                {/* Length Selector */}
+                <div className="space-y-2.5">
+                  <label className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" /> Target Length
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 30, label: "30s" },
+                      { value: 60, label: "60s" },
+                      { value: 90, label: "90s" },
+                      { value: 180, label: "3 min" },
+                      { value: 300, label: "5 min" },
+                      { value: 600, label: "10 min" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSelectedLength(opt.value)}
+                        className={cn(
+                          "px-2 py-2 rounded-lg text-xs font-bold transition-all border",
+                          selectedLength === opt.value
+                            ? "bg-[#5865F2]/20 border-[#5865F2]/50 text-[#5865F2]"
+                            : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Type Selector */}
+                <div className="space-y-2.5">
+                  <label className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+                    <Type className="h-3 w-3" /> Clip Vibe
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "viral", label: "Viral", icon: TrendingUp },
+                      { value: "cinematic", label: "Cinematic", icon: Film },
+                      { value: "funny", label: "Funny", icon: Laugh },
+                      { value: "educational", label: "Educational", icon: BookOpen },
+                      { value: "emotional", label: "Emotional", icon: Heart },
+                      { value: "controversial", label: "Hot Take", icon: Flame },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSelectedClipType(opt.value)}
+                        className={cn(
+                          "px-2 py-2 rounded-lg text-xs font-bold transition-all border flex flex-col items-center gap-1",
+                          selectedClipType === opt.value
+                            ? "bg-[#5865F2]/20 border-[#5865F2]/50 text-[#5865F2]"
+                            : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70"
+                        )}
+                      >
+                        <opt.icon className="h-3.5 w-3.5" />
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full btn-gradient font-bold"
+                  onClick={() => handleStartGeneration(video, { targetLength: selectedLength, clipType: selectedClipType })}
+                  disabled={generating}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Clips
+                </Button>
+              </div>
+            </Card>
+          )}
+
           <Card className="overflow-hidden border-border/60 shadow-xl bg-black/40 backdrop-blur-sm">
             <div className="aspect-video relative bg-black">
               <ReactPlayer
@@ -480,7 +584,7 @@ export function StudioGeneratorPage() {
                 <Button
                   variant="outline"
                   className="w-full gap-2 border-white/10 text-white/60 hover:text-white hover:border-white/30"
-                  onClick={() => handleStartGeneration(video)}
+                  onClick={() => handleStartGeneration(video, { targetLength: selectedLength, clipType: selectedClipType })}
                 >
                   <RefreshCw className="h-4 w-4" />
                   Generate Again
@@ -544,17 +648,30 @@ export function StudioGeneratorPage() {
                 <Video className="h-8 w-8 text-white/20" />
               </div>
               <div>
-                <h3 className="text-lg font-bold">Ready to Generate</h3>
+                <h3 className="text-lg font-bold">
+                  {hasStarted ? "No clips found" : "Ready to Generate"}
+                </h3>
                 <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                  AI will analyze the transcript and find the best viral moments for you.
+                  {hasStarted
+                    ? "The AI couldn't find suitable clips with the current settings. Try a different length or vibe."
+                    : "Configure your clip settings on the left, then click Generate Clips to start the AI analysis."}
                 </p>
-                <p className="text-[10px] text-amber-500/60 max-w-xs mx-auto mt-1">
-                  YouTube sometimes blocks automated transcription. If that happens, you can paste the transcript manually — no worries.
-                </p>
+                {!hasStarted && (
+                  <p className="text-[10px] text-amber-500/60 max-w-xs mx-auto mt-1">
+                    YouTube sometimes blocks automated transcription. If that happens, you can paste the transcript manually — no worries.
+                  </p>
+                )}
               </div>
-              <Button className="btn-gradient" onClick={() => handleStartGeneration(video)}>
-                Run AI Analysis
-              </Button>
+              {hasStarted && (
+                <Button
+                  variant="outline"
+                  className="border-white/10 text-white/60 hover:text-white"
+                  onClick={() => { setHasStarted(false); setSuggestions([]); }}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Adjust Settings
+                </Button>
+              )}
             </div>
           )}
 

@@ -177,6 +177,10 @@ export const importedLinks = sqliteTable("imported_links", {
   transcript: text("transcript"),
   segments: text("segments", { mode: "json" }),
   thumbnail: text("thumbnail"),
+  /** R2 path for uploaded video files (e.g., "uploads/user_id/video.mp4") */
+  videoFileUrl: text("video_file_url"),
+  /** Source type: 'upload' for user-uploaded files, 'youtube' for URL imports */
+  sourceType: text("source_type").default("youtube"),
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
 

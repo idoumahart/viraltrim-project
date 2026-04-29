@@ -461,14 +461,19 @@ export async function generateHookSuggestions(
   transcript: string,
   targetDuration: number,
   thumbnailUrl?: string,
+  clipType?: string,
 ): Promise<HookSuggestion[]> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: modelId || DEFAULT_MODEL });
-  
+
   // Truncate transcript to prevent context overflow. roughly 40,000 chars is safe for Gemini flash
   const truncatedTranscript = transcript.slice(0, 40000);
-  
+
   let prompt = `You are a viral social media manager. I am giving you a raw video transcript. I need you to identify exactly 3 distinct concepts/segments that would make highly viral, engaging standalone short-form clips.`;
+
+  if (clipType && clipType !== "viral" && clipType !== "default") {
+    prompt += ` Focus on clips that feel ${clipType.toLowerCase()} — match the tone, pacing, and emotional arc to this style.`;
+  }
 
   if (thumbnailUrl) {
     prompt += ` I have also provided the video thumbnail for visual context. Use BOTH the transcript and visual elements (facial expressions, scene setting, action, objects) to identify the most engaging moments.`;
@@ -478,8 +483,10 @@ export async function generateHookSuggestions(
 CRITICAL REQUIREMENTS:
 1. DO NOT HALLUCINATE OR MAKE UP QUOTES. Only extract concepts and ideas strictly from the transcript provided.
 2. The duration of each clip MUST BE STICTLY LESS THAN OR EQUAL TO ${targetDuration} SECONDS.
-3. Your provided "endSec" - "startSec" MUST be strictly between 15 and ${targetDuration} seconds. 
+3. Your provided "endSec" - "startSec" MUST be strictly between 15 and ${targetDuration} seconds.
 4. If you suggest a clip longer than ${targetDuration} seconds, you MUST trim the end off to fit.
+5. Select the SINGLE best continuous segment for each hook — do not combine multiple scattered moments.
+6. Pick moments that have a clear beginning, middle, and end within the time limit.
 
 To ensure accuracy, you MUST output your response in this exact JSON array format:
 [
