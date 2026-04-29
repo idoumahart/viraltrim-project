@@ -23,6 +23,7 @@ import {
 } from "./stripe";
 import type { AppEnv } from "./types/app-env";
 import { fetchYoutubeTranscript, extractYoutubeId as extractYtId } from "./lib/youtube-transcript";
+import { getYoutubeStreamUrls } from "./lib/youtube-stream";
 
 function publicUser(u: {
   id: string;
@@ -75,6 +76,20 @@ async function queueClipRender(
   const runRender = async () => {
     let lastErr: string | null = null;
     const secret = env.INTERNAL_WEBHOOK_SECRET;
+
+    // Pre-fetch YouTube stream URL from Worker (bypasses Cloud Run IP blocks)
+    let streamUrl: string | undefined;
+    const ytIdForRender = extractYtId(
+      (await db.select().from(clips).where(eq(clips.id, clipId)).limit(1))[0]?.sourceUrl ?? ""
+    );
+    if (ytIdForRender) {
+      const streamInfo = await getYoutubeStreamUrls(ytIdForRender);
+      if (streamInfo) {
+        streamUrl = streamInfo.videoUrl;
+        console.log(`[render:bg] Pre-fetched stream URL for ${ytIdForRender}`);
+      }
+    }
+
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         await db.update(renderJobs).set({ attempts: attempt, updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
@@ -98,6 +113,7 @@ async function queueClipRender(
                 url: freshClip.sourceUrl ?? freshClip.videoUrl,
                 start_time: freshClip.startSec ?? 0,
                 end_time: freshClip.endSec ?? 30,
+                stream_url: streamUrl,
               }),
               signal: AbortSignal.timeout(25000),
             });
@@ -124,6 +140,7 @@ async function queueClipRender(
             end_time: freshClip.endSec ?? 30,
             crop_center_x: cropCenterX,
             aspect_ratio: freshClip.aspectRatio || "9/16",
+            stream_url: streamUrl,
           }),
           signal: AbortSignal.timeout(25000),
         });

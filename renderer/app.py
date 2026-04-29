@@ -154,8 +154,41 @@ def process_video():
         fd_final, final_path = tempfile.mkstemp(suffix='.mp4')
         os.close(fd_final)
 
+        stream_url = data.get('stream_url')
+
         # 1. Source Acquisition
-        if url.startswith("gs://"):
+        if stream_url:
+            # Direct stream URL from Worker (bypasses YouTube IP blocks)
+            print(f"[render] Downloading from direct stream URL: {stream_url[:80]}...")
+            try:
+                import urllib.request
+                req = urllib.request.Request(stream_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    with open(raw_path, 'wb') as f:
+                        while True:
+                            chunk = resp.read(8192)
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                print(f"[render] Stream download complete: {os.path.getsize(raw_path)} bytes")
+            except Exception as e:
+                print(f"[render] Stream download failed: {str(e)}")
+                return jsonify({'error': f'Stream download failed: {str(e)}'}), 502
+            
+            # Trim downloaded file to requested segment
+            trim_path = raw_path + ".trimmed.mp4"
+            trim_cmd = [
+                "ffmpeg", "-y", "-ss", str(start_time), "-to", str(end_time),
+                "-i", raw_path, "-c", "copy", trim_path
+            ]
+            print(f"[render] Trimming stream file: {start_time}s - {end_time}s")
+            result = subprocess.run(trim_cmd, capture_output=True)
+            if result.returncode != 0:
+                stderr = result.stderr.decode('utf-8', errors='replace')[:500]
+                print(f"[render] FFmpeg trim failed: {stderr}")
+                return jsonify({'error': f'FFmpeg trim failed: {stderr}'}), 500
+            os.replace(trim_path, raw_path)
+        elif url.startswith("gs://"):
             # Internal File (GCS)
             bucket_name = url.split("/")[2]
             blob_name = "/".join(url.split("/")[3:])
@@ -176,7 +209,7 @@ def process_video():
                 return jsonify({'error': f'FFmpeg trim failed: {stderr}'}), 500
             os.replace(trim_path, raw_path)
         else:
-            # External File (YouTube/Direct)
+            # External File (YouTube/Direct) via yt-dlp fallback
             print(f"[render] Downloading clip via yt-dlp: {url} ({start_time}s - {end_time}s)")
             download_cmd = [
                 "yt-dlp",

@@ -92,6 +92,7 @@ def track():
     url = data.get("url")
     start = data.get("start_time", data.get("startSec", 0))
     end = data.get("end_time", data.get("endSec", 0))
+    stream_url = data.get("stream_url")
     
     if not url or end <= start:
         return jsonify({"error": "Valid URL and timestamps required"}), 400
@@ -105,36 +106,68 @@ def track():
         duration = end - start
         print(f"[vision] Tracking face in {url} ({start}s - {end}s)")
         
-        # yt-dlp to grab just a small clip
-        download_cmd = [
-            "yt-dlp",
-            "-S", "res:720",
-            "--download-sections", f"*{start}-{end}",
-            "--force-keyframes-at-cuts",
-            "-o", video_path,
-            "--quiet",
-            "--no-playlist",
-            "--remote-components", "ejs:github",
-            "--no-check-certificates",
-        ]
-        
-        proxy = get_proxy()
-        if proxy:
-            download_cmd.extend(["--proxy", proxy])
+        if stream_url:
+            # Direct stream URL from Worker (bypasses YouTube IP blocks)
+            print(f"[vision] Downloading from direct stream URL: {stream_url[:80]}...")
+            try:
+                import urllib.request
+                req = urllib.request.Request(stream_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    with open(video_path, 'wb') as f:
+                        while True:
+                            chunk = resp.read(8192)
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                print(f"[vision] Stream download complete: {os.path.getsize(video_path)} bytes")
+            except Exception as e:
+                print(f"[vision] Stream download failed: {str(e)}")
+                return jsonify({"error": f"Stream download failed: {str(e)}"}), 502
             
-        download_cmd.append(url)
-        
-        print(f"[vision] Running yt-dlp: {' '.join(download_cmd)}")
-        result = subprocess.run(download_cmd, capture_output=True, timeout=120)
-        if result.returncode != 0:
-            stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
-            print(f"[vision] yt-dlp failed (exit={result.returncode}): {stderr}")
-            return jsonify({"error": f"Video download failed: {stderr}"}), 500
-        
-        if not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
-            print(f"[vision] Downloaded file empty or missing: {video_path}")
-            return jsonify({"error": "Downloaded video file is empty"}), 500
-        print(f"[vision] Download complete: {os.path.getsize(video_path)} bytes")
+            # Trim to segment
+            trim_path = video_path + ".trimmed.mp4"
+            trim_cmd = [
+                "ffmpeg", "-y", "-ss", str(start), "-to", str(end),
+                "-i", video_path, "-c", "copy", trim_path
+            ]
+            print(f"[vision] Trimming stream file: {start}s - {end}s")
+            result = subprocess.run(trim_cmd, capture_output=True)
+            if result.returncode != 0:
+                stderr = result.stderr.decode('utf-8', errors='replace')[:500]
+                print(f"[vision] FFmpeg trim failed: {stderr}")
+                return jsonify({"error": f"FFmpeg trim failed: {stderr}"}), 500
+            os.replace(trim_path, video_path)
+        else:
+            # yt-dlp fallback
+            download_cmd = [
+                "yt-dlp",
+                "-S", "res:720",
+                "--download-sections", f"*{start}-{end}",
+                "--force-keyframes-at-cuts",
+                "-o", video_path,
+                "--quiet",
+                "--no-playlist",
+                "--remote-components", "ejs:github",
+                "--no-check-certificates",
+            ]
+            
+            proxy = get_proxy()
+            if proxy:
+                download_cmd.extend(["--proxy", proxy])
+                
+            download_cmd.append(url)
+            
+            print(f"[vision] Running yt-dlp: {' '.join(download_cmd)}")
+            result = subprocess.run(download_cmd, capture_output=True, timeout=120)
+            if result.returncode != 0:
+                stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
+                print(f"[vision] yt-dlp failed (exit={result.returncode}): {stderr}")
+                return jsonify({"error": f"Video download failed: {stderr}"}), 500
+            
+            if not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
+                print(f"[vision] Downloaded file empty or missing: {video_path}")
+                return jsonify({"error": "Downloaded video file is empty"}), 500
+            print(f"[vision] Download complete: {os.path.getsize(video_path)} bytes")
             
         crop_x = process_video_segment(video_path)
         print(f"[vision] Face center detected at x={round(crop_x, 3)}")
