@@ -138,9 +138,6 @@ def process_video():
         
     raw_path = None
     final_path = None
-        
-    raw_path = None
-    final_path = None
     
     try:
         # Validate R2 credentials early
@@ -148,101 +145,14 @@ def process_video():
             print("[render] FATAL: R2 credentials not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY, R2_SECRET_KEY.")
             return jsonify({'error': 'R2 storage credentials not configured'}), 503
 
-        # Generate temporary files
-        fd_raw, raw_path = tempfile.mkstemp(suffix='.mp4')
-        os.close(fd_raw)
+        # Generate temp file for final output
         fd_final, final_path = tempfile.mkstemp(suffix='.mp4')
         os.close(fd_final)
 
-        stream_url = data.get('stream_url')
-
-        # 1. Source Acquisition
-        if stream_url:
-            # Direct stream URL from Worker (bypasses YouTube IP blocks)
-            print(f"[render] Downloading from direct stream URL: {stream_url[:80]}...")
-            try:
-                import urllib.request
-                req = urllib.request.Request(stream_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    with open(raw_path, 'wb') as f:
-                        while True:
-                            chunk = resp.read(8192)
-                            if not chunk:
-                                break
-                            f.write(chunk)
-                print(f"[render] Stream download complete: {os.path.getsize(raw_path)} bytes")
-            except Exception as e:
-                print(f"[render] Stream download failed: {str(e)}")
-                return jsonify({'error': f'Stream download failed: {str(e)}'}), 502
-            
-            # Trim downloaded file to requested segment
-            trim_path = raw_path + ".trimmed.mp4"
-            trim_cmd = [
-                "ffmpeg", "-y", "-ss", str(start_time), "-to", str(end_time),
-                "-i", raw_path, "-c", "copy", trim_path
-            ]
-            print(f"[render] Trimming stream file: {start_time}s - {end_time}s")
-            result = subprocess.run(trim_cmd, capture_output=True)
-            if result.returncode != 0:
-                stderr = result.stderr.decode('utf-8', errors='replace')[:500]
-                print(f"[render] FFmpeg trim failed: {stderr}")
-                return jsonify({'error': f'FFmpeg trim failed: {stderr}'}), 500
-            os.replace(trim_path, raw_path)
-        elif url.startswith("gs://"):
-            # Internal File (GCS)
-            bucket_name = url.split("/")[2]
-            blob_name = "/".join(url.split("/")[3:])
-            print(f"[render] Downloading from GCS: {bucket_name}/{blob_name}")
-            download_from_gcs(bucket_name, blob_name, raw_path)
-            
-            # Trim GCS file if needed (GCS downloads entire file)
-            trim_path = raw_path + ".trimmed.mp4"
-            trim_cmd = [
-                "ffmpeg", "-y", "-ss", str(start_time), "-to", str(end_time),
-                "-i", raw_path, "-c", "copy", trim_path
-            ]
-            print(f"[render] Trimming GCS file: {start_time}s - {end_time}s")
-            result = subprocess.run(trim_cmd, capture_output=True)
-            if result.returncode != 0:
-                stderr = result.stderr.decode('utf-8', errors='replace')[:500]
-                print(f"[render] FFmpeg trim failed: {stderr}")
-                return jsonify({'error': f'FFmpeg trim failed: {stderr}'}), 500
-            os.replace(trim_path, raw_path)
-        else:
-            # External File (YouTube/Direct) via yt-dlp fallback
-            print(f"[render] Downloading clip via yt-dlp: {url} ({start_time}s - {end_time}s)")
-            download_cmd = [
-                "yt-dlp",
-                "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-                "--download-sections", f"*{start_time}-{end_time}",
-                "--force-keyframes-at-cuts",
-                "-o", raw_path,
-                "--no-playlist",
-                "--remote-components", "ejs:github",
-                "--no-check-certificates",
-            ]
-            proxy = get_proxy()
-            if proxy:
-                download_cmd.extend(["--proxy", proxy])
-            download_cmd.append(url)
-            
-            result = subprocess.run(download_cmd, capture_output=True)
-            if result.returncode != 0:
-                stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
-                print(f"[render] yt-dlp download failed (exit={result.returncode}): {stderr}")
-                return jsonify({'error': f'Video download failed: {stderr}'}), 500
-            
-            if not os.path.exists(raw_path) or os.path.getsize(raw_path) == 0:
-                print(f"[render] Downloaded file empty or missing: {raw_path}")
-                return jsonify({'error': 'Downloaded video file is empty'}), 500
-            print(f"[render] Download complete: {os.path.getsize(raw_path)} bytes")
-        
-        # 2. Optimized Processing (aspect-aware crop + scale)
-        print("[render] Rendering optimized clip...")
+        # Build video filter chain (needed for all render paths)
         aspect_ratio = data.get('aspect_ratio', '9/16')
         crop_center_x = data.get('crop_center_x')
         
-        # Target dimensions per aspect ratio
         dims = {
             '9/16': (720, 1280),
             '16/9': (1280, 720),
@@ -251,10 +161,8 @@ def process_video():
         }
         target_w, target_h = dims.get(aspect_ratio, (720, 1280))
         
-        # Default: scale and pad to target aspect ratio
         vf_chain = f"scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2"
         
-        # If face tracking data provided and vertical crop requested
         if crop_center_x is not None and aspect_ratio == '9/16':
             try:
                 cx = float(crop_center_x)
@@ -264,26 +172,99 @@ def process_video():
             except Exception as e:
                 print(f"[render] Invalid crop_center_x skipped: {e}")
 
-        render_cmd = [
-            "ffmpeg", "-y", "-i", raw_path,
-            "-vf", vf_chain,
-            "-c:v", "libx264", 
-            "-crf", "28",
-            "-preset", "faster",
-            "-c:a", "aac", "-b:a", "128k",
-            final_path
-        ]
-        print(f"[render] Running FFmpeg: {' '.join(render_cmd)}")
-        result = subprocess.run(render_cmd, capture_output=True)
-        if result.returncode != 0:
-            stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
-            print(f"[render] FFmpeg failed (exit={result.returncode}): {stderr}")
-            return jsonify({'error': f'Video rendering failed: {stderr}'}), 500
+        stream_url = data.get('stream_url')
+
+        # 1. Source Acquisition + Processing
+        if stream_url:
+            # Direct stream URL from Worker — use ffmpeg directly for max efficiency.
+            # ffmpeg handles HTTP range requests on googlevideo.com URLs so it only
+            # downloads the segment it needs instead of the full video.
+            print(f"[render] Rendering from direct stream URL: {stream_url[:80]}...")
+            duration = end_time - start_time
+            render_cmd = [
+                "ffmpeg", "-y",
+                "-ss", str(start_time),
+                "-i", stream_url,
+                "-t", str(duration),
+                "-vf", vf_chain,
+                "-c:v", "libx264",
+                "-crf", "28",
+                "-preset", "faster",
+                "-c:a", "aac", "-b:a", "128k",
+                "-movflags", "+faststart",
+                final_path
+            ]
+            print(f"[render] FFmpeg: {' '.join(render_cmd[:10])} ...")
+            result = subprocess.run(render_cmd, capture_output=True, timeout=300)
+            if result.returncode != 0:
+                stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
+                print(f"[render] FFmpeg stream render failed: {stderr}")
+                print("[render] Falling back to download+render...")
+                stream_url = None  # trigger fallback
+            else:
+                print(f"[render] Stream render complete: {os.path.getsize(final_path)} bytes")
         
-        if not os.path.exists(final_path) or os.path.getsize(final_path) == 0:
-            print(f"[render] Rendered file empty or missing: {final_path}")
-            return jsonify({'error': 'Rendered video file is empty'}), 500
-        print(f"[render] Render complete: {os.path.getsize(final_path)} bytes")
+        if not stream_url:
+            # Fallback path: download then render (GCS or yt-dlp)
+            fd_raw, raw_path = tempfile.mkstemp(suffix='.mp4')
+            os.close(fd_raw)
+
+            if url.startswith("gs://"):
+                bucket_name = url.split("/")[2]
+                blob_name = "/".join(url.split("/")[3:])
+                print(f"[render] Downloading from GCS: {bucket_name}/{blob_name}")
+                download_from_gcs(bucket_name, blob_name, raw_path)
+            else:
+                # External File via yt-dlp fallback
+                print(f"[render] Downloading clip via yt-dlp: {url} ({start_time}s - {end_time}s)")
+                download_cmd = [
+                    "yt-dlp",
+                    "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                    "--download-sections", f"*{start_time}-{end_time}",
+                    "--force-keyframes-at-cuts",
+                    "-o", raw_path,
+                    "--no-playlist",
+                    "--remote-components", "ejs:github",
+                    "--no-check-certificates",
+                ]
+                proxy = get_proxy()
+                if proxy:
+                    download_cmd.extend(["--proxy", proxy])
+                download_cmd.append(url)
+                
+                result = subprocess.run(download_cmd, capture_output=True)
+                if result.returncode != 0:
+                    stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
+                    print(f"[render] yt-dlp download failed (exit={result.returncode}): {stderr}")
+                    return jsonify({'error': f'Video download failed: {stderr}'}), 500
+                
+                if not os.path.exists(raw_path) or os.path.getsize(raw_path) == 0:
+                    print(f"[render] Downloaded file empty or missing: {raw_path}")
+                    return jsonify({'error': 'Downloaded video file is empty'}), 500
+                print(f"[render] Download complete: {os.path.getsize(raw_path)} bytes")
+            
+            # Render with vf_chain
+            render_cmd = [
+                "ffmpeg", "-y", "-i", raw_path,
+                "-vf", vf_chain,
+                "-c:v", "libx264", 
+                "-crf", "28",
+                "-preset", "faster",
+                "-c:a", "aac", "-b:a", "128k",
+                "-movflags", "+faststart",
+                final_path
+            ]
+            print(f"[render] Running FFmpeg: {' '.join(render_cmd)}")
+            result = subprocess.run(render_cmd, capture_output=True)
+            if result.returncode != 0:
+                stderr = result.stderr.decode('utf-8', errors='replace')[:1000]
+                print(f"[render] FFmpeg failed (exit={result.returncode}): {stderr}")
+                return jsonify({'error': f'Video rendering failed: {stderr}'}), 500
+            
+            if not os.path.exists(final_path) or os.path.getsize(final_path) == 0:
+                print(f"[render] Rendered file empty or missing: {final_path}")
+                return jsonify({'error': 'Rendered video file is empty'}), 500
+            print(f"[render] Render complete: {os.path.getsize(final_path)} bytes")
 
         # 3. Multi-Cloud Delivery (Upload to R2)
         output_key = f"renders/{os.path.basename(final_path)}.mp4"
@@ -317,4 +298,3 @@ def process_video():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
-

@@ -99,7 +99,6 @@ def track():
 
     video_path = None
     try:
-        # Download strictly only the selected segment to save compute
         fd, video_path = tempfile.mkstemp(suffix=".mp4")
         os.close(fd)
         
@@ -107,37 +106,28 @@ def track():
         print(f"[vision] Tracking face in {url} ({start}s - {end}s)")
         
         if stream_url:
-            # Direct stream URL from Worker (bypasses YouTube IP blocks)
-            print(f"[vision] Downloading from direct stream URL: {stream_url[:80]}...")
-            try:
-                import urllib.request
-                req = urllib.request.Request(stream_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    with open(video_path, 'wb') as f:
-                        while True:
-                            chunk = resp.read(8192)
-                            if not chunk:
-                                break
-                            f.write(chunk)
-                print(f"[vision] Stream download complete: {os.path.getsize(video_path)} bytes")
-            except Exception as e:
-                print(f"[vision] Stream download failed: {str(e)}")
-                return jsonify({"error": f"Stream download failed: {str(e)}"}), 502
-            
-            # Trim to segment
-            trim_path = video_path + ".trimmed.mp4"
+            # Direct stream URL from Worker — extract just the segment with ffmpeg.
+            # ffmpeg handles HTTP range requests so it doesn't download the full video.
+            print(f"[vision] Extracting segment from stream URL: {stream_url[:80]}...")
             trim_cmd = [
-                "ffmpeg", "-y", "-ss", str(start), "-to", str(end),
-                "-i", video_path, "-c", "copy", trim_path
+                "ffmpeg", "-y",
+                "-ss", str(start),
+                "-i", stream_url,
+                "-t", str(duration),
+                "-c", "copy",
+                "-avoid_negative_ts", "make_zero",
+                video_path
             ]
-            print(f"[vision] Trimming stream file: {start}s - {end}s")
-            result = subprocess.run(trim_cmd, capture_output=True)
+            print(f"[vision] FFmpeg: {' '.join(trim_cmd)}")
+            result = subprocess.run(trim_cmd, capture_output=True, timeout=120)
             if result.returncode != 0:
                 stderr = result.stderr.decode('utf-8', errors='replace')[:500]
-                print(f"[vision] FFmpeg trim failed: {stderr}")
-                return jsonify({"error": f"FFmpeg trim failed: {stderr}"}), 500
-            os.replace(trim_path, video_path)
-        else:
+                print(f"[vision] FFmpeg segment extract failed: {stderr}")
+                stream_url = None  # trigger fallback
+            else:
+                print(f"[vision] Segment extract complete: {os.path.getsize(video_path)} bytes")
+        
+        if not stream_url:
             # yt-dlp fallback
             download_cmd = [
                 "yt-dlp",

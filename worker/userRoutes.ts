@@ -115,7 +115,7 @@ async function queueClipRender(
                 end_time: freshClip.endSec ?? 30,
                 stream_url: streamUrl,
               }),
-              signal: AbortSignal.timeout(25000),
+              signal: AbortSignal.timeout(120000),
             });
             if (visionResp.ok) {
               const visionData = await visionResp.json() as any;
@@ -142,7 +142,7 @@ async function queueClipRender(
             aspect_ratio: freshClip.aspectRatio || "9/16",
             stream_url: streamUrl,
           }),
-          signal: AbortSignal.timeout(25000),
+          signal: AbortSignal.timeout(120000),
         });
 
         if (!renderResp.ok) {
