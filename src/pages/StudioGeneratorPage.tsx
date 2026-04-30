@@ -462,112 +462,21 @@ export function StudioGeneratorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: Source Preview & Progress */}
         <div className="lg:col-span-1 space-y-6">
-          {/* AI Methodology */}
-          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-white/30">AI Methodology</h3>
-            <div className="space-y-3">
-              {[
-                { icon: TrendingUp, label: "Engagement Prediction", desc: "Hooks analyzed for retention likelihood." },
-                { icon: Zap, label: "Contextual Slicing", desc: "Clips cut to preserve narrative flow." },
-                { icon: Sparkles, label: "Viral Pattern Match", desc: "Compared against trending short-form data." },
-              ].map((m, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                    <m.icon className="h-4 w-4 text-white/40" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white/70">{m.label}</p>
-                    <p className="text-[10px] text-white/40">{m.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Clip Configuration Panel */}
-          {!hasStarted && (
-            <Card className="border-border/60 shadow-xl bg-card/80 backdrop-blur-sm overflow-hidden">
-              <div className="p-5 space-y-5">
-                <div className="flex items-center gap-2">
-                  <Scissors className="h-4 w-4 text-[#5865F2]" />
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-white/50">Clip Settings</h3>
-                </div>
-
-                {/* Length Selector */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
-                    <Clock className="h-3 w-3" /> Target Length
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { value: 30, label: "30s" },
-                      { value: 60, label: "60s" },
-                      { value: 90, label: "90s" },
-                      { value: 180, label: "3 min" },
-                      { value: 300, label: "5 min" },
-                      { value: 600, label: "10 min" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSelectedLength(opt.value)}
-                        className={cn(
-                          "px-2 py-2 rounded-lg text-xs font-bold transition-all border",
-                          selectedLength === opt.value
-                            ? "bg-[#5865F2]/20 border-[#5865F2]/50 text-[#5865F2]"
-                            : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70"
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Type Selector */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
-                    <Type className="h-3 w-3" /> Clip Vibe
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { value: "viral", label: "Viral", icon: TrendingUp },
-                      { value: "cinematic", label: "Cinematic", icon: Film },
-                      { value: "funny", label: "Funny", icon: Laugh },
-                      { value: "educational", label: "Educational", icon: BookOpen },
-                      { value: "emotional", label: "Emotional", icon: Heart },
-                      { value: "controversial", label: "Hot Take", icon: Flame },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSelectedClipType(opt.value)}
-                        className={cn(
-                          "px-2 py-2 rounded-lg text-xs font-bold transition-all border flex flex-col items-center gap-1",
-                          selectedClipType === opt.value
-                            ? "bg-[#5865F2]/20 border-[#5865F2]/50 text-[#5865F2]"
-                            : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70"
-                        )}
-                      >
-                        <opt.icon className="h-3.5 w-3.5" />
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full btn-gradient font-bold"
-                  onClick={() => handleStartGeneration(video, { targetLength: selectedLength, clipType: selectedClipType })}
-                  disabled={generating}
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Clips
-                </Button>
-              </div>
-            </Card>
-          )}
-
+          {/* Source Video — NOW AT TOP */}
           <Card className="overflow-hidden border-border/60 shadow-xl bg-black/40 backdrop-blur-sm">
+            {/* Thumbnail fallback + video player */}
             <div className="aspect-video relative bg-black">
+              {/* Thumbnail image as fallback / background */}
+              {video?.thumbnail && (
+                <img
+                  src={video.thumbnail}
+                  alt={video?.title || "Video thumbnail"}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+              {/* Dark overlay so thumbnail doesn't fight the player */}
+              <div className="absolute inset-0 bg-black/30 z-[1]" />
               <ReactPlayer
                 ref={playerRef}
                 url={video?.url}
@@ -575,6 +484,7 @@ export function StudioGeneratorPage() {
                 controls
                 width="100%"
                 height="100%"
+                style={{ position: "absolute", top: 0, left: 0, zIndex: 2 }}
                 onProgress={({ playedSeconds }) => {
                   if (previewingId) {
                     const current = suggestions.find(s => s.id === previewingId);
@@ -585,11 +495,14 @@ export function StudioGeneratorPage() {
                 }}
               />
             </div>
-            <div className="p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider opacity-60">Source Footage</Badge>
-                <div className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground">
-                  <Clock className="h-3 w-3" /> {video?.duration || "N/A"}
+            <div className="p-4 space-y-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-white line-clamp-2 leading-tight">{video?.title || "Untitled Video"}</h3>
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider opacity-60">Source Footage</Badge>
+                  <div className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground">
+                    <Clock className="h-3 w-3" /> {video?.duration || "N/A"}
+                  </div>
                 </div>
               </div>
 
@@ -696,6 +609,110 @@ export function StudioGeneratorPage() {
               )}
             </div>
           </Card>
+
+          {/* AI Methodology */}
+          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 space-y-4">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-white/30">AI Methodology</h3>
+            <div className="space-y-3">
+              {[
+                { icon: TrendingUp, label: "Engagement Prediction", desc: "Hooks analyzed for retention likelihood." },
+                { icon: Zap, label: "Contextual Slicing", desc: "Clips cut to preserve narrative flow." },
+                { icon: Sparkles, label: "Viral Pattern Match", desc: "Compared against trending short-form data." },
+              ].map((m, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                    <m.icon className="h-4 w-4 text-white/40" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-white/70">{m.label}</p>
+                    <p className="text-[10px] text-white/40">{m.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Clip Configuration Panel */}
+          {!hasStarted && (
+            <Card className="border-border/60 shadow-xl bg-card/80 backdrop-blur-sm overflow-hidden">
+              <div className="p-5 space-y-5">
+                <div className="flex items-center gap-2">
+                  <Scissors className="h-4 w-4 text-[#5865F2]" />
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-white/50">Clip Settings</h3>
+                </div>
+
+                {/* Length Selector */}
+                <div className="space-y-2.5">
+                  <label className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" /> Target Length
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 30, label: "30s" },
+                      { value: 60, label: "60s" },
+                      { value: 90, label: "90s" },
+                      { value: 180, label: "3 min" },
+                      { value: 300, label: "5 min" },
+                      { value: 600, label: "10 min" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSelectedLength(opt.value)}
+                        className={cn(
+                          "px-2 py-2 rounded-lg text-xs font-bold transition-all border",
+                          selectedLength === opt.value
+                            ? "bg-[#5865F2]/20 border-[#5865F2]/50 text-[#5865F2]"
+                            : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Type Selector */}
+                <div className="space-y-2.5">
+                  <label className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+                    <Type className="h-3 w-3" /> Clip Vibe
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "viral", label: "Viral", icon: TrendingUp },
+                      { value: "cinematic", label: "Cinematic", icon: Film },
+                      { value: "funny", label: "Funny", icon: Laugh },
+                      { value: "educational", label: "Educational", icon: BookOpen },
+                      { value: "emotional", label: "Emotional", icon: Heart },
+                      { value: "controversial", label: "Hot Take", icon: Flame },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSelectedClipType(opt.value)}
+                        className={cn(
+                          "px-2 py-2 rounded-lg text-xs font-bold transition-all border flex flex-col items-center gap-1",
+                          selectedClipType === opt.value
+                            ? "bg-[#5865F2]/20 border-[#5865F2]/50 text-[#5865F2]"
+                            : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70"
+                        )}
+                      >
+                        <opt.icon className="h-3.5 w-3.5" />
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full btn-gradient font-bold"
+                  onClick={() => handleStartGeneration(video, { targetLength: selectedLength, clipType: selectedClipType })}
+                  disabled={generating}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Clips
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Right: Generated Clips */}
