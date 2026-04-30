@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Plus, Trash2, Video, Sparkles, Loader2, Play, X, ExternalLink, FileText, AlertCircle, CheckCircle2, Pencil, Upload, Link as LinkIcon, Mic } from "lucide-react";
+import { Plus, Trash2, Video, Sparkles, Loader2, Play, X, ExternalLink, FileText, AlertCircle, CheckCircle2, Pencil, Upload, Link as LinkIcon, Mic, Copy } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/sonner";
@@ -49,6 +49,7 @@ export default function MyVideosPage() {
   const [transcriptModalId, setTranscriptModalId] = useState<string | null>(null);
   const [manualTranscript, setManualTranscript] = useState("");
   const [transcribingId, setTranscribingId] = useState<string | null>(null);
+  const [viewTranscriptId, setViewTranscriptId] = useState<string | null>(null);
   const browserTranscribe = useBrowserTranscribe();
 
   const { data: res, isLoading } = useQuery({
@@ -367,10 +368,25 @@ export default function MyVideosPage() {
                     {/* Transcript Status */}
                     <div className="flex items-center gap-2 flex-wrap">
                       {link.transcript ? (
-                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-green-400/80 bg-green-500/10 px-2 py-1 rounded-md border border-green-500/20">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Transcript ready
-                        </div>
+                        <>
+                          <button
+                            onClick={() => setViewTranscriptId(link.id)}
+                            className="flex items-center gap-1.5 text-[10px] font-medium text-green-400/80 bg-green-500/10 px-2 py-1 rounded-md border border-green-500/20 hover:bg-green-500/20 transition-colors"
+                          >
+                            <CheckCircle2 className="h-3 w-3" />
+                            Transcript ready — click to view
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(link.transcript);
+                              toast.success("Transcript copied to clipboard");
+                            }}
+                            className="text-[10px] text-white/30 hover:text-white/60 transition-colors"
+                            title="Copy transcript"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </>
                       ) : transcribingId === link.id ? (
                         <div className="flex items-center gap-1.5 text-[10px] font-medium text-[#5865F2]/80 bg-[#5865F2]/10 px-2 py-1 rounded-md border border-[#5865F2]/20">
                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -523,6 +539,53 @@ export default function MyVideosPage() {
                 onClick={() => { setTranscriptModalId(null); setManualTranscript(""); }}
               >
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Transcript Modal */}
+      {viewTranscriptId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card border border-white/10 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-[#5865F2]" />
+                <h3 className="text-lg font-bold">Transcript</h3>
+              </div>
+              <button
+                onClick={() => setViewTranscriptId(null)}
+                className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-80 overflow-y-auto rounded-lg bg-black/40 border border-white/10 p-4">
+              <p className="text-xs text-white/70 leading-relaxed whitespace-pre-wrap">
+                {links.find((l: any) => l.id === viewTranscriptId)?.transcript || "No transcript found."}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                className="flex-1 btn-gradient gap-2"
+                onClick={() => {
+                  const text = links.find((l: any) => l.id === viewTranscriptId)?.transcript;
+                  if (text) {
+                    navigator.clipboard.writeText(text);
+                    toast.success("Transcript copied to clipboard");
+                  }
+                }}
+              >
+                <Copy className="h-4 w-4" />
+                Copy to Clipboard
+              </Button>
+              <Button
+                variant="outline"
+                className="border-white/10"
+                onClick={() => setViewTranscriptId(null)}
+              >
+                Close
               </Button>
             </div>
           </div>

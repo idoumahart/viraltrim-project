@@ -770,11 +770,31 @@ export function StudioGeneratorPage() {
                                 </p>
                               </div>
                             ) : s.renderStatus === "failed" ? (
-                              <div className="text-center space-y-2 px-4">
-                                <AlertTriangle className="h-8 w-8 text-red-400 mx-auto" />
-                                <p className="text-[10px] font-mono text-red-300/70">
-                                  Render failed
-                                </p>
+                              <div className="absolute inset-0 z-[3]">
+                                {/* Fallback: show source video at hook start time */}
+                                <ReactPlayer
+                                  url={video?.url}
+                                  playing={previewingId === s.id && playing}
+                                  controls
+                                  width="100%"
+                                  height="100%"
+                                  style={{ position: "absolute", top: 0, left: 0 }}
+                                  onReady={() => playerRef.current?.seekTo(s.startSec, "seconds")}
+                                  onEnded={() => setPlaying(false)}
+                                />
+                                <div className="absolute top-2 left-2 z-10">
+                                  <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-[9px]">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Render failed — showing source
+                                  </Badge>
+                                </div>
+                                {s.renderError && (
+                                  <div className="absolute bottom-2 left-2 right-2 z-10">
+                                    <p className="text-[9px] font-mono text-red-300/60 bg-black/60 rounded px-2 py-1 truncate">
+                                      {s.renderError}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="text-center space-y-1">
@@ -844,10 +864,10 @@ export function StudioGeneratorPage() {
                           <Button
                             variant="outline"
                             className="w-full md:w-auto border-red-500/30 text-red-400 hover:bg-red-500/10"
-                            disabled
+                            onClick={() => handleSelectClip(s)}
                           >
                             <AlertTriangle className="h-4 w-4 mr-2" />
-                            Render Failed
+                            Use Anyway (Source Video)
                           </Button>
                         ) : (
                           <Button
