@@ -34,10 +34,12 @@ import {
   BookOpen,
   Heart,
   Flame,
+  Mic,
 } from "lucide-react";
 import { api, type Clip } from "@/lib/api-client";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { useBrowserTranscribe } from "@/hooks/use-browser-transcribe";
 
 interface Suggestion {
   id: string;
@@ -79,6 +81,8 @@ export function StudioGeneratorPage() {
   // Manual transcript input
   const [showTranscriptInput, setShowTranscriptInput] = useState(false);
   const [manualTranscript, setManualTranscript] = useState("");
+  const [isBrowserTranscribing, setIsBrowserTranscribing] = useState(false);
+  const browserTranscribe = useBrowserTranscribe();
 
   const handlePasteTranscript = async () => {
     if (!manualTranscript.trim() || !video) return;
@@ -136,6 +140,14 @@ export function StudioGeneratorPage() {
     };
   }, []);
 
+  // Sync browser transcription progress to page progress bar
+  useEffect(() => {
+    if (isBrowserTranscribing) {
+      setProgress(browserTranscribe.progress);
+      setStatus(browserTranscribe.stageLabel);
+    }
+  }, [isBrowserTranscribing, browserTranscribe.progress, browserTranscribe.stageLabel]);
+
   const startPollingJobs = useCallback((hooks: Suggestion[]) => {
     if (pollRef.current) clearInterval(pollRef.current);
 
@@ -187,36 +199,65 @@ export function StudioGeneratorPage() {
       v.transcript = options.manualTranscript;
     }
 
-    // Poll for transcript if not ready yet
+    // Get transcript — try browser AI for uploads, poll server for YouTube URLs
     if (!v.transcript) {
-      setStatus("Transcribing video…");
-      let attempts = 0;
-      const maxAttempts = 20; // ~60 seconds
-      while (attempts < maxAttempts) {
-        await new Promise((r) => setTimeout(r, 3000));
+      const isUpload = v.sourceType === "upload" || v.videoFileUrl;
+
+      if (isUpload) {
+        // Browser transcription for uploaded videos
+        setStatus("Transcribing with browser AI…");
+        setIsBrowserTranscribing(true);
         try {
-          const fresh = await api.getVideo(v.id);
-          if (fresh.success && fresh.data?.transcript) {
-            v.transcript = fresh.data.transcript;
-            break;
+          const result = await browserTranscribe.transcribe(v.url, v.id);
+          if (result) {
+            v.transcript = result;
           }
-        } catch (e) {
-          console.error("[generator] Failed to fetch video status during poll:", e);
+        } catch (e: any) {
+          console.error("[generator] Browser transcription failed:", e);
         }
-        attempts++;
-        setProgress(10 + Math.min(40, attempts * 2));
-      }
-      if (!v.transcript) {
-        setGenerating(false);
-        setProgress(0);
-        setStatus("Transcript unavailable.");
-        console.error("[generator] Transcript still null after", maxAttempts, "polling attempts for video", v.id);
-        toast.error(
-          "YouTube is blocking automated video downloads from our servers. Please paste the transcript manually — click the video on YouTube, open the transcript panel (⋯ → Show transcript), copy it, and paste it below.",
-          { duration: 45000 }
-        );
-        setShowTranscriptInput(true);
-        return;
+        setIsBrowserTranscribing(false);
+        if (!v.transcript) {
+          setGenerating(false);
+          setProgress(0);
+          setStatus("Transcript unavailable.");
+          toast.error(
+            "Browser transcription failed. You can paste the transcript manually below.",
+            { duration: 10000 }
+          );
+          setShowTranscriptInput(true);
+          return;
+        }
+      } else {
+        // Server transcription for YouTube URLs
+        setStatus("Transcribing video…");
+        let attempts = 0;
+        const maxAttempts = 20; // ~60 seconds
+        while (attempts < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 3000));
+          try {
+            const fresh = await api.getVideo(v.id);
+            if (fresh.success && fresh.data?.transcript) {
+              v.transcript = fresh.data.transcript;
+              break;
+            }
+          } catch (e) {
+            console.error("[generator] Failed to fetch video status during poll:", e);
+          }
+          attempts++;
+          setProgress(10 + Math.min(40, attempts * 2));
+        }
+        if (!v.transcript) {
+          setGenerating(false);
+          setProgress(0);
+          setStatus("Transcript unavailable.");
+          console.error("[generator] Transcript still null after", maxAttempts, "polling attempts for video", v.id);
+          toast.error(
+            "YouTube is blocking automated video downloads from our servers. Please paste the transcript manually — click the video on YouTube, open the transcript panel (⋯ → Show transcript), copy it, and paste it below.",
+            { duration: 45000 }
+          );
+          setShowTranscriptInput(true);
+          return;
+        }
       }
     }
 
@@ -595,11 +636,28 @@ export function StudioGeneratorPage() {
               {showTranscriptInput && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
                   <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-                    <p className="text-xs text-amber-400 font-semibold mb-1">YouTube is blocking auto-transcription</p>
+                    <p className="text-xs text-amber-400 font-semibold mb-1">
+                      {video?.sourceType === "upload" ? "Browser transcription failed" : "YouTube is blocking auto-transcription"}
+                    </p>
                     <p className="text-[10px] text-amber-500/80 leading-relaxed">
-                      Due to YouTube restrictions, our servers can't download videos for transcription right now. You can still generate clips by pasting the transcript manually.
+                      {video?.sourceType === "upload"
+                        ? "The AI couldn't transcribe this upload automatically. You can try again or paste the transcript manually."
+                        : "Due to YouTube restrictions, our servers can't download videos for transcription right now. You can still generate clips by pasting the transcript manually."}
                     </p>
                   </div>
+                  {video?.sourceType === "upload" && (
+                    <Button
+                      variant="outline"
+                      className="w-full border-[#5865F2]/30 text-[#5865F2] hover:bg-[#5865F2]/10 gap-2"
+                      onClick={() => {
+                        setShowTranscriptInput(false);
+                        handleStartGeneration(video, { targetLength: selectedLength, clipType: selectedClipType });
+                      }}
+                    >
+                      <Mic className="h-4 w-4" />
+                      Retry Browser Transcription
+                    </Button>
+                  )}
                   <div className="rounded-lg bg-white/5 p-3 space-y-1.5">
                     <p className="text-[10px] font-semibold text-white/60 uppercase tracking-wider">How to get the transcript</p>
                     <ol className="text-[10px] text-white/50 space-y-0.5 list-decimal list-inside">

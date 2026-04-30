@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Plus, Trash2, Video, Sparkles, Loader2, Play, X, ExternalLink, FileText, AlertCircle, CheckCircle2, Pencil, Upload, Link as LinkIcon } from "lucide-react";
+import { Plus, Trash2, Video, Sparkles, Loader2, Play, X, ExternalLink, FileText, AlertCircle, CheckCircle2, Pencil, Upload, Link as LinkIcon, Mic } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/sonner";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { UpgradeModal } from "@/components/ui/upgrade-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { useBrowserTranscribe } from "@/hooks/use-browser-transcribe";
 
 // Derive YouTube thumbnail from URL if thumbnail is missing
 function resolveThumbnail(link: any): string | null {
@@ -47,6 +48,8 @@ export default function MyVideosPage() {
   const [previewId, setPreviewId] = useState<string | null>(null); // expanded card id
   const [transcriptModalId, setTranscriptModalId] = useState<string | null>(null);
   const [manualTranscript, setManualTranscript] = useState("");
+  const [transcribingId, setTranscribingId] = useState<string | null>(null);
+  const browserTranscribe = useBrowserTranscribe();
 
   const { data: res, isLoading } = useQuery({
     queryKey: ["importedLinks"],
@@ -362,12 +365,44 @@ export default function MyVideosPage() {
                     </div>
 
                     {/* Transcript Status */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {link.transcript ? (
                         <div className="flex items-center gap-1.5 text-[10px] font-medium text-green-400/80 bg-green-500/10 px-2 py-1 rounded-md border border-green-500/20">
                           <CheckCircle2 className="h-3 w-3" />
                           Transcript ready
                         </div>
+                      ) : transcribingId === link.id ? (
+                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-[#5865F2]/80 bg-[#5865F2]/10 px-2 py-1 rounded-md border border-[#5865F2]/20">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {browserTranscribe.stageLabel} {browserTranscribe.progress > 0 && `${browserTranscribe.progress}%`}
+                        </div>
+                      ) : link.sourceType === "upload" ? (
+                        <>
+                          <button
+                            onClick={async () => {
+                              setTranscribingId(link.id);
+                              const result = await browserTranscribe.transcribe(link.url, link.id);
+                              setTranscribingId(null);
+                              if (result) {
+                                queryClient.invalidateQueries({ queryKey: ["importedLinks"] });
+                              }
+                            }}
+                            className="flex items-center gap-1.5 text-[10px] font-medium text-[#5865F2]/80 bg-[#5865F2]/10 px-2 py-1 rounded-md border border-[#5865F2]/20 hover:bg-[#5865F2]/20 transition-colors"
+                          >
+                            <Mic className="h-3 w-3" />
+                            Transcribe with AI (browser)
+                          </button>
+                          <button
+                            onClick={() => {
+                              setTranscriptModalId(link.id);
+                              setManualTranscript("");
+                            }}
+                            className="flex items-center gap-1.5 text-[10px] font-medium text-amber-400/80 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                          >
+                            <AlertCircle className="h-3 w-3" />
+                            Or paste manually
+                          </button>
+                        </>
                       ) : (
                         <button
                           onClick={() => {
