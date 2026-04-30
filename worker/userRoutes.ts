@@ -115,7 +115,7 @@ async function queueClipRender(
                 end_time: freshClip.endSec ?? 30,
                 stream_url: streamUrl,
               }),
-              signal: AbortSignal.timeout(120000),
+              signal: AbortSignal.timeout(300000),
             });
             if (visionResp.ok) {
               const visionData = await visionResp.json() as any;
@@ -142,7 +142,7 @@ async function queueClipRender(
             aspect_ratio: freshClip.aspectRatio || "9/16",
             stream_url: streamUrl,
           }),
-          signal: AbortSignal.timeout(120000),
+          signal: AbortSignal.timeout(300000),
         });
 
         if (!renderResp.ok) {
@@ -816,7 +816,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
           const jobId = await queueClipRender(db, clip.id, user.id, c.env, c.executionCtx, { isPreview: true });
 
-          return { ...hook, clipId: clip.id, jobId };
+          return { ...hook, clipId: clip.id, jobId, thumbnail: clip.thumbnail };
         }));
       }
       

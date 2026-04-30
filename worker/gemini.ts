@@ -131,7 +131,7 @@ export async function fetchYouTubeVideos(
       platform: "youtube",
       isCreativeCommons: isCC,
     };
-  }).filter(r => r.durationSeconds >= 600 && r.durationSeconds <= 18000); // 10 mins to 5 hours
+  }).filter(r => r.durationSeconds >= 30 && r.durationSeconds <= 18000); // 30s to 5 hours
 
   // Sort by Viral Score (descending) primarily, to aim for 90+ score results
   return results.sort((a, b) => b.viralScore - a.viralScore);

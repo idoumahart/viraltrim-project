@@ -50,6 +50,7 @@ interface Suggestion {
   viralScore: number;
   reasoning: string;
   caption: string;
+  thumbnail?: string;
   clipId?: string;
   jobId?: string;
   renderStatus?: "pending" | "ready" | "failed";
@@ -765,6 +766,17 @@ export function StudioGeneratorPage() {
                   <div className="flex flex-col md:flex-row">
                     {/* Video / Thumbnail Area */}
                     <div className="w-full md:w-64 shrink-0 relative aspect-[9/16] md:aspect-auto bg-black overflow-hidden">
+                      {/* Thumbnail background — always visible */}
+                      {s.thumbnail && (
+                        <img
+                          src={s.thumbnail}
+                          alt={s.title}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-[1]" />
+
                       {s.renderStatus === "ready" && s.videoUrl ? (
                         <ReactPlayer
                           url={s.videoUrl}
@@ -772,62 +784,59 @@ export function StudioGeneratorPage() {
                           controls
                           width="100%"
                           height="100%"
-                          style={{ position: "absolute", top: 0, left: 0 }}
+                          style={{ position: "absolute", top: 0, left: 0, zIndex: 2 }}
                           onEnded={() => setPlaying(false)}
                         />
                       ) : (
-                        <>
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-[1]" />
-                          <div className="absolute inset-0 flex items-center justify-center z-[2]">
-                            {s.renderStatus === "pending" ? (
-                              <div className="text-center space-y-2">
-                                <Loader2 className="h-8 w-8 animate-spin text-[#5865F2] mx-auto" />
-                                <p className="text-[10px] font-mono text-white/50">
-                                  Rendering… {s.renderAttempts ? `(attempt ${s.renderAttempts})` : ""}
-                                </p>
+                        <div className="absolute inset-0 flex items-center justify-center z-[2]">
+                          {s.renderStatus === "pending" ? (
+                            <div className="text-center space-y-2">
+                              <Loader2 className="h-8 w-8 animate-spin text-[#5865F2] mx-auto" />
+                              <p className="text-[10px] font-mono text-white/50">
+                                Rendering… {s.renderAttempts ? `(attempt ${s.renderAttempts})` : ""}
+                              </p>
+                            </div>
+                          ) : s.renderStatus === "failed" ? (
+                            <div className="absolute inset-0 z-[3]">
+                              {/* Fallback: show source video at hook start time */}
+                              <ReactPlayer
+                                url={video?.url}
+                                playing={previewingId === s.id && playing}
+                                controls
+                                width="100%"
+                                height="100%"
+                                style={{ position: "absolute", top: 0, left: 0 }}
+                                onReady={() => playerRef.current?.seekTo(s.startSec, "seconds")}
+                                onEnded={() => setPlaying(false)}
+                              />
+                              <div className="absolute top-2 left-2 z-10">
+                                <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-[9px]">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                  Render failed — showing source
+                                </Badge>
                               </div>
-                            ) : s.renderStatus === "failed" ? (
-                              <div className="absolute inset-0 z-[3]">
-                                {/* Fallback: show source video at hook start time */}
-                                <ReactPlayer
-                                  url={video?.url}
-                                  playing={previewingId === s.id && playing}
-                                  controls
-                                  width="100%"
-                                  height="100%"
-                                  style={{ position: "absolute", top: 0, left: 0 }}
-                                  onReady={() => playerRef.current?.seekTo(s.startSec, "seconds")}
-                                  onEnded={() => setPlaying(false)}
-                                />
-                                <div className="absolute top-2 left-2 z-10">
-                                  <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-[9px]">
-                                    <AlertTriangle className="h-3 w-3 mr-1" />
-                                    Render failed — showing source
-                                  </Badge>
+                              {s.renderError && (
+                                <div className="absolute bottom-2 left-2 right-2 z-10">
+                                  <p className="text-[9px] font-mono text-red-300/60 bg-black/60 rounded px-2 py-1 truncate">
+                                    {s.renderError}
+                                  </p>
                                 </div>
-                                {s.renderError && (
-                                  <div className="absolute bottom-2 left-2 right-2 z-10">
-                                    <p className="text-[9px] font-mono text-red-300/60 bg-black/60 rounded px-2 py-1 truncate">
-                                      {s.renderError}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="text-center space-y-1">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
-                                  onClick={() => handlePreview(s)}
-                                >
-                                  {previewingId === s.id && playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
-                                </Button>
-                                <p className="text-[10px] font-mono text-white/50">{fmt(s.startSec)} - {fmt(s.endSec)}</p>
-                              </div>
-                            )}
-                          </div>
-                        </>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-center space-y-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
+                                onClick={() => handlePreview(s)}
+                              >
+                                {previewingId === s.id && playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+                              </Button>
+                              <p className="text-[10px] font-mono text-white/50">{fmt(s.startSec)} - {fmt(s.endSec)}</p>
+                            </div>
+                          )}
+                        </div>
                       )}
                       <Badge className="absolute bottom-2 right-2 bg-black/60 text-white border-white/10 text-[10px]">
                         {s.durationSeconds}s
