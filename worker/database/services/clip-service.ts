@@ -264,7 +264,7 @@ export class ClipService {
     if (userPlan === "unlimited") editLimit = 999;
 
     // Only count substantive edits (not title-only changes)
-    const substantiveFields: (keyof Clip)[] = ["startSec", "endSec", "captionStyle", "selectedHook", "hasAudio", "audioUrl"];
+    const substantiveFields: (keyof Clip)[] = ["startSec", "endSec", "captionLines", "textStyle", "aspectRatio", "mediaUrls"];
     const hasSubstantiveChange = substantiveFields.some((f) => f in updates);
 
     if (hasSubstantiveChange && (clip.editCount ?? 0) >= editLimit) {

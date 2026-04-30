@@ -494,7 +494,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
    * Updates the clip's videoUrl with the rendered result.
    */
   api.post("/api/clips/:id/upload-render", authMiddleware, async (c) => {
-    const clipId = c.req.param("id");
+    const clipId = (c.req.param("id") as string);
     const user = c.get("user");
     const db = createDatabase(c.env.DB);
 
@@ -801,7 +801,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             durationSeconds: Math.round(duration),
             caption: hook.caption,
             requiredCredit: `Original video by ${sourceChannel}`,
-            viralScore: hook.viralScore ?? 85,
+            viralScore: hook.viral_score ?? 85,
             sourceUrl: sourceUrl!,
             sourceChannel,
             thumbnail: thumbnailUrl || thumbnailFallback,
@@ -1057,7 +1057,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
   api.delete("/api/links/:id", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
-    const id = c.req.param("id");
+    const id = (c.req.param("id") as string);
     await db.delete(importedLinks).where(and(eq(importedLinks.id, id), eq(importedLinks.userId, c.get("user").id)));
     return c.json({ success: true });
   });
@@ -1065,7 +1065,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   api.patch("/api/links/:id/transcript", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const user = c.get("user");
-    const id = c.req.param("id");
+    const id = (c.req.param("id") as string);
     const body = await c.req.json().catch(() => ({}));
     const transcript = typeof body.transcript === "string" ? body.transcript : "";
     if (!transcript.trim()) return c.json({ success: false, error: "transcript is required" }, 400);
@@ -1073,13 +1073,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const [link] = await db.select().from(importedLinks).where(and(eq(importedLinks.id, id), eq(importedLinks.userId, user.id))).limit(1);
     if (!link) return c.json({ success: false, error: "Link not found" }, 404);
 
-    await db.update(importedLinks).set({ transcript, updatedAt: new Date() }).where(eq(importedLinks.id, id));
+    await db.update(importedLinks).set({ transcript }).where(eq(importedLinks.id, id as string));
     return c.json({ success: true });
   });
 
   api.get("/api/links/:id", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
-    const id = c.req.param("id");
+    const id = (c.req.param("id") as string);
     const userId = c.get("user").id;
     const [link] = await db.select().from(importedLinks).where(and(eq(importedLinks.id, id), eq(importedLinks.userId, userId))).limit(1);
     if (!link) return c.json({ success: false, error: "Link not found" }, 404);
@@ -1120,7 +1120,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   api.get("/api/clips/:id", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const clipSvc = createClipService(db);
-    const clip = await clipSvc.getClipById(c.req.param("id"), c.get("user").id);
+    const clip = await clipSvc.getClipById((c.req.param("id") as string), c.get("user").id);
     if (!clip) {
       return c.json({ success: false, error: "Not found" }, 404);
     }
@@ -1159,7 +1159,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: "User not found" }, 404);
     }
     const { clip, error } = await clipSvc.updateClip(
-      c.req.param("id"),
+      (c.req.param("id") as string),
       user.id,
       updates as any,
       fullUser.plan,
@@ -1174,7 +1174,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   api.delete("/api/clips/:id", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const user = c.get("user");
-    const clipId = c.req.param("id");
+    const clipId = (c.req.param("id") as string);
     const clipSvc = createClipService(db);
     const clip = await clipSvc.getClipById(clipId, user.id);
     if (!clip) {
@@ -1188,7 +1188,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   api.post("/api/clips/:id/render", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const user = c.get("user");
-    const id = c.req.param("id");
+    const id = (c.req.param("id") as string);
 
     // Rate limit renders per IP
     const ip = c.req.raw.headers.get("cf-connecting-ip") || c.req.raw.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -1206,7 +1206,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   api.post("/api/clips/:id/select", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const user = c.get("user");
-    const id = c.req.param("id");
+    const id = (c.req.param("id") as string);
     const clipSvc = createClipService(db);
 
     const [freshUser] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
@@ -1246,7 +1246,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   api.get("/api/render-jobs/:id", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const user = c.get("user");
-    const jobId = c.req.param("id");
+    const jobId = (c.req.param("id") as string);
     const [job] = await db.select().from(renderJobs).where(and(eq(renderJobs.id, jobId), eq(renderJobs.userId, user.id))).limit(1);
     if (!job) return c.json({ success: false, error: "Not found" }, 404);
     return c.json({ success: true, data: { status: job.status, videoUrl: job.videoUrl, error: job.error, attempts: job.attempts } });
@@ -1343,7 +1343,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   api.delete("/api/scheduled-posts/:id", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const user = c.get("user");
-    const postId = c.req.param("id");
+    const postId = (c.req.param("id") as string);
     const { scheduledPosts } = await import("./database/schema");
     const [existing] = await db.select().from(scheduledPosts)
       .where(and(eq(scheduledPosts.id, postId), eq(scheduledPosts.userId, user.id)))
@@ -1919,7 +1919,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   api.delete("/api/keys/:id", authMiddleware, async (c) => {
     const db = createDatabase(c.env.DB);
     const user = c.get("user");
-    const keyId = c.req.param("id");
+    const keyId = (c.req.param("id") as string);
 
     const [existing] = await db
       .select()

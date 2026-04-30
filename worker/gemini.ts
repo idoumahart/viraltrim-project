@@ -428,6 +428,7 @@ Return JSON only: { "caption": string, "hashtags": string[] (max 8 tags without 
 
 export interface HookSuggestion {
   concept: string;
+  title: string;
   startSec: number;
   endSec: number;
   viral_score: number;
