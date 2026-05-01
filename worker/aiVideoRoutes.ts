@@ -217,6 +217,27 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
     }
   });
 
+  // GET /api/ai-video/voices
+  api.get("/api/ai-video/voices", async (c) => {
+    if (!c.env.ELEVENLABS_API_KEY) {
+      return c.json({ success: false, error: "Voice service unavailable" }, 503);
+    }
+    try {
+      const res = await fetch("https://api.elevenlabs.io/v1/voices", {
+        headers: { "xi-api-key": c.env.ELEVENLABS_API_KEY },
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`ElevenLabs API ${res.status}: ${err}`);
+      }
+      const data = await res.json() as { voices: Array<{ voice_id: string; name: string; labels?: Record<string, string> }> };
+      return c.json({ success: true, voices: data.voices || [] });
+    } catch (e: any) {
+      console.error("[ai-video/voices] error:", e.message);
+      return c.json({ success: false, error: e.message || "Failed to fetch voices" }, 500);
+    }
+  });
+
   // GET /api/ai-video/pexels
   api.get("/api/ai-video/pexels", async (c) => {
     const q = c.req.query("q") || "";

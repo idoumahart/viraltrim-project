@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   Wand2,
   Mic,
@@ -27,6 +27,7 @@ import { GradientText } from "@/components/cinematic/GradientText";
 import { CinematicCard } from "@/components/cinematic/CinematicCard";
 import { FloatingOrbs } from "@/components/cinematic/FloatingOrbs";
 import { useAiVideoRender, shouldUseServerFallback } from "@/hooks/use-ai-video-render";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 type Step = "script" | "voice" | "footage" | "preview" | "render";
 
@@ -60,15 +61,15 @@ const STEPS: { id: Step; label: string; icon: React.ElementType }[] = [
   { id: "render", label: "Export", icon: Download },
 ];
 
-const DEMO_VOICES: VoiceOption[] = [
-  { id: "Josh", name: "Josh", accent: "American", gender: "male" },
-  { id: "Rachel", name: "Rachel", accent: "American", gender: "female" },
-  { id: "Adam", name: "Adam", accent: "American", gender: "male" },
-  { id: "Bella", name: "Bella", accent: "American", gender: "female" },
-  { id: "Antoni", name: "Antoni", accent: "American", gender: "male" },
-  { id: "Elli", name: "Elli", accent: "American", gender: "female" },
-  { id: "Domi", name: "Domi", accent: "American", gender: "female" },
-  { id: "Sam", name: "Sam", accent: "American", gender: "male" },
+const DEFAULT_VOICES: VoiceOption[] = [
+  { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", accent: "American", gender: "female" },
+  { id: "AZnzlk1XvdvUeBnXmlld", name: "Domi", accent: "American", gender: "female" },
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Bella", accent: "American", gender: "female" },
+  { id: "ErXwobaYiN019PkySvjV", name: "Antoni", accent: "American", gender: "male" },
+  { id: "MF3mGyEYCl7XYWbV9V6O", name: "Elli", accent: "American", gender: "female" },
+  { id: "TxGEqnHWrfWFTfGW9XjX", name: "Josh", accent: "American", gender: "male" },
+  { id: "pNInz6obpgDQGcFmaJgB", name: "Adam", accent: "American", gender: "male" },
+  { id: "yoZ06aMxZJJ28mfd3POQ", name: "Sam", accent: "American", gender: "male" },
 ];
 
 export function AiVideoStudioPage() {
@@ -76,7 +77,9 @@ export function AiVideoStudioPage() {
   const [topic, setTopic] = useState("");
   const [script, setScript] = useState("");
   const [scriptSegments, setScriptSegments] = useState<ScriptSegment[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>("Josh");
+  const [selectedVoice, setSelectedVoice] = useState<string>("21m00Tcm4TlvDq8ikWAM");
+  const [voices, setVoices] = useState<VoiceOption[]>(DEFAULT_VOICES);
+  const [isLoadingVoices, setIsLoadingVoices] = useState(false);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isGeneratingVoice, setIsGeneratingVoice] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -278,57 +281,52 @@ export function AiVideoStudioPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground relative">
+    <AppLayout container contentClassName="relative">
       <FloatingOrbs />
 
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="font-display font-bold text-lg">AI Video Studio</h1>
-                <p className="text-xs text-muted-foreground">Text-to-Video powered by AI</p>
-              </div>
-            </div>
+      {/* Page Header + Stepper */}
+      <div className="relative z-10 mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-white" />
           </div>
-
-          {/* Stepper */}
-          <div className="mt-4 flex items-center gap-2">
-            {STEPS.map((s, i) => {
-              const isActive = s.id === step;
-              const isCompleted = i < stepIndex;
-              return (
-                <React.Fragment key={s.id}>
-                  <button
-                    onClick={() => {
-                      if (isCompleted || i <= stepIndex + 1) setStep(s.id);
-                    }}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
-                      isActive && "bg-primary/15 text-primary",
-                      isCompleted && "text-emerald-400",
-                      !isActive && !isCompleted && "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <s.icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{s.label}</span>
-                    {isCompleted && <Check className="h-3.5 w-3.5" />}
-                  </button>
-                  {i < STEPS.length - 1 && (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
-                  )}
-                </React.Fragment>
-              );
-            })}
+          <div>
+            <h1 className="font-display font-bold text-lg">AI Video Studio</h1>
+            <p className="text-xs text-muted-foreground">Text-to-Video powered by AI</p>
           </div>
         </div>
-      </header>
 
-      <main className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-2 flex-wrap">
+          {STEPS.map((s, i) => {
+            const isActive = s.id === step;
+            const isCompleted = i < stepIndex;
+            return (
+              <React.Fragment key={s.id}>
+                <button
+                  onClick={() => {
+                    if (isCompleted || i <= stepIndex + 1) setStep(s.id);
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                    isActive && "bg-primary/15 text-primary",
+                    isCompleted && "text-emerald-400",
+                    !isActive && !isCompleted && "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <s.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{s.label}</span>
+                  {isCompleted && <Check className="h-3.5 w-3.5" />}
+                </button>
+                {i < STEPS.length - 1 && (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="relative z-10 max-w-5xl mx-auto">
         {/* Script Step */}
         {step === "script" && (
           <div className="space-y-6">
@@ -405,7 +403,12 @@ export function AiVideoStudioPage() {
             </div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-              {DEMO_VOICES.map((voice) => (
+              {isLoadingVoices ? (
+                <div className="col-span-full flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                voices.map((voice) => (
                 <button
                   key={voice.id}
                   onClick={() => setSelectedVoice(voice.id)}
@@ -431,7 +434,8 @@ export function AiVideoStudioPage() {
                     {voice.accent} · {voice.gender}
                   </p>
                 </button>
-              ))}
+              ))
+              )}
             </div>
 
             <div className="flex justify-center">
@@ -784,8 +788,8 @@ export function AiVideoStudioPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 
