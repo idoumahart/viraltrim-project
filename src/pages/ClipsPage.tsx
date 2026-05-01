@@ -26,8 +26,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/components/ui/sonner";
 import { BatchExportModal } from "@/components/editor/BatchExportModal";
 
-// ─── Edit limits by plan (spec: Free=3, Pro=10, Agency=20) ───────────────────
-const EDIT_LIMITS: Record<string, number> = { free: 3, pro: 10, agency: 20, unlimited: 999 };
+// ─── Edit limits by plan (spec: Free=1, Pro=3, Agency=10) ────────────────────
+const EDIT_LIMITS: Record<string, number> = { free: 1, pro: 3, agency: 10, unlimited: 999 };
 
 function editLimitFor(plan: string): number {
   return EDIT_LIMITS[plan.toLowerCase()] ?? 1;

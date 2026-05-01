@@ -45,7 +45,7 @@ const TIPS: Tip[] = [
   {
     id: "edit-limits",
     title: "Edit Limits",
-    body: "Free: 3 edits · Pro: 10 edits · Agency: 20 edits per clip. Upgrade anytime from the Billing page.",
+    body: "Free: 1 edit · Pro: 3 edits · Agency: 10 edits per clip. Upgrade anytime from the Billing page.",
   },
   {
     id: "schedule",

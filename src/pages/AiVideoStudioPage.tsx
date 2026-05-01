@@ -61,25 +61,42 @@ const STEPS: { id: Step; label: string; icon: React.ElementType }[] = [
   { id: "render", label: "Export", icon: Download },
 ];
 
-const DEFAULT_VOICES: VoiceOption[] = [
-  { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", accent: "American", gender: "female" },
-  { id: "AZnzlk1XvdvUeBnXmlld", name: "Domi", accent: "American", gender: "female" },
-  { id: "EXAVITQu4vr4xnSDxMaL", name: "Bella", accent: "American", gender: "female" },
-  { id: "ErXwobaYiN019PkySvjV", name: "Antoni", accent: "American", gender: "male" },
-  { id: "MF3mGyEYCl7XYWbV9V6O", name: "Elli", accent: "American", gender: "female" },
-  { id: "TxGEqnHWrfWFTfGW9XjX", name: "Josh", accent: "American", gender: "male" },
-  { id: "pNInz6obpgDQGcFmaJgB", name: "Adam", accent: "American", gender: "male" },
-  { id: "yoZ06aMxZJJ28mfd3POQ", name: "Sam", accent: "American", gender: "male" },
-];
+const DEFAULT_VOICES: VoiceOption[] = [];
 
 export function AiVideoStudioPage() {
   const [step, setStep] = useState<Step>("script");
   const [topic, setTopic] = useState("");
   const [script, setScript] = useState("");
   const [scriptSegments, setScriptSegments] = useState<ScriptSegment[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>("21m00Tcm4TlvDq8ikWAM");
+  const [selectedVoice, setSelectedVoice] = useState<string>("");
   const [voices, setVoices] = useState<VoiceOption[]>(DEFAULT_VOICES);
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
+
+  // Fetch real voices from ElevenLabs API on mount
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoadingVoices(true);
+    fetch("/api/ai-video/voices")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.success && Array.isArray(data.voices) && data.voices.length > 0) {
+          const mapped: VoiceOption[] = data.voices.map((v: any) => ({
+            id: v.voice_id,
+            name: v.name,
+            accent: v.labels?.accent || "",
+            gender: v.labels?.gender || "",
+          }));
+          setVoices(mapped);
+          setSelectedVoice(mapped[0].id);
+        }
+      })
+      .catch((e) => console.error("Failed to load voices:", e))
+      .finally(() => {
+        if (!cancelled) setIsLoadingVoices(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isGeneratingVoice, setIsGeneratingVoice] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -119,7 +136,7 @@ export function AiVideoStudioPage() {
   }, [topic]);
 
   const generateVoice = useCallback(async () => {
-    if (!script.trim()) return;
+    if (!script.trim() || !selectedVoice) return;
     setIsGeneratingVoice(true);
     try {
       const res = await fetch("/api/ai-video/tts", {

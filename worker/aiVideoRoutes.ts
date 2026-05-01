@@ -195,9 +195,12 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
       voiceId?: string;
     };
     const text = String(body.text || "").trim();
-    const voiceId = String(body.voiceId || "Josh").trim();
+    const voiceId = String(body.voiceId || "").trim();
     if (!text) {
       return c.json({ success: false, error: "Text is required" }, 400);
+    }
+    if (!voiceId) {
+      return c.json({ success: false, error: "Voice ID is required" }, 400);
     }
     if (!c.env.ELEVENLABS_API_KEY) {
       return c.json({ success: false, error: "Voice service unavailable — ELEVENLABS_API_KEY not set" }, 503);

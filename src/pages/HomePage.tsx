@@ -42,7 +42,7 @@ const features = [
   {
     icon: Mic,
     title: "AI Voiceover",
-    desc: "ElevenLabs-powered voices that sound human. 40+ voices, multiple languages, emotion control.",
+    desc: "ElevenLabs-powered voices that sound human. Multiple voices, multiple languages, emotion control.",
     color: "#8b5cf6",
   },
   {
@@ -73,15 +73,15 @@ const features = [
 
 const steps = [
   { num: "01", title: "Describe your idea", desc: "Type a topic, paste a script, or let AI generate one for you." },
-  { num: "02", title: "Pick a voice & footage", desc: "Choose from 40+ AI voices and auto-matched stock clips." },
+  { num: "02", title: "Pick a voice & footage", desc: "Choose from AI voices and auto-matched stock clips." },
   { num: "03", title: "Render & export", desc: "Cloud-render in seconds. Download or share directly." },
 ];
 
 const stats = [
   { icon: Clock, value: 60, suffix: "s", label: "Avg. render time" },
-  { icon: Film, value: 10000, suffix: "+", label: "Clips generated" },
-  { icon: Users, value: 500, suffix: "+", label: "Active creators" },
-  { icon: Star, value: 4.9, suffix: "", label: "User rating", decimals: 1 },
+  { icon: Film, value: 0, suffix: "", label: "Clips generated", hideZero: true },
+  { icon: Users, value: 0, suffix: "", label: "Active creators", hideZero: true },
+  { icon: Star, value: 0, suffix: "", label: "User rating", decimals: 1, hideZero: true },
 ];
 
 export function HomePage() {
@@ -177,12 +177,12 @@ export function HomePage() {
               </div>
             </ScrollReveal>
 
-            {/* Hero visual / mock */}
+            {/* Hero visual */}
             <ScrollReveal delay={0.4}>
               <div className="mt-12 relative mx-auto max-w-4xl">
                 <div className="relative rounded-2xl border border-white/[0.08] bg-card/30 backdrop-blur-xl p-2 shadow-2xl shadow-purple-500/10">
                   <div className="aspect-video rounded-xl bg-gradient-to-br from-purple-900/40 via-background to-cyan-900/40 flex items-center justify-center relative overflow-hidden">
-                    {/* Mock UI inside the hero visual */}
+                    {/* UI preview inside the hero visual */}
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center space-y-4">
                         <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center animate-pulse">
@@ -206,7 +206,7 @@ export function HomePage() {
         <section className="relative py-16 px-4 sm:px-6 lg:px-8 border-y border-white/[0.06] bg-white/[0.02]">
           <div className="mx-auto max-w-6xl">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-              {stats.map((stat) => (
+              {stats.filter((s) => !(s.hideZero && s.value === 0)).map((stat) => (
                 <ScrollReveal key={stat.label}>
                   <div className="text-center space-y-2">
                     <stat.icon className="h-6 w-6 text-primary mx-auto mb-2" />
@@ -322,7 +322,7 @@ export function HomePage() {
             </ScrollReveal>
             <ScrollReveal delay={0.1}>
               <p className="text-lg text-muted-foreground">
-                Join 500+ creators using ViralTrim to produce content that gets views.
+                Start creating viral content with AI-powered tools today.
               </p>
             </ScrollReveal>
             <ScrollReveal delay={0.2}>

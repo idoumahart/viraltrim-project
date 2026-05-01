@@ -187,16 +187,9 @@ function sessionTtlSeconds(env: Env): number {
   return Number.isFinite(n) && n > 0 ? n : 604800;
 }
 
-function jwtSecret(env: Env, req: Request): string {
+function jwtSecret(env: Env, _req: Request): string {
   const s = String(env.JWT_SECRET || "").trim();
-  if (s) {
-    return s;
-  }
-  const host = req.headers.get("host") || "";
-  if (host.startsWith("localhost") || host.startsWith("127.0.0.1")) {
-    return "insecure_development_secret";
-  }
-  return "";
+  return s;
 }
 
 export const authMiddleware = async (c: Context<AppEnv>, next: () => Promise<void>) => {
@@ -674,7 +667,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     try {
       const passedCaption = body.caption ? String(body.caption) : null;
       const passedTitle = body.title ? String(body.title) : null;
-      const passedScore = body.viralScore ? Number(body.viralScore) : 85;
+      const passedScore = body.viralScore ? Number(body.viralScore) : 0;
 
       // ── Transcript lookup for AI analysis ──────────
       const [link] = await db
@@ -687,7 +680,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       if (passedCaption && passedCaption !== "") {
         ai = {
           caption: passedCaption,
-          hashtags: [passedTitle || "ViralClip"],
+          hashtags: passedTitle ? [passedTitle] : [],
           viral_score: passedScore,
         };
       } else {
@@ -712,10 +705,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const ytId = extractYoutubeId(sourceUrl);
       const thumbnailFallback = ytId 
         ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
-        : "/placeholder-thumbnail.jpg";
+        : "";
 
       const { clip: created, error: createErr } = await clipService.createGeneratedClip(fresh, {
-        title: ai.hashtags[0] ? String(ai.hashtags[0]) : "New clip",
+        title: passedTitle || ai.hashtags[0] || "Untitled clip",
         platform: "TikTok (9:16)",
         durationSeconds: Math.round(duration),
         caption: ai.caption,
@@ -809,7 +802,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           const ytId = extractYoutubeId(sourceUrl!);
           const thumbnailFallback = ytId
             ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
-            : "/placeholder-thumbnail.jpg";
+            : "";
 
           const clip = await clipSvc.createPreRenderedClip(user.id, {
             title: hook.title || "New clip",
@@ -817,7 +810,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             durationSeconds: Math.round(duration),
             caption: hook.caption,
             requiredCredit: `Original video by ${sourceChannel}`,
-            viralScore: hook.viral_score ?? 85,
+            viralScore: hook.viral_score ?? 0,
             sourceUrl: sourceUrl!,
             sourceChannel,
             thumbnail: thumbnailUrl || thumbnailFallback,

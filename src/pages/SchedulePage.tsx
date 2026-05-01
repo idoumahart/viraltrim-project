@@ -112,7 +112,7 @@ function ScheduleModal({ onScheduled }: { onScheduled: () => void }) {
 
 function ConnectSocialsCard() {
   const handleConnect = (platform: string) => {
-    toast.info(`OAuth connection for ${platform} coming soon!`);
+    toast.info(`Connect your ${platform} account to schedule posts directly.`);
   }
   return (
     <Card>
