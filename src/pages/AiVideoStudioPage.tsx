@@ -124,13 +124,17 @@ export function AiVideoStudioPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: script, voiceId: selectedVoice }),
       });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(errData.error || `Voice generation failed (${res.status})`);
       }
-    } catch (e) {
-      console.error("Voice generation failed", e);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setAudioUrl(url);
+    } catch (e: any) {
+      const msg = e?.message || "Voice generation failed";
+      console.error("Voice generation failed:", msg);
+      alert(msg);
     } finally {
       setIsGeneratingVoice(false);
     }

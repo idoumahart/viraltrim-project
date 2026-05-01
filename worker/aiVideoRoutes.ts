@@ -48,25 +48,31 @@ Script:`;
 
 export async function generateElevenLabsTTS(text: string, voiceId: string, apiKey: string): Promise<ArrayBuffer> {
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+  const payload = {
+    text,
+    model_id: "eleven_multilingual_v2",
+    output_format: "mp3_44100_128" as const,
+  };
+
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "xi-api-key": apiKey,
+      "Accept": "audio/mpeg",
     },
-    body: JSON.stringify({
-      text,
-      model_id: "eleven_multilingual_v2",
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-      },
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`ElevenLabs TTS failed: ${res.status} ${err}`);
+    let errText: string;
+    try {
+      const errJson = await res.json() as any;
+      errText = JSON.stringify(errJson);
+    } catch {
+      errText = await res.text();
+    }
+    throw new Error(`ElevenLabs TTS ${res.status}: ${errText}`);
   }
 
   return res.arrayBuffer();
@@ -194,7 +200,7 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
       return c.json({ success: false, error: "Text is required" }, 400);
     }
     if (!c.env.ELEVENLABS_API_KEY) {
-      return c.json({ success: false, error: "Voice service unavailable" }, 503);
+      return c.json({ success: false, error: "Voice service unavailable — ELEVENLABS_API_KEY not set" }, 503);
     }
 
     try {
@@ -207,7 +213,7 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
       });
     } catch (e: any) {
       console.error("[ai-video/tts] error:", e.message);
-      return c.json({ success: false, error: "Voice generation failed" }, 500);
+      return c.json({ success: false, error: e.message || "Voice generation failed" }, 500);
     }
   });
 
