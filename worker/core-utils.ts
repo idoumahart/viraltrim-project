@@ -32,5 +32,7 @@ export interface Env {
   RAPID_API_KEY: string;
   YOUTUBE_API_KEY: string;
   R2_PUBLIC_URL: string;
+  ELEVENLABS_API_KEY: string;
+  PEXELS_API_KEY: string;
 }
 

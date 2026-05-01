@@ -230,9 +230,11 @@ export function StudioGeneratorPage() {
         }
       } else {
         // Server transcription for YouTube URLs
-        setStatus("Transcribing video…");
+        // YouTube aggressively blocks datacenter IPs, so this usually fails.
+        // We poll briefly (12s) then immediately fall back to manual paste.
+        setStatus("Checking for transcript…");
         let attempts = 0;
-        const maxAttempts = 20; // ~60 seconds
+        const maxAttempts = 4; // ~12 seconds — enough to catch fast successes, not enough to frustrate
         while (attempts < maxAttempts) {
           await new Promise((r) => setTimeout(r, 3000));
           try {
@@ -245,16 +247,16 @@ export function StudioGeneratorPage() {
             console.error("[generator] Failed to fetch video status during poll:", e);
           }
           attempts++;
-          setProgress(10 + Math.min(40, attempts * 2));
+          setProgress(10 + Math.min(30, attempts * 7));
         }
         if (!v.transcript) {
           setGenerating(false);
           setProgress(0);
           setStatus("Transcript unavailable.");
-          console.error("[generator] Transcript still null after", maxAttempts, "polling attempts for video", v.id);
+          console.error("[generator] Transcript unavailable for video", v.id);
           toast.error(
-            "YouTube is blocking automated video downloads from our servers. Please paste the transcript manually — click the video on YouTube, open the transcript panel (⋯ → Show transcript), copy it, and paste it below.",
-            { duration: 45000 }
+            "YouTube restricts automated access. For guaranteed results, upload the video file directly. For YouTube links, paste the transcript below.",
+            { duration: 15000 }
           );
           setShowTranscriptInput(true);
           return;
@@ -572,7 +574,7 @@ export function StudioGeneratorPage() {
                       Retry Browser Transcription
                     </Button>
                   )}
-                  <div className="rounded-lg bg-white/5 p-3 space-y-1.5">
+                  <div className="rounded-lg bg-white/5 p-3 space-y-2">
                     <p className="text-[10px] font-semibold text-white/60 uppercase tracking-wider">How to get the transcript</p>
                     <ol className="text-[10px] text-white/50 space-y-0.5 list-decimal list-inside">
                       <li>Open the video on <strong className="text-white/70">YouTube</strong></li>
@@ -582,6 +584,16 @@ export function StudioGeneratorPage() {
                       <li>Select all text (Ctrl+A / Cmd+A) and copy</li>
                       <li>Paste it below and click <strong className="text-white/70">Analyze Transcript</strong></li>
                     </ol>
+                    {video?.url && (
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] text-[#5865F2] hover:text-[#5865F2]/80 transition-colors"
+                      >
+                        Open video on YouTube ↗
+                      </a>
+                    )}
                   </div>
                   <textarea
                     value={manualTranscript}

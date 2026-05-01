@@ -295,6 +295,145 @@ def process_video():
             except Exception as e:
                 print(f"[render] Failed to remove final file: {e}")
 
+@app.route('/render-ai-video', methods=['POST'])
+def render_ai_video():
+    """FFmpeg pipeline to compose AI-generated video from stock clips + voiceover."""
+    if not verify_internal_secret(request):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.json
+    clips = data.get('clips', [])          # List of { url, duration }
+    audio_url = data.get('audioUrl', '')    # ElevenLabs audio URL
+    script = data.get('script', '')
+    segments = data.get('segments', [])     # List of { text, duration }
+
+    if not clips:
+        return jsonify({'error': 'No clips provided'}), 400
+    if not audio_url:
+        return jsonify({'error': 'No audio URL provided'}), 400
+
+    temp_files = []
+    final_path = None
+
+    try:
+        # Validate R2 credentials
+        if not (R2_ACCOUNT_ID and R2_ACCESS_KEY and R2_SECRET_KEY):
+            return jsonify({'error': 'R2 storage credentials not configured'}), 503
+
+        target_w, target_h = 720, 1280
+        scale_pad = f"scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2"
+
+        # 1. Download all clips
+        clip_paths = []
+        for i, clip in enumerate(clips):
+            url = clip.get('url', '')
+            if not url:
+                continue
+            fd, path = tempfile.mkstemp(suffix=f'_clip_{i}.mp4')
+            os.close(fd)
+            temp_files.append(path)
+
+            # Download via requests (handles both HTTP and proxy)
+            import requests
+            dl_headers = {'User-Agent': 'Mozilla/5.0'}
+            proxy = get_proxy()
+            proxies = {'http': proxy, 'https': proxy} if proxy else None
+            r = requests.get(url, headers=dl_headers, proxies=proxies, timeout=60)
+            r.raise_for_status()
+            with open(path, 'wb') as f:
+                f.write(r.content)
+            clip_paths.append(path)
+            print(f"[ai-render] Downloaded clip {i}: {len(r.content)} bytes")
+
+        # 2. Download audio
+        fd_audio, audio_path = tempfile.mkstemp(suffix='_audio.mp3')
+        os.close(fd_audio)
+        temp_files.append(audio_path)
+
+        import requests
+        proxy = get_proxy()
+        proxies = {'http': proxy, 'https': proxy} if proxy else None
+        r = requests.get(audio_url, proxies=proxies, timeout=60)
+        r.raise_for_status()
+        with open(audio_path, 'wb') as f:
+            f.write(r.content)
+        print(f"[ai-render] Downloaded audio: {len(r.content)} bytes")
+
+        # 3. Build FFmpeg filter_complex
+        # Each clip: scale/pad, trim to segment duration, reset timestamps
+        filter_parts = []
+        for i, seg in enumerate(segments[:len(clip_paths)]):
+            dur = seg.get('duration', 5)
+            filter_parts.append(
+                f"[{i}:v]{scale_pad},trim=duration={dur},setpts=PTS-STARTPTS[v{i}]"
+            )
+
+        concat_inputs = ''.join([f"[v{i}]" for i in range(len(clip_paths))])
+        filter_parts.append(f"{concat_inputs}concat=n={len(clip_paths)}:v=1:a=0[outv]")
+        filter_complex = ';'.join(filter_parts)
+
+        # 4. Run FFmpeg
+        fd_final, final_path = tempfile.mkstemp(suffix='_ai_video.mp4')
+        os.close(fd_final)
+        temp_files.append(final_path)
+
+        input_args = []
+        for path in clip_paths:
+            input_args.extend(['-i', path])
+        input_args.extend(['-i', audio_path])
+
+        render_cmd = [
+            'ffmpeg', '-y',
+            *input_args,
+            '-filter_complex', filter_complex,
+            '-map', '[outv]',
+            '-map', f'{len(clip_paths)}:a',
+            '-c:v', 'libx264',
+            '-crf', '28',
+            '-preset', 'faster',
+            '-c:a', 'aac',
+            '-b:a', '128k',
+            '-shortest',
+            '-movflags', '+faststart',
+            '-pix_fmt', 'yuv420p',
+            final_path
+        ]
+
+        print(f"[ai-render] Running FFmpeg with {len(clip_paths)} clips...")
+        result = subprocess.run(render_cmd, capture_output=True, timeout=300)
+        if result.returncode != 0:
+            stderr = result.stderr.decode('utf-8', errors='replace')[:2000]
+            print(f"[ai-render] FFmpeg failed: {stderr}")
+            return jsonify({'error': f'Video composition failed: {stderr}'}), 500
+
+        if not os.path.exists(final_path) or os.path.getsize(final_path) == 0:
+            return jsonify({'error': 'Rendered video is empty'}), 500
+
+        print(f"[ai-render] Render complete: {os.path.getsize(final_path)} bytes")
+
+        # 5. Upload to R2
+        output_key = f"ai-videos/{os.path.basename(final_path)}"
+        s3 = get_r2_client()
+        s3.upload_file(final_path, R2_BUCKET, output_key, ExtraArgs={'ContentType': 'video/mp4'})
+        final_url = f"https://media.viraltrim.com/{output_key}"
+        print(f"[ai-render] Uploaded: {final_url}")
+
+        return jsonify({'success': True, 'url': final_url})
+
+    except Exception as e:
+        print(f"[ai-render] Unhandled error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        for path in temp_files:
+            if path and os.path.exists(path):
+                try:
+                    os.remove(path)
+                except Exception as e:
+                    print(f"[ai-render] Cleanup error: {e}")
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)

@@ -24,6 +24,7 @@ import {
 import type { AppEnv } from "./types/app-env";
 import { fetchYoutubeTranscript, extractYoutubeId as extractYtId } from "./lib/youtube-transcript";
 import { getYoutubeStreamUrls } from "./lib/youtube-stream";
+import { registerAiVideoRoutes } from "./aiVideoRoutes";
 
 function publicUser(u: {
   id: string;
@@ -198,7 +199,7 @@ function jwtSecret(env: Env, req: Request): string {
   return "";
 }
 
-const authMiddleware = async (c: Context<AppEnv>, next: () => Promise<void>) => {
+export const authMiddleware = async (c: Context<AppEnv>, next: () => Promise<void>) => {
   const cookieToken = getCookie(c, "vt_session");
   const bearerToken = extractBearerToken(c.req.raw);
   const token = cookieToken || bearerToken;
@@ -481,6 +482,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
       const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
       const url = `${r2PublicBase}/${key}`;
+
+      // Create an importedLinks record so the upload appears in My Videos
+      const db = createDatabase(c.env.DB);
+      await db.insert(importedLinks).values({
+        id,
+        userId: user.id,
+        url,
+        platform: "upload",
+        title: file.name,
+        transcript: null,
+        segments: null,
+        thumbnail: null,
+        videoFileUrl: key,
+        sourceType: "upload",
+      });
 
       return c.json({ success: true, data: { id, url, key, title: file.name } });
     } catch (e: any) {
@@ -1937,6 +1953,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await db.update(apiKeys).set({ isRevoked: true }).where(eq(apiKeys.id, keyId));
     return c.json({ success: true, data: { id: keyId, revoked: true } });
   });
+
+  // ─── AI Video Studio Routes ───────────────────────────────────────────────────
+  const aiVideoApp = new Hono<AppEnv>();
+  aiVideoApp.use("*", authMiddleware);
+  registerAiVideoRoutes(aiVideoApp);
+  api.route("", aiVideoApp);
 }
 
 

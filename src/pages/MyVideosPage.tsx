@@ -28,10 +28,17 @@ function resolveThumbnail(link: any): string | null {
 /** Get embed URL for iframe playback — works for YouTube & TikTok */
 function getEmbedUrl(url?: string): string {
   if (!url) return "";
+  // Standard YouTube watch, embed, and youtu.be URLs
   const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
   if (ytMatch && ytMatch[1]) {
-    return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&rel=0`;
+    return `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&rel=0`;
   }
+  // YouTube Shorts
+  const shortsMatch = url.match(/youtube\.com\/shorts\/([^"&?\/\s]{11})/i);
+  if (shortsMatch && shortsMatch[1]) {
+    return `https://www.youtube-nocookie.com/embed/${shortsMatch[1]}?autoplay=1&rel=0`;
+  }
+  // TikTok
   const ttMatch = url.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|t\/|[\w.-]+\/)([\d]+)/i);
   if (ttMatch && ttMatch[1]) {
     return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`;
@@ -50,6 +57,7 @@ export default function MyVideosPage() {
   const [manualTranscript, setManualTranscript] = useState("");
   const [transcribingId, setTranscribingId] = useState<string | null>(null);
   const [viewTranscriptId, setViewTranscriptId] = useState<string | null>(null);
+  const [embedErrors, setEmbedErrors] = useState<Set<string>>(new Set());
   const browserTranscribe = useBrowserTranscribe();
 
   const { data: res, isLoading } = useQuery({
@@ -297,13 +305,40 @@ export default function MyVideosPage() {
                   {/* Thumbnail / Player */}
                   <div className="aspect-video relative bg-black">
                     {isExpanded ? (
-                      <iframe
-                        src={getEmbedUrl(link.url)}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={link.title || "Video preview"}
-                      />
+                      embedErrors.has(link.id) || !getEmbedUrl(link.url) || getEmbedUrl(link.url) === link.url ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-black/80 text-white/80 gap-3">
+                          <Video className="h-10 w-10 text-white/30" />
+                          <p className="text-sm text-white/60 text-center px-4">This video can&apos;t be embedded here.</p>
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-primary/20 hover:bg-primary/30 text-primary px-3 py-1.5 rounded-full transition-colors"
+                          >
+                            Open on {link.platform || "YouTube"} ↗
+                          </a>
+                        </div>
+                      ) : (
+                        <iframe
+                          src={getEmbedUrl(link.url)}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title={link.title || "Video preview"}
+                          onError={() => setEmbedErrors((prev) => new Set(prev).add(link.id))}
+                          onLoad={() => {
+                            // Some embeds load but show a broken player; give them a few seconds
+                            // then check if we should flag as error (best-effort)
+                            setTimeout(() => {
+                              // If the iframe is still in the DOM and tiny, it probably failed
+                              const iframe = document.querySelector(`iframe[src="${getEmbedUrl(link.url)}"]`);
+                              if (iframe && iframe.clientHeight < 100) {
+                                setEmbedErrors((prev) => new Set(prev).add(link.id));
+                              }
+                            }, 4000);
+                          }}
+                        />
+                      )
                     ) : thumbnail ? (
                       <img
                         src={thumbnail}

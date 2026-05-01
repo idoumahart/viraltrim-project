@@ -4,3 +4,4 @@ yt-dlp
 boto3
 google-cloud-storage
 python-dotenv==1.0.1
+requests

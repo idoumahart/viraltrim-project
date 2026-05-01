@@ -38,6 +38,7 @@ const ClipsPage = React.lazy(() => import("@/pages/ClipsPage"));
 const SchedulePage = React.lazy(() => import("@/pages/SchedulePage"));
 const SettingsPage = React.lazy(() => import("@/pages/SettingsPage"));
 const StudioGeneratorPage = React.lazy(() => import("@/pages/StudioGeneratorPage").then(m => ({ default: m.StudioGeneratorPage })));
+const AiVideoStudioPage = React.lazy(() => import("@/pages/AiVideoStudioPage").then(m => ({ default: m.AiVideoStudioPage })));
 const AffiliatePage = React.lazy(() => import("@/pages/AffiliatePage"));
 
 const queryClient = new QueryClient({
@@ -124,6 +125,16 @@ root.render(
                         <ProtectedRoute>
                           <VerifiedRoute>
                             <ClipsPage />
+                          </VerifiedRoute>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/studio/ai-video"
+                      element={
+                        <ProtectedRoute>
+                          <VerifiedRoute>
+                            <AiVideoStudioPage />
                           </VerifiedRoute>
                         </ProtectedRoute>
                       }

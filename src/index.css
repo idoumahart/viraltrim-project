@@ -53,4 +53,29 @@
   .content-auto {
     content-visibility: auto;
   }
+
+  .animate-gradient {
+    animation: gradient-shift 4s ease infinite;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(88, 101, 242, 0.5), 0 0 40px rgba(88, 101, 242, 0.3);
+  }
+
+  .glass-card {
+    @apply bg-card/40 backdrop-blur-xl border border-white/[0.08] rounded-2xl;
+  }
+
+  .glass-card-strong {
+    @apply bg-card/60 backdrop-blur-2xl border border-white/[0.12] rounded-2xl;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }

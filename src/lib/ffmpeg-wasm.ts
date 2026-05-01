@@ -370,6 +370,108 @@ export function groupWords(
 }
 
 /**
+ * Render an AI-generated video from stock clips + voiceover audio.
+ * Concatenates clips, trims to segment durations, overlays audio.
+ *
+ * @param ffmpeg       Loaded FFmpeg instance
+ * @param clips        Array of { url, duration } for each stock clip
+ * @param audioBlob    ElevenLabs TTS audio blob
+ * @param options      Resolution, quality, progress callback
+ */
+export async function renderAiVideo(
+  ffmpeg: FFmpeg,
+  clips: Array<{ url: string; duration: number }>,
+  audioBlob: Blob,
+  options: {
+    targetWidth?: number;
+    targetHeight?: number;
+    crf?: number;
+    preset?: string;
+    onProgress?: (progress: number) => void;
+  } = {}
+): Promise<Blob> {
+  const {
+    targetWidth = 720,
+    targetHeight = 1280,
+    crf = 28,
+    preset = "ultrafast",
+  } = options;
+
+  // Download all clips
+  const clipBlobs: Blob[] = [];
+  for (let i = 0; i < clips.length; i++) {
+    const res = await fetch(clips[i].url);
+    if (!res.ok) throw new Error(`Failed to download clip ${i + 1}`);
+    clipBlobs.push(await res.blob());
+  }
+
+  // Write clips to FFmpeg FS
+  for (let i = 0; i < clipBlobs.length; i++) {
+    await ffmpeg.writeFile(`clip_${i}.mp4`, await fetchFile(clipBlobs[i]));
+  }
+
+  // Write audio
+  await ffmpeg.writeFile("audio.mp3", await fetchFile(audioBlob));
+
+  // Build filter_complex: scale/pad each clip, trim to duration, concat
+  const scalePad = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2`;
+
+  const filterParts: string[] = [];
+  for (let i = 0; i < clips.length; i++) {
+    const dur = clips[i].duration;
+    filterParts.push(
+      `[${i}:v]${scalePad},trim=duration=${dur},setpts=PTS-STARTPTS[v${i}]`
+    );
+  }
+  const concatInputs = clips.map((_, i) => `[v${i}]`).join("");
+  filterParts.push(`${concatInputs}concat=n=${clips.length}:v=1:a=0[outv]`);
+
+  const filterComplex = filterParts.join(";");
+
+  // Build input args
+  const inputArgs: string[] = [];
+  for (let i = 0; i < clips.length; i++) {
+    inputArgs.push("-i", `clip_${i}.mp4`);
+  }
+  inputArgs.push("-i", "audio.mp3");
+
+  // Progress listener
+  const progressHandler = ({ progress }: { progress: number }) => {
+    options.onProgress?.(progress);
+  };
+  ffmpeg.on("progress", progressHandler);
+
+  await ffmpeg.exec([
+    ...inputArgs,
+    "-filter_complex", filterComplex,
+    "-map", "[outv]",
+    "-map", `${clips.length}:a`,
+    "-c:v", "libx264",
+    "-crf", String(crf),
+    "-preset", preset,
+    "-c:a", "aac",
+    "-b:a", "128k",
+    "-shortest",
+    "-movflags", "+faststart",
+    "-pix_fmt", "yuv420p",
+    "output.mp4",
+  ]);
+
+  ffmpeg.off("progress", progressHandler);
+
+  const data = await ffmpeg.readFile("output.mp4");
+
+  // Cleanup
+  for (let i = 0; i < clips.length; i++) {
+    await ffmpeg.deleteFile(`clip_${i}.mp4`);
+  }
+  await ffmpeg.deleteFile("audio.mp3");
+  await ffmpeg.deleteFile("output.mp4");
+
+  return new Blob([data], { type: "video/mp4" });
+}
+
+/**
  * Check if the device is low-powered (should use server fallback).
  */
 export function shouldUseServerFallback(): boolean {

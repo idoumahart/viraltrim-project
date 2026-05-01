@@ -15,7 +15,8 @@ import {
   X,
   ChevronDown,
   Film,
-  FolderOpen
+  FolderOpen,
+  Wand2
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ const MAIN_NAV = [
 
 const STUDIO_NAV = [
   { label: "My Videos", icon: FolderOpen, path: "/studio/videos" },
+  { label: "AI Video Studio", icon: Wand2, path: "/studio/ai-video" },
   { label: "My Clips", icon: Film, path: "/studio/clips" },
   { label: "AI Clip Generator", icon: Sparkles, path: "/studio/generator" },
   { label: "Clip Editor", icon: Scissors, path: "/studio/editor" },
