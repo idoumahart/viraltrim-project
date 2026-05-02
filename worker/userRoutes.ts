@@ -25,6 +25,7 @@ import type { AppEnv } from "./types/app-env";
 import { fetchYoutubeTranscript, extractYoutubeId as extractYtId } from "./lib/youtube-transcript";
 import { getYoutubeStreamUrls } from "./lib/youtube-stream";
 import { registerAiVideoRoutes } from "./aiVideoRoutes";
+import { logBackgroundTask } from "./middleware/request-logger";
 
 function publicUser(u: {
   id: string;
@@ -178,7 +179,17 @@ async function queueClipRender(
     await db.update(renderJobs).set({ status: "failed", error: lastErr || "All render attempts failed", updatedAt: new Date() }).where(eq(renderJobs.id, jobId));
   };
 
-  executionCtx?.waitUntil?.(runRender());
+  executionCtx?.waitUntil?.(
+    runRender().catch((err: any) => {
+      console.error(JSON.stringify({
+        level: "error",
+        source: "render:bg",
+        jobId,
+        error: err?.message || String(err),
+        stack: err?.stack,
+      }));
+    })
+  );
   return jobId;
 }
 
@@ -284,10 +295,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         "Verify your email - viraltrim",
         verifyEmailHtml(user.displayName, verifyUrl),
       );
-      c.executionCtx?.waitUntil(welcome.then(() => undefined));
+      const reqId = (c.get("reqId" as never) as string) || "unknown";
+      c.executionCtx?.waitUntil(
+        logBackgroundTask("register:send-email", reqId, welcome)
+      );
       return c.json({ success: true, data: { user: publicUser(user), token } });
-    } catch (error) {
-      console.error("[API] Register", error);
+    } catch (error: any) {
+      console.error(JSON.stringify({
+        level: "error",
+        reqId: (c.get("reqId" as never) as string) || "unknown",
+        source: "API",
+        route: "POST /api/auth/register",
+        error: error?.message || String(error),
+        stack: error?.stack,
+      }));
       return c.json({ success: false, error: "System error" }, 500);
     }
   });
@@ -332,11 +353,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         "Verify your email - viraltrim",
         verifyEmailHtml(user.displayName, verifyUrl),
       );
-      c.executionCtx?.waitUntil(welcome.then(() => undefined));
-      
+      const reqId = (c.get("reqId" as never) as string) || "unknown";
+      c.executionCtx?.waitUntil(
+        logBackgroundTask("resend-verification:send-email", reqId, welcome)
+      );
       return c.json({ success: true });
-    } catch (error) {
-      console.error("[API] Resend Verification", error);
+    } catch (error: any) {
+      console.error(JSON.stringify({
+        level: "error",
+        reqId: (c.get("reqId" as never) as string) || "unknown",
+        source: "API",
+        route: "POST /api/auth/resend-verification",
+        error: error?.message || String(error),
+        stack: error?.stack,
+      }));
       return c.json({ success: false, error: "System error" }, 500);
     }
   });
@@ -1059,7 +1089,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       }
     };
 
-    c.executionCtx.waitUntil(transcribeInBackground());
+    const reqId = (c.get("reqId" as never) as string) || "unknown";
+    c.executionCtx.waitUntil(
+      logBackgroundTask("import:transcribe", reqId, transcribeInBackground())
+    );
 
     return c.json({ success: true, data: { id, platform, hasTranscript: false } });
   });
@@ -1152,13 +1185,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (typeof body.endSec === "number") updates.endSec = body.endSec;
     if (typeof body.textStyle === "string") updates.textStyle = body.textStyle;
     if (Array.isArray(body.captionLines)) {
-      updates.captionLines = JSON.stringify(body.captionLines.slice(0, 20));
+      updates.captionLines = body.captionLines.slice(0, 20);
     }
     if (Array.isArray(body.combinedClipIds)) {
-      updates.combinedClipIds = JSON.stringify(body.combinedClipIds.slice(0, 20));
+      updates.combinedClipIds = body.combinedClipIds.slice(0, 20);
     }
     if (Array.isArray(body.mediaUrls)) {
-      updates.mediaUrls = JSON.stringify(body.mediaUrls.slice(0, 10));
+      updates.mediaUrls = body.mediaUrls.slice(0, 10);
     }
     if (typeof body.aspectRatio === "string") updates.aspectRatio = body.aspectRatio;
 
@@ -1263,7 +1296,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
   // ── Media upload → R2 ────────────────────────────────────────────────────
   api.post("/api/media/upload", authMiddleware, async (c) => {
-    const bucket = (c.env as any).MEDIA_BUCKET;
+    const bucket = c.env.MEDIA;
     if (!bucket) {
       return c.json({ success: false, error: "Media storage not configured" }, 503);
     }
@@ -1659,13 +1692,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           if (customerId) {
             const [u] = await db.select().from(users).where(eq(users.stripeCustomerId, customerId)).limit(1);
             if (u) {
+              const reqId = (c.get("reqId" as never) as string) || "unknown";
               c.executionCtx?.waitUntil(
-                sendResendEmail(
-                  c.env,
-                  u.email,
-                  "Payment failed — viraltrim",
-                  `<p>We could not process your subscription payment. Please update your card in the billing portal.</p>`,
-                ).then(() => undefined),
+                logBackgroundTask(
+                  "stripe:payment-failed-email",
+                  reqId,
+                  sendResendEmail(
+                    c.env,
+                    u.email,
+                    "Payment failed — viraltrim",
+                    `<p>We could not process your subscription payment. Please update your card in the billing portal.</p>`,
+                  )
+                )
               );
             }
           }
@@ -1817,17 +1855,22 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       infringingUrl,
       description: body.description ? String(body.description) : "",
     };
+    const reqId = (c.get("reqId" as never) as string) || "unknown";
     c.executionCtx?.waitUntil(
-      Promise.all([
-        sendResendEmail(c.env, admin, "DMCA report", dmcaAdminHtml(report), dmcaFrom),
-        sendResendEmail(
-          c.env,
-          reporterEmail,
-          "We received your DMCA notice",
-          "<p>We have received your DMCA takedown notice and will review it within 5 business days.</p>",
-          dmcaFrom,
-        ),
-      ]).then(() => undefined),
+      logBackgroundTask(
+        "dmca:send-emails",
+        reqId,
+        Promise.all([
+          sendResendEmail(c.env, admin, "DMCA report", dmcaAdminHtml(report), dmcaFrom),
+          sendResendEmail(
+            c.env,
+            reporterEmail,
+            "We received your DMCA notice",
+            "<p>We have received your DMCA takedown notice and will review it within 5 business days.</p>",
+            dmcaFrom,
+          ),
+        ])
+      )
     );
     return c.json({ success: true, data: { id } });
   });
