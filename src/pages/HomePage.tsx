@@ -351,6 +351,9 @@ export function HomePage() {
             <a href="https://codedmotion.studio" className="hover:text-foreground transition-colors" target="_blank" rel="noreferrer">
               Agency
             </a>
+            <a href="mailto:support@codedmotion.studio" className="hover:text-foreground transition-colors">
+              Support
+            </a>
           </div>
         </div>
       </footer>

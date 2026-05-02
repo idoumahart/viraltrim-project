@@ -276,7 +276,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         maxAge: ttl,
       });
       const vToken = await userService.createVerificationToken(user.id);
-      const verifyUrl = `${c.env.APP_URL || "http://localhost:3000"}/verify-email?token=${vToken}`;
+      const verifyUrl = `${c.env.APP_URL}/verify-email?token=${vToken}`;
 
       const welcome = sendResendEmail(
         c.env,
@@ -324,7 +324,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       
       // We don't bother strictly rate limiting this custom route initially, but standard CF protections apply
       const vToken = await userService.createVerificationToken(user.id);
-      const verifyUrl = `${c.env.APP_URL || "http://localhost:3000"}/verify-email?token=${vToken}`;
+      const verifyUrl = `${c.env.APP_URL}/verify-email?token=${vToken}`;
       
       const welcome = sendResendEmail(
         c.env,
@@ -1529,7 +1529,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!user.stripeCustomerId) {
       await createUserService(db).setStripeCustomerId(user.id, customerId);
     }
-    const appUrl = String(c.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+    const appUrl = String(c.env.APP_URL || "").replace(/\/$/, "");
     
     // SECURITY FIX: Never trust client for trial days or quantity
     // Define them server-side based on the price ID if necessary.
@@ -1557,7 +1557,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: "No Stripe customer" }, 400);
     }
     const stripe = getStripe(sk);
-    const appUrl = String(c.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+    const appUrl = String(c.env.APP_URL || "").replace(/\/$/, "");
     const url = await createPortalSession(stripe, user.stripeCustomerId, `${appUrl}/settings`);
     return c.json({ success: true, data: { url } });
   });
@@ -1807,7 +1807,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       status: "pending",
       reportedUserId,
     });
-    const admin = c.env.RESEND_ADMIN_EMAIL || "admin@viraltrim.com";
+    const admin = c.env.RESEND_ADMIN_EMAIL || "admin@codedmotion.studio";
+    const dmcaFrom = c.env.RESEND_DMCA_EMAIL || "dmca@codedmotion.studio";
     const report = {
       id,
       reporterName,
@@ -1818,12 +1819,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     c.executionCtx?.waitUntil(
       Promise.all([
-        sendResendEmail(c.env, admin, "DMCA report", dmcaAdminHtml(report)),
+        sendResendEmail(c.env, admin, "DMCA report", dmcaAdminHtml(report), dmcaFrom),
         sendResendEmail(
           c.env,
           reporterEmail,
           "We received your DMCA notice",
           "<p>We have received your DMCA takedown notice and will review it within 5 business days.</p>",
+          dmcaFrom,
         ),
       ]).then(() => undefined),
     );

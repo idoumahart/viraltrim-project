@@ -772,7 +772,7 @@ export function AiVideoStudioPage() {
                     </div>
                     <div className="space-y-2">
                       <p className="font-medium">Rendering failed</p>
-                      <p className="text-sm text-muted-foreground">Please try again or contact support.</p>
+                      <p className="text-sm text-muted-foreground">Please try again or <a href="mailto:support@codedmotion.studio" className="underline">contact support</a>.</p>
                     </div>
                     <Button onClick={startRender} variant="outline">
                       <RefreshCw className="h-4 w-4 mr-2" />

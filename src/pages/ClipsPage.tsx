@@ -158,7 +158,7 @@ function ClipCard({
             ) : (
               <>
                 <AlertCircle className="h-3 w-3 text-amber-500" />
-                <span className="text-amber-500">Save limit reached — contact us to unlock more</span>
+                <span className="text-amber-500">Save limit reached — <a href="mailto:support@codedmotion.studio" className="underline">contact us</a> to unlock more</span>
               </>
             )}
           </div>

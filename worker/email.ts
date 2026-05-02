@@ -5,6 +5,7 @@ export async function sendResendEmail(
   to: string | string[],
   subject: string,
   html: string,
+  from?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const key = env.RESEND_API_KEY;
   if (!key) {
@@ -17,7 +18,7 @@ export async function sendResendEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: env.RESEND_FROM_EMAIL || "hello@viraltrim.com",
+      from: from || env.RESEND_FROM_EMAIL || "hello@codedmotion.studio",
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
