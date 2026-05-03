@@ -266,7 +266,7 @@ export function AiVideoStudioPage() {
     } catch (e) {
       setRenderStatus("error");
     }
-  }, [script, selectedVoice, selectedClips, scriptSegments, audioUrl, renderMode, browserRender]);
+  }, [script, selectedVoice, selectedClips, scriptSegments, audioUrl, renderMode, browserRender, pollRender]);
 
   const pollRender = useCallback((jobId: string) => {
     let attempts = 0;

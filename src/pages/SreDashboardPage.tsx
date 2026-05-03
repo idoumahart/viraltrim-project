@@ -50,7 +50,7 @@ export function SreDashboardPage() {
   const [pathFilter, setPathFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const fetchAll = async () => {
+  const fetchAll = React.useCallback(async () => {
     setLoading({ health: true, logs: true, stats: true });
     setError(null);
     try {
@@ -70,11 +70,11 @@ export function SreDashboardPage() {
     } finally {
       setLoading({ health: false, logs: false, stats: false });
     }
-  };
+  }, [pathFilter, statusFilter]);
 
   useEffect(() => {
     fetchAll();
-  }, []);
+  }, [fetchAll]);
 
   const statCard = (label: string, value: string | number, icon: React.ReactNode, color: string) => (
     <div className="p-4 rounded-xl border border-white/[0.08] bg-white/[0.03]">

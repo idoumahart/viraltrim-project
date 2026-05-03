@@ -18,3 +18,4 @@ migrations/*.sql
 # Build Artifacts
 .github/workflows/deploy.yml.tmp
 tsconfig.tsbuildinfo
+.wrangler/
