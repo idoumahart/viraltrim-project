@@ -7,17 +7,48 @@ import { createDatabase } from "./database";
 import { aiVideoRenders } from "./database/schema";
 import { eq, desc } from "drizzle-orm";
 import { logBackgroundTask } from "./middleware/request-logger";
+import { fetchYouTubeVideos, fetchRedditVideos } from "./gemini";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
 // ─── Script Generation ────────────────────────────────────────────────────────
 
-export async function generateVideoScript(topic: string, tone: string, duration: number, apiKey: string) {
+async function researchTopic(topic: string, env: Env): Promise<string> {
+  const results: string[] = [];
+  try {
+    if (env.YOUTUBE_API_KEY) {
+      const yt = await fetchYouTubeVideos(topic, env.YOUTUBE_API_KEY);
+      if (yt.length > 0) {
+        results.push("YOUTUBE RESEARCH:\n" + yt.slice(0, 5).map(v => `- ${v.title} (${v.views} views)`).join("\n"));
+      }
+    }
+  } catch { /* ignore */ }
+  try {
+    const rd = await fetchRedditVideos(topic);
+    if (rd.length > 0) {
+      results.push("REDDIT DISCUSSIONS:\n" + rd.slice(0, 5).map(r => `- ${r.title}`).join("\n"));
+    }
+  } catch { /* ignore */ }
+  return results.join("\n\n");
+}
+
+export async function generateVideoScript(
+  topic: string,
+  tone: string,
+  duration: number,
+  apiKey: string,
+  researchContext = "",
+  creativeMode = false,
+) {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
 
-  const prompt = `Write a ${duration}-second viral video script about: "${topic}".
+  let prompt = "";
+  if (creativeMode) {
+    prompt = `Write a ${duration}-second viral video script about: "${topic}".
 Tone: ${tone}.
+
+This is CREATIVE/FICTIONAL mode. You may use imagination and storytelling.
 
 Rules:
 - Write for spoken voiceover (natural, conversational)
@@ -30,6 +61,26 @@ Rules:
 - Do NOT use markdown formatting
 
 Script:`;
+  } else {
+    prompt = `Write a ${duration}-second viral video script about: "${topic}".
+Tone: ${tone}.
+
+CRITICAL: This is FACTUAL/RESEARCH mode. You MUST base the script on verified facts from the research context below. Do NOT hallucinate statistics, names, dates, or events. If the research is insufficient, state facts conservatively and focus on generally accepted knowledge.
+
+${researchContext ? `RESEARCH CONTEXT:\n${researchContext}\n\n` : ""}
+Rules:
+- Write for spoken voiceover (natural, conversational)
+- Each sentence should be punchy and engaging
+- Total reading time should be approximately ${duration} seconds
+- Include a strong hook in the first 3 seconds
+- End with a call-to-action
+- Format as plain text paragraphs, one sentence per line for easy parsing
+- Do NOT include stage directions, camera notes, or sound effects
+- Do NOT use markdown formatting
+- ONLY state facts that are supported by the research context or widely known general knowledge
+
+Script:`;
+  }
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
@@ -46,6 +97,71 @@ Script:`;
   }));
 
   return { script: text, segments };
+}
+
+async function extractVisualKeywords(script: string, segments: Array<{ text: string; duration: number }>, apiKey: string): Promise<Array<{ segmentIndex: number; keywords: string }>> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+
+  const prompt = `Given this video script, extract the best Pexels stock video search keyword for EACH segment. Keywords should be visual and concrete (e.g., "city skyline", "person typing", "ocean waves"). Avoid abstract concepts.
+
+Script:
+"""${script}"""
+
+Segments:
+${segments.map((s, i) => `${i + 1}. "${s.text}"`).join("\n")}
+
+Return ONLY a JSON array in this exact format:
+[
+  {"segmentIndex": 0, "keywords": "keyword phrase"},
+  {"segmentIndex": 1, "keywords": "keyword phrase"}
+]`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+    const cleaned = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+    const parsed = JSON.parse(cleaned) as Array<{ segmentIndex: number; keywords: string }>;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e: any) {
+    console.error("[extractVisualKeywords] failed:", e.message);
+    return segments.map((_, i) => ({ segmentIndex: i, keywords: "" }));
+  }
+}
+
+async function generateSceneImages(segments: Array<{ text: string; duration: number }>, apiKey: string): Promise<Array<{ segmentIndex: number; imageUrl: string; prompt: string }>> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+
+  const prompt = `For each video segment below, write a concise image generation prompt (max 15 words) suitable for an AI image generator. The prompt should describe a single cinematic scene. No text/words in the image.
+
+Segments:
+${segments.map((s, i) => `${i + 1}. "${s.text}"`).join("\n")}
+
+Return ONLY a JSON array:
+[
+  {"segmentIndex": 0, "prompt": "cinematic scene description"},
+  {"segmentIndex": 1, "prompt": "cinematic scene description"}
+]`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+    const cleaned = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+    const prompts = JSON.parse(cleaned) as Array<{ segmentIndex: number; prompt: string }>;
+
+    return await Promise.all(
+      (Array.isArray(prompts) ? prompts : []).map(async (p) => {
+        const encoded = encodeURIComponent(p.prompt);
+        // Pollinations.ai - free, no API key, no watermark option
+        const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?width=720&height=1280&seed=${42 + p.segmentIndex}&nologo=true&negative=blur,text,watermark,logo`;
+        return { segmentIndex: p.segmentIndex, imageUrl, prompt: p.prompt };
+      })
+    );
+  } catch (e: any) {
+    console.error("[generateSceneImages] failed:", e.message);
+    return [];
+  }
 }
 
 // ─── ElevenLabs TTS ───────────────────────────────────────────────────────────
@@ -169,6 +285,7 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
       topic?: string;
       tone?: string;
       duration?: number;
+      creativeMode?: boolean;
     };
     const topic = String(body.topic || "").trim();
     if (!topic) {
@@ -179,16 +296,65 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
     }
 
     try {
+      let researchContext = "";
+      if (!body.creativeMode) {
+        researchContext = await researchTopic(topic, c.env);
+      }
       const result = await generateVideoScript(
         topic,
         body.tone || "viral",
         body.duration || 30,
-        c.env.GEMINI_API_KEY
+        c.env.GEMINI_API_KEY,
+        researchContext,
+        body.creativeMode ?? false
       );
-      return c.json({ success: true, ...result });
+      return c.json({ success: true, ...result, researchContext: researchContext ? "Research applied" : undefined });
     } catch (e: any) {
       console.error("[ai-video/script] error:", e.message);
       return c.json({ success: false, error: "Script generation failed" }, 500);
+    }
+  });
+
+  // POST /api/ai-video/pexels-keywords
+  api.post("/api/ai-video/pexels-keywords", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as {
+      script?: string;
+      segments?: Array<{ text: string; duration: number }>;
+    };
+    if (!body.script || !body.segments?.length) {
+      return c.json({ success: false, error: "Script and segments are required" }, 400);
+    }
+    if (!c.env.GEMINI_API_KEY) {
+      return c.json({ success: false, error: "AI service unavailable" }, 503);
+    }
+
+    try {
+      const keywords = await extractVisualKeywords(body.script, body.segments, c.env.GEMINI_API_KEY);
+      return c.json({ success: true, keywords });
+    } catch (e: any) {
+      console.error("[ai-video/pexels-keywords] error:", e.message);
+      return c.json({ success: false, error: "Keyword extraction failed" }, 500);
+    }
+  });
+
+  // POST /api/ai-video/generate-images
+  api.post("/api/ai-video/generate-images", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as {
+      segments?: Array<{ text: string; duration: number }>;
+    };
+    if (!body.segments?.length) {
+      return c.json({ success: false, error: "Segments are required" }, 400);
+    }
+    if (!c.env.GEMINI_API_KEY) {
+      return c.json({ success: false, error: "AI service unavailable" }, 503);
+    }
+
+    try {
+      const images = await generateSceneImages(body.segments, c.env.GEMINI_API_KEY);
+      return c.json({ success: true, images });
+    } catch (e: any) {
+      console.error("[ai-video/generate-images] error:", e.message);
+      return c.json({ success: false, error: "Image generation failed" }, 500);
     }
   });
 

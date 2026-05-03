@@ -665,4 +665,25 @@ export const api = {
   async sreStats(hours = 24): Promise<ApiResponse<Record<string, unknown>>> {
     return requestJson(`/api/sre/stats?hours=${hours}`, { method: "GET" });
   },
+
+  async generateAiVideoScript(topic: string, tone = "viral", duration = 30, creativeMode = false): Promise<ApiResponse<{ script: string; segments: Array<{ text: string; duration: number }>; researchContext?: string }>> {
+    return requestJson("/api/ai-video/script", {
+      method: "POST",
+      body: JSON.stringify({ topic, tone, duration, creativeMode }),
+    });
+  },
+
+  async extractPexelsKeywords(script: string, segments: Array<{ text: string; duration: number }>): Promise<ApiResponse<{ keywords: Array<{ segmentIndex: number; keywords: string }> }>> {
+    return requestJson("/api/ai-video/pexels-keywords", {
+      method: "POST",
+      body: JSON.stringify({ script, segments }),
+    });
+  },
+
+  async generateSceneImages(segments: Array<{ text: string; duration: number }>): Promise<ApiResponse<{ images: Array<{ segmentIndex: number; imageUrl: string; prompt: string }> }>> {
+    return requestJson("/api/ai-video/generate-images", {
+      method: "POST",
+      body: JSON.stringify({ segments }),
+    });
+  },
 };

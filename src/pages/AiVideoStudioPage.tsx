@@ -102,6 +102,11 @@ export function AiVideoStudioPage() {
   const [selectedVoice, setSelectedVoice] = useState<string>("");
   const [voices, setVoices] = useState<VoiceOption[]>(DEFAULT_VOICES);
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
+  const [creativeMode, setCreativeMode] = useState(false);
+  const [useAiFootage, setUseAiFootage] = useState(false);
+  const [aiImages, setAiImages] = useState<Array<{ segmentIndex: number; imageUrl: string; prompt: string }>>([]);
+  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+  const [pexelsKeywords, setPexelsKeywords] = useState<Array<{ segmentIndex: number; keywords: string }>>([]);
 
   // Fetch real voices from ElevenLabs API on mount
   useEffect(() => {
@@ -153,7 +158,7 @@ export function AiVideoStudioPage() {
       const res = await fetch("/api/ai-video/script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, tone: "viral", duration: 30 }),
+        body: JSON.stringify({ topic, tone: "viral", duration: 30, creativeMode }),
       });
       const data = await res.json();
       if (data.success && data.script) {
@@ -165,7 +170,7 @@ export function AiVideoStudioPage() {
     } finally {
       setIsGeneratingScript(false);
     }
-  }, [topic]);
+  }, [topic, creativeMode]);
 
   const generateVoice = useCallback(async () => {
     if (!script.trim() || !selectedVoice) return;
@@ -193,19 +198,57 @@ export function AiVideoStudioPage() {
   }, [script, selectedVoice]);
 
   const searchClips = useCallback(async () => {
+    if (useAiFootage) {
+      setIsGeneratingImages(true);
+      try {
+        const res = await fetch("/api/ai-video/generate-images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ segments: scriptSegments }),
+        });
+        const data = await res.json();
+        if (data.success && data.images) {
+          setAiImages(data.images);
+          // Convert images to clip format for compatibility
+          const imageClips: StockClip[] = data.images.map((img: any) => ({
+            id: `ai-${img.segmentIndex}`,
+            url: img.imageUrl,
+            thumbnail: img.imageUrl,
+            duration: scriptSegments[img.segmentIndex]?.duration || 5,
+            width: 720,
+            height: 1280,
+          }));
+          setStockClips(imageClips);
+          setSelectedClips(imageClips);
+        }
+      } catch (e) {
+        console.error("Image generation failed", e);
+      } finally {
+        setIsGeneratingImages(false);
+      }
+      return;
+    }
+
     setIsSearchingClips(true);
     try {
-      // Use script keywords to search Pexels
-      const keywords = topic
-        .split(" ")
-        .slice(0, 3)
-        .concat(script.split(" ").slice(0, 5));
-      const query = keywords.join(" ");
+      // Extract visual keywords for better matching
+      const kwRes = await fetch("/api/ai-video/pexels-keywords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script, segments: scriptSegments }),
+      });
+      const kwData = await kwRes.json();
+      const keywords = kwData.success && kwData.keywords ? kwData.keywords : [];
+      setPexelsKeywords(keywords);
+
+      // Use the best keyword for search, fallback to topic+script
+      const bestKeyword = keywords.find((k: any) => k.keywords)?.keywords || "";
+      const query = bestKeyword || topic.split(" ").slice(0, 3).concat(script.split(" ").slice(0, 5)).join(" ");
+
       const res = await fetch(`/api/ai-video/pexels?q=${encodeURIComponent(query)}&per_page=12`);
       const data = await res.json();
       if (data.clips) {
         setStockClips(data.clips);
-        // Auto-select first few
         setSelectedClips(data.clips.slice(0, Math.min(4, data.clips.length)));
       }
     } catch (e) {
@@ -213,7 +256,7 @@ export function AiVideoStudioPage() {
     } finally {
       setIsSearchingClips(false);
     }
-  }, [topic, script]);
+  }, [topic, script, scriptSegments, useAiFootage]);
 
   const pollRender = useCallback((jobId: string) => {
     let attempts = 0;
@@ -414,6 +457,18 @@ export function AiVideoStudioPage() {
                     </>
                   )}
                 </Button>
+                <div className="flex items-center gap-2 pt-2">
+                  <input
+                    type="checkbox"
+                    id="creative-mode"
+                    checked={creativeMode}
+                    onChange={(e) => setCreativeMode(e.target.checked)}
+                    className="rounded border-white/[0.08] bg-white/[0.04] text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="creative-mode" className="text-xs text-muted-foreground cursor-pointer select-none">
+                    Creative/Fictional mode (disables fact-checking research)
+                  </label>
+                </div>
               </div>
             </CinematicCard>
 
@@ -552,13 +607,44 @@ export function AiVideoStudioPage() {
               <h2 className="font-display text-3xl font-bold">
                 Match <GradientText>footage</GradientText>
               </h2>
-              <p className="text-muted-foreground">AI found stock clips that match your script.</p>
+              <p className="text-muted-foreground">
+                {useAiFootage ? "AI-generated scenes for your video." : "AI found stock clips that match your script."}
+              </p>
             </div>
 
-            {isSearchingClips ? (
+            <div className="flex justify-center">
+              <div className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+                <button
+                  onClick={() => { setUseAiFootage(false); searchClips(); }}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    !useAiFootage
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Stock Footage (Pexels)
+                </button>
+                <button
+                  onClick={() => { setUseAiFootage(true); searchClips(); }}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    useAiFootage
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  AI-Generated Scenes
+                </button>
+              </div>
+            </div>
+
+            {isSearchingClips || isGeneratingImages ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-muted-foreground">Searching Pexels for matching clips...</p>
+                <p className="text-muted-foreground">
+                  {useAiFootage ? "Generating AI scenes with Pollinations.ai..." : "Searching Pexels for matching clips..."}
+                </p>
               </div>
             ) : (
               <>
