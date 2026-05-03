@@ -3,6 +3,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { generateId } from "./auth";
 import type { Env } from "./core-utils";
 import type { AppEnv } from "./types/app-env";
+import { createDatabase } from "./database";
+import { aiVideoRenders } from "./database/schema";
+import { eq, desc } from "drizzle-orm";
+import { logBackgroundTask } from "./middleware/request-logger";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -233,7 +237,7 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
         const err = await res.text();
         throw new Error(`ElevenLabs API ${res.status}: ${err}`);
       }
-      const data = await res.json() as { voices: Array<{ voice_id: string; name: string; labels?: Record<string, string> }> };
+      const data = await res.json() as { voices: Array<{ voice_id: string; name: string; preview_url?: string; labels?: Record<string, string> }> };
       return c.json({ success: true, voices: data.voices || [] });
     } catch (e: any) {
       console.error("[ai-video/voices] error:", e.message);
@@ -289,8 +293,20 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
     const segments = body.segments || [];
     const jobId = `av-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const user = c.get("user");
+    const reqId = (c as any).get?.("reqId") || "unknown";
 
-    // Store initial job status in KV
+    // Persist in D1
+    const db = createDatabase(c.env.DB);
+    await db.insert(aiVideoRenders).values({
+      id: jobId,
+      userId: user.id,
+      status: "queued",
+      script: body.script,
+      voiceId: body.voiceId || null,
+      clips: clips,
+    });
+
+    // Store initial job status in KV (for fast polling)
     await c.env.CACHE.put(
       `ai-video:${jobId}`,
       JSON.stringify({ status: "queued", userId: user.id, createdAt: Date.now() }),
@@ -299,69 +315,76 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
 
     // If Cloud Run renderer is available, trigger it in background
     if (c.env.RENDERER_URL) {
-      c.executionCtx?.waitUntil(
-        (async () => {
-          try {
+      const bgPromise = (async () => {
+        try {
+          await c.env.CACHE.put(
+            `ai-video:${jobId}`,
+            JSON.stringify({ status: "rendering", userId: user.id, progress: 10, createdAt: Date.now() }),
+            { expirationTtl: 3600 }
+          );
+          await db.update(aiVideoRenders).set({ status: "processing", progress: 10 }).where(eq(aiVideoRenders.id, jobId));
+
+          const secret = c.env.INTERNAL_WEBHOOK_SECRET;
+          const renderResp = await fetch(`${c.env.RENDERER_URL}/render-ai-video`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(secret ? { "X-Internal-Secret": secret } : {}),
+            },
+            body: JSON.stringify({
+              clips: clips.map((url, i) => ({
+                url,
+                duration: segments[i]?.duration || 5,
+              })),
+              audioUrl: body.audioUrl,
+              script: body.script,
+              segments,
+              webhookUrl: `${c.env.APP_URL || ""}/api/ai-video/renders/${jobId}/status`,
+            }),
+            signal: AbortSignal.timeout(300000),
+          });
+
+          if (!renderResp.ok) {
+            const errText = await renderResp.text();
+            console.error(`[ai-video/render] Cloud Run failed: ${errText}`);
             await c.env.CACHE.put(
               `ai-video:${jobId}`,
-              JSON.stringify({ status: "rendering", userId: user.id, progress: 10, createdAt: Date.now() }),
+              JSON.stringify({ status: "error", userId: user.id, error: errText, createdAt: Date.now() }),
               { expirationTtl: 3600 }
             );
-
-            const secret = c.env.INTERNAL_WEBHOOK_SECRET;
-            const renderResp = await fetch(`${c.env.RENDERER_URL}/render-ai-video`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(secret ? { "X-Internal-Secret": secret } : {}),
-              },
-              body: JSON.stringify({
-                clips: clips.map((url, i) => ({
-                  url,
-                  duration: segments[i]?.duration || 5,
-                })),
-                audioUrl: body.audioUrl,
-                script: body.script,
-                segments,
-              }),
-              signal: AbortSignal.timeout(300000),
-            });
-
-            if (!renderResp.ok) {
-              const errText = await renderResp.text();
-              console.error(`[ai-video/render] Cloud Run failed: ${errText}`);
-              await c.env.CACHE.put(
-                `ai-video:${jobId}`,
-                JSON.stringify({ status: "error", userId: user.id, error: errText, createdAt: Date.now() }),
-                { expirationTtl: 3600 }
-              );
-              return;
-            }
-
-            const data = await renderResp.json() as any;
-            if (data.success && data.url) {
-              await c.env.CACHE.put(
-                `ai-video:${jobId}`,
-                JSON.stringify({ status: "done", userId: user.id, url: data.url, createdAt: Date.now() }),
-                { expirationTtl: 3600 }
-              );
-            } else {
-              await c.env.CACHE.put(
-                `ai-video:${jobId}`,
-                JSON.stringify({ status: "error", userId: user.id, error: data.error || "Render failed", createdAt: Date.now() }),
-                { expirationTtl: 3600 }
-              );
-            }
-          } catch (e: any) {
-            console.error(`[ai-video/render] background error: ${e.message}`);
-            await c.env.CACHE.put(
-              `ai-video:${jobId}`,
-              JSON.stringify({ status: "error", userId: user.id, error: e.message, createdAt: Date.now() }),
-              { expirationTtl: 3600 }
-            );
+            await db.update(aiVideoRenders).set({ status: "error", error: errText }).where(eq(aiVideoRenders.id, jobId));
+            return;
           }
-        })()
-      );
+
+          const data = await renderResp.json() as any;
+          if (data.success && data.url) {
+            await c.env.CACHE.put(
+              `ai-video:${jobId}`,
+              JSON.stringify({ status: "done", userId: user.id, url: data.url, createdAt: Date.now() }),
+              { expirationTtl: 3600 }
+            );
+            await db.update(aiVideoRenders).set({ status: "done", outputUrl: data.url, progress: 100 }).where(eq(aiVideoRenders.id, jobId));
+          } else {
+            const errMsg = data.error || "Render failed";
+            await c.env.CACHE.put(
+              `ai-video:${jobId}`,
+              JSON.stringify({ status: "error", userId: user.id, error: errMsg, createdAt: Date.now() }),
+              { expirationTtl: 3600 }
+            );
+            await db.update(aiVideoRenders).set({ status: "error", error: errMsg }).where(eq(aiVideoRenders.id, jobId));
+          }
+        } catch (e: any) {
+          console.error(`[ai-video/render] background error: ${e.message}`);
+          await c.env.CACHE.put(
+            `ai-video:${jobId}`,
+            JSON.stringify({ status: "error", userId: user.id, error: e.message, createdAt: Date.now() }),
+            { expirationTtl: 3600 }
+          );
+          await db.update(aiVideoRenders).set({ status: "error", error: e.message }).where(eq(aiVideoRenders.id, jobId));
+        }
+      })();
+
+      c.executionCtx?.waitUntil(logBackgroundTask("ai-video-render", reqId, bgPromise));
     }
 
     return c.json({ success: true, jobId, status: "queued" });
@@ -401,23 +424,88 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
     const jobId = c.req.param("id");
     const cached = await c.env.CACHE.get(`ai-video:${jobId}`);
 
-    if (!cached) {
-      return c.json({ success: false, error: "Job not found" }, 404);
+    if (cached) {
+      const data = JSON.parse(cached) as {
+        status: string;
+        url?: string;
+        error?: string;
+        progress?: number;
+      };
+      return c.json({
+        success: true,
+        status: data.status,
+        url: data.url,
+        error: data.error,
+        progress: data.progress,
+      });
     }
 
-    const data = JSON.parse(cached) as {
-      status: string;
+    // Fallback to D1
+    const db = createDatabase(c.env.DB);
+    const row = await db.select().from(aiVideoRenders).where(eq(aiVideoRenders.id, jobId)).limit(1);
+    if (!row.length) {
+      return c.json({ success: false, error: "Job not found" }, 404);
+    }
+    const r = row[0];
+    return c.json({
+      success: true,
+      status: r.status,
+      url: r.outputUrl,
+      error: r.error,
+      progress: r.progress,
+    });
+  });
+
+  // GET /api/ai-video/renders — list user's renders
+  api.get("/api/ai-video/renders", async (c) => {
+    const user = c.get("user");
+    const db = createDatabase(c.env.DB);
+    const rows = await db
+      .select()
+      .from(aiVideoRenders)
+      .where(eq(aiVideoRenders.userId, user.id))
+      .orderBy(desc(aiVideoRenders.createdAt))
+      .limit(50);
+    return c.json({ success: true, renders: rows });
+  });
+
+  // POST /api/ai-video/renders/:id/status — webhook from Cloud Run
+  api.post("/api/ai-video/renders/:id/status", async (c) => {
+    const jobId = c.req.param("id");
+    const body = (await c.req.json().catch(() => ({}))) as {
+      status?: string;
       url?: string;
       error?: string;
       progress?: number;
     };
 
-    return c.json({
-      success: true,
-      status: data.status,
-      url: data.url,
-      error: data.error,
-      progress: data.progress,
-    });
+    const secret = c.req.header("X-Internal-Secret");
+    if (secret && c.env.INTERNAL_WEBHOOK_SECRET && secret !== c.env.INTERNAL_WEBHOOK_SECRET) {
+      return c.json({ success: false, error: "Unauthorized" }, 401);
+    }
+
+    const db = createDatabase(c.env.DB);
+    const row = await db.select().from(aiVideoRenders).where(eq(aiVideoRenders.id, jobId)).limit(1);
+    if (!row.length) {
+      return c.json({ success: false, error: "Job not found" }, 404);
+    }
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    if (body.status) updates.status = body.status;
+    if (body.url) updates.outputUrl = body.url;
+    if (body.error) updates.error = body.error;
+    if (typeof body.progress === "number") updates.progress = body.progress;
+
+    await db.update(aiVideoRenders).set(updates).where(eq(aiVideoRenders.id, jobId));
+
+    // Also update KV for fast polling
+    const cached = await c.env.CACHE.get(`ai-video:${jobId}`);
+    if (cached) {
+      const data = JSON.parse(cached);
+      Object.assign(data, { status: body.status, url: body.url, error: body.error, progress: body.progress });
+      await c.env.CACHE.put(`ai-video:${jobId}`, JSON.stringify(data), { expirationTtl: 3600 });
+    }
+
+    return c.json({ success: true });
   });
 }

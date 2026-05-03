@@ -121,12 +121,10 @@ export default {
 };
 
 function addCoopCoepHeaders(response: Response): Response {
-  const newHeaders = new Headers(response.headers);
-  newHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
-  newHeaders.set("Cross-Origin-Embedder-Policy", "credentialless");
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: newHeaders,
-  });
+  // COEP/COOP removed from default responses. They were causing:
+  // 1. Vercel Live iframe blocks (cross-origin without CORP)
+  // 2. Same-origin worker script blocks
+  // If browser-side FFmpeg.wasm rendering needs SharedArrayBuffer,
+  // these headers can be added conditionally on the specific route.
+  return response;
 }

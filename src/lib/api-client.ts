@@ -493,10 +493,17 @@ export const api = {
     return res as ApiResponse<any[]>;
   },
 
-  async chatbot(message: string, history: { role: string; content: string }[]): Promise<ApiResponse<{ reply: string }>> {
+  async chatbot(message: string, history: { role: string; content: string }[], email?: string): Promise<ApiResponse<{ reply: string }>> {
     return requestJson<{ reply: string }>("/api/chatbot", {
       method: "POST",
-      body: JSON.stringify({ message, history }),
+      body: JSON.stringify({ message, history, email }),
+    });
+  },
+
+  async chatbotLead(email: string, name?: string, firstMessage?: string): Promise<ApiResponse<{ id: string }>> {
+    return requestJson<{ id: string }>("/api/chatbot/lead", {
+      method: "POST",
+      body: JSON.stringify({ email, name, firstMessage }),
     });
   },
 
@@ -637,5 +644,25 @@ export const api = {
       res.data = { ...row, createdAt: parseDate(row.createdAt), editCount: Number(row.editCount ?? 0) } as unknown as Clip;
     }
     return res as ApiResponse<Clip>;
+  },
+
+  async getAiVideoRenders(): Promise<ApiResponse<Array<{ id: string; status: string; script: string | null; voiceId: string | null; outputUrl: string | null; error: string | null; progress: number; createdAt: string }>>> {
+    return requestJson("/api/ai-video/renders", { method: "GET" });
+  },
+
+  async sreHealth(): Promise<ApiResponse<{ status: string; checks: Record<string, { ok: boolean; latencyMs: number; error?: string }>; timestamp: string }>> {
+    return requestJson("/api/sre/health", { method: "GET" });
+  },
+
+  async sreLogs(limit = 50, path = "", status = ""): Promise<ApiResponse<{ logs: Array<Record<string, unknown>>; total: number }>> {
+    const q = new URLSearchParams();
+    q.set("limit", String(limit));
+    if (path) q.set("path", path);
+    if (status) q.set("status", status);
+    return requestJson(`/api/sre/logs?${q.toString()}`, { method: "GET" });
+  },
+
+  async sreStats(hours = 24): Promise<ApiResponse<Record<string, unknown>>> {
+    return requestJson(`/api/sre/stats?hours=${hours}`, { method: "GET" });
   },
 };

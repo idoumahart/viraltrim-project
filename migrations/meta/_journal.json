@@ -1,76 +1,90 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "6",
-      "when": 1776139583656,
-      "tag": "0000_eminent_harpoon",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1776143455419,
-      "tag": "0001_flippant_moira_mactaggert",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1776145988069,
-      "tag": "0002_wakeful_professor_monster",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1776160836669,
-      "tag": "0003_gigantic_arachne",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1776282752158,
-      "tag": "0004_groovy_hydra",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1776504183824,
-      "tag": "0005_hot_luckman",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1776529161678,
-      "tag": "0006_add_segments_column",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1776680000000,
-      "tag": "0007_add_render_jobs_and_aspect_ratio",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "6",
-      "when": 1776690000000,
-      "tag": "0008_add_workspaces",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "6",
-      "when": 1776770000000,
-      "tag": "0009_add_video_id_column",
-      "breakpoints": true
-    }
-  ]
+    "version":  "7",
+    "dialect":  "sqlite",
+    "entries":  [
+                    {
+                        "idx":  0,
+                        "version":  "6",
+                        "when":  1776139583656,
+                        "tag":  "0000_eminent_harpoon",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  1,
+                        "version":  "6",
+                        "when":  1776143455419,
+                        "tag":  "0001_flippant_moira_mactaggert",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  2,
+                        "version":  "6",
+                        "when":  1776145988069,
+                        "tag":  "0002_wakeful_professor_monster",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  3,
+                        "version":  "6",
+                        "when":  1776160836669,
+                        "tag":  "0003_gigantic_arachne",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  4,
+                        "version":  "6",
+                        "when":  1776282752158,
+                        "tag":  "0004_groovy_hydra",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  5,
+                        "version":  "6",
+                        "when":  1776504183824,
+                        "tag":  "0005_hot_luckman",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  6,
+                        "version":  "6",
+                        "when":  1776529161678,
+                        "tag":  "0006_add_segments_column",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  7,
+                        "version":  "6",
+                        "when":  1776680000000,
+                        "tag":  "0007_add_render_jobs_and_aspect_ratio",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  8,
+                        "version":  "6",
+                        "when":  1776690000000,
+                        "tag":  "0008_add_workspaces",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  9,
+                        "version":  "6",
+                        "when":  1776770000000,
+                        "tag":  "0009_add_video_id_column",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  10,
+                        "breakpoints":  true,
+                        "when":  1779370000000,
+                        "version":  "6",
+                        "tag":  "0010_add_upload_columns"
+                    },
+                    {
+                        "idx":  11,
+                        "breakpoints":  true,
+                        "when":  1777827734603,
+                        "version":  "6",
+                        "tag":  "0011_add_chatbot_and_sre_tables"
+                    }
+                ]
 }

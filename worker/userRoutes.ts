@@ -4,7 +4,7 @@ import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { and, count, eq, or } from "drizzle-orm";
 import { createSession, extractBearerToken, generateId, revokeSession, validateSession, validateApiKey } from "./auth";
 import { createDatabase, type Database } from "./database";
-import { affiliateReferrals, affiliates, apiKeys, clips, dmcaReports, users, processedWebhookEvents, importedLinks, sessions, renderJobs } from "./database/schema";
+import { affiliateReferrals, affiliates, apiKeys, clips, dmcaReports, users, processedWebhookEvents, importedLinks, sessions, renderJobs, chatbotLeads } from "./database/schema";
 import { createClipService } from "./database/services/clip-service";
 import { createSubscriptionService, syncUserPlanFromSubscription } from "./database/services/subscription-service";
 import { createUserService } from "./database/services/user-service";
@@ -25,6 +25,7 @@ import type { AppEnv } from "./types/app-env";
 import { fetchYoutubeTranscript, extractYoutubeId as extractYtId } from "./lib/youtube-transcript";
 import { getYoutubeStreamUrls } from "./lib/youtube-stream";
 import { registerAiVideoRoutes } from "./aiVideoRoutes";
+import { registerSreRoutes } from "./sreRoutes";
 import { logBackgroundTask } from "./middleware/request-logger";
 
 function publicUser(u: {
@@ -1770,18 +1771,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       c.req.raw.headers.get("cf-connecting-ip") ||
       c.req.raw.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       "unknown";
-    const ok = await checkChatbotRateLimit(c.env.CACHE, ip);
-    if (!ok) {
+    const body = (await c.req.json().catch(() => ({}))) as {
+      message?: string;
+      email?: string;
+      history?: { role: string; content: string }[];
+    };
+    const email = body.email ? String(body.email).trim().toLowerCase() : undefined;
+    const rateLimit = await checkChatbotRateLimit(c.env.CACHE, ip, email);
+    if (!rateLimit.allowed) {
       return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
     const key = c.env.GEMINI_API_KEY;
     if (!key) {
       return c.json({ success: false, error: "Assistant unavailable" }, 503);
     }
-    const body = (await c.req.json().catch(() => ({}))) as {
-      message?: string;
-      history?: { role: string; content: string }[];
-    };
     const message = String(body.message ?? "").trim();
     if (!message) {
       return c.json({ success: false, error: "message required" }, 400);
@@ -1792,6 +1795,27 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     } catch (e) {
       console.error("[chatbot]", e);
       return c.json({ success: false, error: "Assistant error" }, 502);
+    }
+  });
+
+  api.post("/api/chatbot/lead", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const name = String(body.name ?? "").trim() || null;
+    const firstMessage = String(body.firstMessage ?? "").trim() || null;
+
+    if (!email || !email.includes("@")) {
+      return c.json({ success: false, error: "Valid email is required" }, 400);
+    }
+
+    try {
+      const db = createDatabase(c.env.DB);
+      const id = crypto.randomUUID();
+      await db.insert(chatbotLeads).values({ id, email, name, firstMessage });
+      return c.json({ success: true, data: { id } });
+    } catch (e: any) {
+      console.error("[chatbot/lead]", e);
+      return c.json({ success: false, error: "Failed to save lead" }, 500);
     }
   });
 
@@ -1997,6 +2021,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   aiVideoApp.use("*", authMiddleware);
   registerAiVideoRoutes(aiVideoApp);
   api.route("", aiVideoApp);
+
+  // ─── SRE Dashboard Routes ─────────────────────────────────────────────────────
+  const sreApp = new Hono<AppEnv>();
+  sreApp.use("*", authMiddleware);
+  registerSreRoutes(sreApp);
+  api.route("", sreApp);
 }
 
 

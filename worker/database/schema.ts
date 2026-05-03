@@ -296,6 +296,51 @@ export const workspaceMembers = sqliteTable("workspace_members", {
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const chatbotLeads = sqliteTable("chatbot_leads", {
+  id: text("id").primaryKey().notNull(),
+  email: text("email").notNull(),
+  name: text("name"),
+  firstMessage: text("first_message"),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const aiVideoRenders = sqliteTable("ai_video_renders", {
+  id: text("id").primaryKey().notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: text("status", { enum: ["queued", "processing", "done", "error"] }).notNull().default("queued"),
+  script: text("script"),
+  voiceId: text("voice_id"),
+  clips: text("clips", { mode: "json" }),
+  outputUrl: text("output_url"),
+  error: text("error"),
+  progress: integer("progress").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const requestLogs = sqliteTable("request_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  reqId: text("req_id"),
+  method: text("method"),
+  path: text("path"),
+  status: integer("status"),
+  durationMs: integer("duration_ms"),
+  ip: text("ip"),
+  userId: text("user_id"),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const sreAdmins = sqliteTable("sre_admins", {
+  id: text("id").primaryKey().notNull(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  role: text("role", { enum: ["admin", "viewer"] }).notNull().default("admin"),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
@@ -309,4 +354,8 @@ export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type Item = typeof items.$inferSelect;
 export type NewItem = typeof items.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
+export type ChatbotLead = typeof chatbotLeads.$inferSelect;
+export type AiVideoRender = typeof aiVideoRenders.$inferSelect;
+export type RequestLog = typeof requestLogs.$inferSelect;
+export type SreAdmin = typeof sreAdmins.$inferSelect;
 

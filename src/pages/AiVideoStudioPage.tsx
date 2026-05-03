@@ -42,6 +42,8 @@ interface VoiceOption {
   preview_url?: string;
   accent?: string;
   gender?: string;
+  accent?: string;
+  gender?: string;
 }
 
 interface StockClip {
@@ -62,6 +64,37 @@ const STEPS: { id: Step; label: string; icon: React.ElementType }[] = [
 ];
 
 const DEFAULT_VOICES: VoiceOption[] = [];
+
+function VoicePreviewButton({ url }: { url: string }) {
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const toggle = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(url);
+      audioRef.current.onended = () => setPlaying(false);
+      audioRef.current.onerror = () => setPlaying(false);
+    }
+    if (playing) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setPlaying(false);
+    } else {
+      audioRef.current.play().catch(() => setPlaying(false));
+      setPlaying(true);
+    }
+  };
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); toggle(); }}
+      className="mt-2 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+    >
+      {playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+      {playing ? "Stop" : "Preview"}
+    </button>
+  );
+}
 
 export function AiVideoStudioPage() {
   const [step, setStep] = useState<Step>("script");
@@ -84,6 +117,7 @@ export function AiVideoStudioPage() {
           const mapped: VoiceOption[] = data.voices.map((v: any) => ({
             id: v.voice_id,
             name: v.name,
+            preview_url: v.preview_url,
             accent: v.labels?.accent || "",
             gender: v.labels?.gender || "",
           }));

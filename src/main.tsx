@@ -39,6 +39,8 @@ const SchedulePage = React.lazy(() => import("@/pages/SchedulePage"));
 const SettingsPage = React.lazy(() => import("@/pages/SettingsPage"));
 const StudioGeneratorPage = React.lazy(() => import("@/pages/StudioGeneratorPage").then(m => ({ default: m.StudioGeneratorPage })));
 const AiVideoStudioPage = React.lazy(() => import("@/pages/AiVideoStudioPage").then(m => ({ default: m.AiVideoStudioPage })));
+const AiVideoRendersPage = React.lazy(() => import("@/pages/AiVideoRendersPage").then(m => ({ default: m.AiVideoRendersPage })));
+const SreDashboardPage = React.lazy(() => import("@/pages/SreDashboardPage").then(m => ({ default: m.SreDashboardPage })));
 const AffiliatePage = React.lazy(() => import("@/pages/AffiliatePage"));
 
 const queryClient = new QueryClient({
@@ -135,6 +137,26 @@ root.render(
                         <ProtectedRoute>
                           <VerifiedRoute>
                             <AiVideoStudioPage />
+                          </VerifiedRoute>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/studio/renders"
+                      element={
+                        <ProtectedRoute>
+                          <VerifiedRoute>
+                            <AiVideoRendersPage />
+                          </VerifiedRoute>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/sre"
+                      element={
+                        <ProtectedRoute>
+                          <VerifiedRoute>
+                            <SreDashboardPage />
                           </VerifiedRoute>
                         </ProtectedRoute>
                       }
