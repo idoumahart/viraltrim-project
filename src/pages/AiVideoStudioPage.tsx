@@ -215,6 +215,34 @@ export function AiVideoStudioPage() {
     }
   }, [topic, script]);
 
+  const pollRender = useCallback((jobId: string) => {
+    let attempts = 0;
+    const maxAttempts = 120; // ~6 minutes
+    const interval = setInterval(async () => {
+      attempts++;
+      setRenderProgress(Math.min((attempts / maxAttempts) * 100, 95));
+      try {
+        const res = await fetch(`/api/ai-video/render/${jobId}`);
+        const data = await res.json();
+        if (data.status === "done" && data.url) {
+          clearInterval(interval);
+          setRenderProgress(100);
+          setRenderStatus("done");
+          setOutputUrl(data.url);
+        } else if (data.status === "error") {
+          clearInterval(interval);
+          setRenderStatus("error");
+        }
+      } catch {
+        /* ignore poll errors */
+      }
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setRenderStatus("error");
+      }
+    }, 3000);
+  }, []);
+
   const startRender = useCallback(async () => {
     setRenderStatus("rendering");
     setRenderProgress(0);
@@ -265,34 +293,6 @@ export function AiVideoStudioPage() {
       setRenderStatus("error");
     }
   }, [script, selectedVoice, selectedClips, scriptSegments, audioUrl, renderMode, browserRender, pollRender]);
-
-  const pollRender = useCallback((jobId: string) => {
-    let attempts = 0;
-    const maxAttempts = 120; // ~6 minutes
-    const interval = setInterval(async () => {
-      attempts++;
-      setRenderProgress(Math.min((attempts / maxAttempts) * 100, 95));
-      try {
-        const res = await fetch(`/api/ai-video/render/${jobId}`);
-        const data = await res.json();
-        if (data.status === "done" && data.url) {
-          clearInterval(interval);
-          setRenderProgress(100);
-          setRenderStatus("done");
-          setOutputUrl(data.url);
-        } else if (data.status === "error") {
-          clearInterval(interval);
-          setRenderStatus("error");
-        }
-      } catch {
-        /* ignore poll errors */
-      }
-      if (attempts >= maxAttempts) {
-        clearInterval(interval);
-        setRenderStatus("error");
-      }
-    }, 3000);
-  }, []);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
