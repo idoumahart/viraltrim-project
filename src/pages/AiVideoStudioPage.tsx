@@ -42,8 +42,6 @@ interface VoiceOption {
   preview_url?: string;
   accent?: string;
   gender?: string;
-  accent?: string;
-  gender?: string;
 }
 
 interface StockClip {
@@ -460,11 +458,11 @@ export function AiVideoStudioPage() {
                 </div>
               ) : (
                 voices.map((voice) => (
-                <button
+                <div
                   key={voice.id}
                   onClick={() => setSelectedVoice(voice.id)}
                   className={cn(
-                    "relative p-4 rounded-xl border text-left transition-all hover:border-primary/40",
+                    "relative p-4 rounded-xl border text-left transition-all hover:border-primary/40 cursor-pointer",
                     selectedVoice === voice.id
                       ? "border-primary bg-primary/10"
                       : "border-white/[0.08] bg-white/[0.03]"
@@ -484,7 +482,12 @@ export function AiVideoStudioPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     {voice.accent} · {voice.gender}
                   </p>
-                </button>
+                  {voice.preview_url && (
+                    <div onClick={(e) => e.stopPropagation()} className="mt-3">
+                      <VoicePreviewButton url={voice.preview_url} />
+                    </div>
+                  )}
+                </div>
               ))
               )}
             </div>
