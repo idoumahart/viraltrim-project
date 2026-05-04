@@ -20,6 +20,7 @@ import {
   MonitorPlay,
   Cloud,
   AlertCircle,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -148,9 +149,29 @@ export function AiVideoStudioPage() {
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [renderMode, setRenderMode] = useState<"cloud" | "browser">("cloud");
+  const [manualSearchQuery, setManualSearchQuery] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevAudioUrl = useRef<string | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   const browserRender = useAiVideoRender();
+
+  // Sync scriptSegments when script is manually edited
+  useEffect(() => {
+    if (script.trim()) {
+      setScriptSegments(parseScriptToSegments(script));
+    }
+  }, [script]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (prevAudioUrl.current) URL.revokeObjectURL(prevAudioUrl.current);
+      searchAbortRef.current?.abort();
+    };
+  }, []);
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
 
@@ -190,17 +211,24 @@ export function AiVideoStudioPage() {
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
+      if (prevAudioUrl.current) {
+        URL.revokeObjectURL(prevAudioUrl.current);
+      }
+      prevAudioUrl.current = url;
       setAudioUrl(url);
     } catch (e: any) {
       const msg = e?.message || "Voice generation failed";
       console.error("Voice generation failed:", msg);
-      alert(msg);
     } finally {
       setIsGeneratingVoice(false);
     }
   }, [script, selectedVoice]);
 
-  const searchClips = useCallback(async (forceMode?: "ai" | "stock") => {
+  const searchClips = useCallback(async (forceMode?: "ai" | "stock", overrideQuery?: string) => {
+    searchAbortRef.current?.abort();
+    searchAbortRef.current = new AbortController();
+    const signal = searchAbortRef.current.signal;
+
     const mode = forceMode ?? (useAiFootage ? "ai" : "stock");
 
     if (mode === "ai") {
@@ -210,7 +238,9 @@ export function AiVideoStudioPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ segments: scriptSegments }),
+          signal,
         });
+        if (signal.aborted) return;
         const data = await res.json();
         if (data.success && data.videos) {
           const videoClips: StockClip[] = data.videos.map((v: any) => ({
@@ -227,7 +257,7 @@ export function AiVideoStudioPage() {
           console.error("Video generation failed:", data.error);
         }
       } catch (e) {
-        console.error("Video generation failed", e);
+        if ((e as any).name !== "AbortError") console.error("Video generation failed", e);
       } finally {
         setIsGeneratingVideos(false);
       }
@@ -236,48 +266,58 @@ export function AiVideoStudioPage() {
 
     setIsSearchingClips(true);
     try {
-      const kwRes = await fetch("/api/ai-video/pexels-keywords", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script, segments: scriptSegments }),
-      });
-      const kwData = await kwRes.json();
-      const keywords = kwData.success && kwData.keywords ? kwData.keywords : [];
-      setPexelsKeywords(keywords);
+      let query = overrideQuery?.trim();
+      if (!query) {
+        const kwRes = await fetch("/api/ai-video/pexels-keywords", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ script, segments: scriptSegments }),
+          signal,
+        });
+        if (signal.aborted) return;
+        const kwData = await kwRes.json();
+        const keywords = kwData.success && kwData.keywords ? kwData.keywords : [];
+        setPexelsKeywords(keywords);
 
-      const bestKeyword = keywords.find((k: any) => k.keywords)?.keywords || "";
-      const query = bestKeyword || topic.split(" ").slice(0, 3).concat(script.split(" ").slice(0, 5)).join(" ");
+        const bestKeyword = keywords.find((k: any) => k.keywords)?.keywords || "";
+        query = bestKeyword || topic.split(" ").slice(0, 3).join(" ");
+      }
 
-      const res = await fetch(`/api/ai-video/pexels?q=${encodeURIComponent(query)}&per_page=12`);
+      const res = await fetch(`/api/ai-video/pexels?q=${encodeURIComponent(query)}&per_page=12`, { signal });
+      if (signal.aborted) return;
       const data = await res.json();
-      if (data.clips) {
+      if (data.clips?.length > 0) {
         setStockClips(data.clips);
         setSelectedClips(data.clips.slice(0, Math.min(4, data.clips.length)));
+      } else {
+        setStockClips([]);
+        setSelectedClips([]);
       }
     } catch (e) {
-      console.error("Clip search failed", e);
+      if ((e as any).name !== "AbortError") console.error("Clip search failed", e);
     } finally {
       setIsSearchingClips(false);
     }
   }, [topic, script, scriptSegments, useAiFootage]);
 
   const pollRender = useCallback((jobId: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
     let attempts = 0;
     const maxAttempts = 120; // ~6 minutes
-    const interval = setInterval(async () => {
+    pollRef.current = setInterval(async () => {
       attempts++;
       setRenderProgress(Math.min((attempts / maxAttempts) * 100, 95));
       try {
         const res = await fetch(`/api/ai-video/render/${jobId}`);
         const data = await res.json();
         if (data.status === "done" && data.url) {
-          clearInterval(interval);
+          if (pollRef.current) clearInterval(pollRef.current);
           setRenderProgress(100);
           setRenderStatus("done");
           setOutputUrl(data.url);
           setRenderError(null);
         } else if (data.status === "error") {
-          clearInterval(interval);
+          if (pollRef.current) clearInterval(pollRef.current);
           setRenderStatus("error");
           setRenderError(data.error || "Cloud rendering failed");
         }
@@ -285,7 +325,7 @@ export function AiVideoStudioPage() {
         /* ignore poll errors */
       }
       if (attempts >= maxAttempts) {
-        clearInterval(interval);
+        if (pollRef.current) clearInterval(pollRef.current);
         setRenderStatus("error");
         setRenderError("Render timed out after 6 minutes");
       }
@@ -293,11 +333,19 @@ export function AiVideoStudioPage() {
   }, []);
 
   const startRender = useCallback(async () => {
+    if (pollRef.current) clearInterval(pollRef.current);
     setRenderStatus("rendering");
     setRenderProgress(0);
+    setRenderError(null);
 
     if (!audioUrl) {
       setRenderStatus("error");
+      setRenderError("No voiceover generated");
+      return;
+    }
+    if (selectedClips.length === 0 || scriptSegments.length === 0) {
+      setRenderStatus("error");
+      setRenderError("Please select clips and ensure your script has segments.");
       return;
     }
 
@@ -374,15 +422,20 @@ export function AiVideoStudioPage() {
     }
   }, [script, selectedVoice, selectedClips, scriptSegments, audioUrl, renderMode, browserRender, pollRender]);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(async () => {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      try {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch {
+        setIsPlaying(false);
+      }
     }
-    setIsPlaying(!isPlaying);
-  };
+  }, [isPlaying]);
 
   const canProceed = () => {
     switch (step) {
@@ -620,7 +673,7 @@ export function AiVideoStudioPage() {
                     </button>
                     <div>
                       <p className="font-medium text-sm">Voiceover Preview</p>
-                      <p className="text-xs text-muted-foreground">{selectedVoice}</p>
+                      <p className="text-xs text-muted-foreground">{voices.find((v) => v.id === selectedVoice)?.name || selectedVoice}</p>
                     </div>
                   </div>
                   <audio
@@ -726,60 +779,104 @@ export function AiVideoStudioPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {stockClips.map((clip) => {
-                        const isSelected = selectedClips.some((c) => c.id === clip.id);
-                        return (
-                          <button
-                            key={clip.id}
-                            onClick={() => {
-                              setSelectedClips((prev) =>
-                                isSelected
-                                  ? prev.filter((c) => c.id !== clip.id)
-                                  : [...prev, clip]
-                              );
-                            }}
-                            className={cn(
-                              "relative aspect-video rounded-xl overflow-hidden border-2 transition-all",
-                              isSelected ? "border-primary" : "border-transparent hover:border-white/20"
-                            )}
-                          >
-                            {clip.id.startsWith("ai-") ? (
-                              <video
-                                src={clip.url}
-                                muted
-                                autoPlay
-                                loop
-                                playsInline
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <img
-                                src={clip.thumbnail}
-                                alt=""
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                            )}
-                            {isSelected && (
-                              <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                                <Check className="h-3.5 w-3.5 text-white" />
-                              </div>
-                            )}
-                            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                              <p className="text-xs text-white/80 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {clip.duration}s
-                              </p>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {/* Manual search */}
+                    {!useAiFootage && (
+                      <div className="flex gap-2 max-w-lg mx-auto">
+                        <Input
+                          placeholder="Search stock footage..."
+                          value={manualSearchQuery}
+                          onChange={(e) => setManualSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              setStockClips([]);
+                              setSelectedClips([]);
+                              searchClips("stock", manualSearchQuery);
+                            }
+                          }}
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={() => {
+                            setStockClips([]);
+                            setSelectedClips([]);
+                            searchClips("stock", manualSearchQuery);
+                          }}
+                          disabled={isSearchingClips}
+                        >
+                          {isSearchingClips ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    )}
 
-                    <p className="text-center text-sm text-muted-foreground">
-                      {selectedClips.length} clip{selectedClips.length !== 1 ? "s" : ""} selected
-                    </p>
+                    {stockClips.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Film className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">No clips found. Try a different search term.</p>
+                        <Button variant="outline" className="mt-4" onClick={() => searchClips("stock")}>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Search again
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {stockClips.map((clip) => {
+                            const isSelected = selectedClips.some((c) => c.id === clip.id);
+                            return (
+                              <button
+                                key={clip.id}
+                                onClick={() => {
+                                  setSelectedClips((prev) =>
+                                    isSelected
+                                      ? prev.filter((c) => c.id !== clip.id)
+                                      : [...prev, clip]
+                                  );
+                                }}
+                                className={cn(
+                                  "relative aspect-[9/16] rounded-xl overflow-hidden border-2 transition-all",
+                                  isSelected ? "border-primary" : "border-transparent hover:border-white/20"
+                                )}
+                              >
+                                {clip.id.startsWith("ai-") ? (
+                                  <video
+                                    src={clip.url}
+                                    muted
+                                    autoPlay
+                                    loop
+                                    playsInline
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <video
+                                    src={`/api/proxy-media?url=${encodeURIComponent(clip.url)}`}
+                                    muted
+                                    loop
+                                    playsInline
+                                    preload="metadata"
+                                    className="w-full h-full object-cover"
+                                  />
+                                )}
+                                {isSelected && (
+                                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                                    <Check className="h-3.5 w-3.5 text-white" />
+                                  </div>
+                                )}
+                                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                  <p className="text-xs text-white/80 flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {clip.duration}s
+                                  </p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <p className="text-center text-sm text-muted-foreground">
+                          {selectedClips.length} clip{selectedClips.length !== 1 ? "s" : ""} selected
+                        </p>
+                      </>
+                    )}
                   </>
                 )}
               </>

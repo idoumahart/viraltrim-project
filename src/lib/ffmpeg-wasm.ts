@@ -52,21 +52,27 @@ export async function loadFFmpeg(): Promise<FFmpeg> {
     const base = useMT ? MT_BASE_URL : BASE_URL;
 
     // Listen for logs (useful for debugging)
-    ffmpeg.on("log", ({ message }) => {
-      // eslint-disable-next-line no-console
-      console.log(`[ffmpeg] ${message}`);
-    });
+    if (import.meta.env.DEV) {
+      ffmpeg.on("log", ({ message }) => {
+        // eslint-disable-next-line no-console
+        console.log(`[ffmpeg] ${message}`);
+      });
+    }
 
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await toBlobURL(
-        `${base}/ffmpeg-core.wasm`,
-        "application/wasm"
-      ),
-    });
-
-    ffmpegInstance = ffmpeg;
-    return ffmpeg;
+    try {
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
+        wasmURL: await toBlobURL(
+          `${base}/ffmpeg-core.wasm`,
+          "application/wasm"
+        ),
+      });
+      ffmpegInstance = ffmpeg;
+      return ffmpeg;
+    } catch (e) {
+      loadingPromise = null;
+      throw e;
+    }
   })();
 
   return loadingPromise;
@@ -441,34 +447,33 @@ export async function renderAiVideo(
   };
   ffmpeg.on("progress", progressHandler);
 
-  await ffmpeg.exec([
-    ...inputArgs,
-    "-filter_complex", filterComplex,
-    "-map", "[outv]",
-    "-map", `${clips.length}:a`,
-    "-c:v", "libx264",
-    "-crf", String(crf),
-    "-preset", preset,
-    "-c:a", "aac",
-    "-b:a", "128k",
-    "-shortest",
-    "-movflags", "+faststart",
-    "-pix_fmt", "yuv420p",
-    "output.mp4",
-  ]);
+  try {
+    await ffmpeg.exec([
+      ...inputArgs,
+      "-filter_complex", filterComplex,
+      "-map", "[outv]",
+      "-map", `${clips.length}:a`,
+      "-c:v", "libx264",
+      "-crf", String(crf),
+      "-preset", preset,
+      "-c:a", "aac",
+      "-b:a", "128k",
+      "-shortest",
+      "-movflags", "+faststart",
+      "-pix_fmt", "yuv420p",
+      "output.mp4",
+    ]);
 
-  ffmpeg.off("progress", progressHandler);
-
-  const data = await ffmpeg.readFile("output.mp4");
-
-  // Cleanup
-  for (let i = 0; i < clips.length; i++) {
-    await ffmpeg.deleteFile(`clip_${i}.mp4`);
+    const data = await ffmpeg.readFile("output.mp4");
+    return new Blob([data], { type: "video/mp4" });
+  } finally {
+    ffmpeg.off("progress", progressHandler);
+    for (let i = 0; i < clips.length; i++) {
+      await ffmpeg.deleteFile(`clip_${i}.mp4`).catch(() => {});
+    }
+    await ffmpeg.deleteFile("audio.mp3").catch(() => {});
+    await ffmpeg.deleteFile("output.mp4").catch(() => {});
   }
-  await ffmpeg.deleteFile("audio.mp3");
-  await ffmpeg.deleteFile("output.mp4");
-
-  return new Blob([data], { type: "video/mp4" });
 }
 
 /**
