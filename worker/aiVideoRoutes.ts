@@ -12,6 +12,16 @@ import { checkAiVideoRateLimit, checkExpensiveRateLimit } from "./rate-limit";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
+// Inject current date into every Gemini prompt so models use up-to-date information
+function createGeminiModel(apiKey: string, modelId?: string) {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const today = new Date().toISOString().split("T")[0];
+  return genAI.getGenerativeModel({
+    model: modelId || DEFAULT_MODEL,
+    systemInstruction: `Today's date is ${today}. Use current, up-to-date information and avoid outdated references.`,
+  });
+}
+
 // ─── Script Generation ────────────────────────────────────────────────────────
 
 async function researchTopic(topic: string, env: Env): Promise<string> {
@@ -41,8 +51,7 @@ export async function generateVideoScript(
   researchContext = "",
   creativeMode = false,
 ) {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+  const model = createGeminiModel(apiKey);
 
   let prompt = "";
   if (creativeMode) {
@@ -101,8 +110,7 @@ Script:`;
 }
 
 async function extractVisualKeywords(script: string, segments: Array<{ text: string; duration: number }>, apiKey: string): Promise<Array<{ segmentIndex: number; keywords: string }>> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+  const model = createGeminiModel(apiKey);
 
   const prompt = `Given this video script, extract the best Pexels stock video search keyword for EACH segment. Keywords should be visual and concrete (e.g., "city skyline", "person typing", "ocean waves"). Avoid abstract concepts.
 
@@ -134,8 +142,7 @@ async function generateVideoPromptsForFal(
   segments: Array<{ text: string; duration: number }>,
   apiKey: string
 ): Promise<Array<{ segmentIndex: number; prompt: string }>> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+  const model = createGeminiModel(apiKey);
 
   const prompt = `For each video segment below, write a concise text-to-video prompt (max 20 words) for an AI video generator. The prompt should describe a single cinematic motion scene. No text/words in the video. Emphasize camera movement and motion.
 
@@ -161,8 +168,7 @@ Return ONLY a JSON array:
 }
 
 async function generateSceneImages(segments: Array<{ text: string; duration: number }>, apiKey: string): Promise<Array<{ segmentIndex: number; imageUrl: string; prompt: string }>> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+  const model = createGeminiModel(apiKey);
 
   const prompt = `For each video segment below, write a concise image generation prompt (max 15 words) suitable for an AI image generator. The prompt should describe a single cinematic scene. No text/words in the image.
 

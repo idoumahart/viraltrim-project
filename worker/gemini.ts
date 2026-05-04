@@ -3,6 +3,17 @@ import { z } from "zod";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
+// Inject current date into every Gemini model so it uses up-to-date information
+function createModel(apiKey: string, modelId?: string, systemInstruction?: string) {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const today = new Date().toISOString().split("T")[0];
+  const datePrefix = `Today's date is ${today}. Use current, up-to-date information and avoid outdated references. `;
+  return genAI.getGenerativeModel({
+    model: modelId || DEFAULT_MODEL,
+    systemInstruction: systemInstruction ? datePrefix + systemInstruction : datePrefix + "You are a helpful AI assistant.",
+  });
+}
+
 // ─── Structured output schemas ────────────────────────────────────────────────
 const ClipAiResultSchema = z.object({
   caption: z.string(),
@@ -399,8 +410,7 @@ export async function generateClipMetadata(
     transcript?: string;
   },
 ): Promise<ClipAiResult> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: modelId || DEFAULT_MODEL });
+  const model = createModel(apiKey, modelId);
   const safeUrl = input.sourceUrl.slice(0, 500).replace(/[\n\r`]/g, "");
   const safeChannel = input.sourceChannel.slice(0, 100).replace(/[\n\r`]/g, "");
   
@@ -464,8 +474,7 @@ export async function generateHookSuggestions(
   thumbnailUrl?: string,
   clipType?: string,
 ): Promise<HookSuggestion[]> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: modelId || DEFAULT_MODEL });
+  const model = createModel(apiKey, modelId);
 
   // Truncate transcript to prevent context overflow. roughly 40,000 chars is safe for Gemini flash
   const truncatedTranscript = transcript.slice(0, 40000);
@@ -557,8 +566,6 @@ export async function chatbotReply(
   message: string,
   history: { role: string; content: string }[],
 ): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: modelId || DEFAULT_MODEL });
   const system = `You are ViralTrim AI, the in-app support assistant for ViralTrim (viraltrim.com) — an AI-powered video clipping and scheduling SaaS.
 
 ABOUT VIRALTRIM:
@@ -593,6 +600,7 @@ RESPONSE RULES:
     .join("\n");
   const safeMessage = message.slice(0, 2000).replace(/[\n\r`]/g, " ");
   const prompt = `${system}\n\nConversation:\n${recent}\nuser: ${safeMessage}\nassistant:`;
+  const model = createModel(apiKey, modelId);
   const result = await model.generateContent(prompt);
   return result.response.text().trim();
 }
