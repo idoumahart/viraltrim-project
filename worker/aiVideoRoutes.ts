@@ -8,7 +8,7 @@ import { aiVideoRenders } from "./database/schema";
 import { eq, desc } from "drizzle-orm";
 import { logBackgroundTask } from "./middleware/request-logger";
 import { fetchYouTubeVideos, fetchRedditVideos } from "./gemini";
-import { checkAiVideoRateLimit } from "./rate-limit";
+import { checkAiVideoRateLimit, checkExpensiveRateLimit } from "./rate-limit";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -263,6 +263,38 @@ export async function searchPexelsVideos(query: string, apiKey: string, perPage 
   return data.videos || [];
 }
 
+// ─── Pixabay Integration ──────────────────────────────────────────────────────
+
+interface PixabayVideo {
+  id: number;
+  pageURL: string;
+  type: string;
+  tags: string;
+  duration: number;
+  videos: {
+    large?: { url: string; width: number; height: number; size: number; thumbnail: string };
+    medium?: { url: string; width: number; height: number; size: number; thumbnail: string };
+    small?: { url: string; width: number; height: number; size: number; thumbnail: string };
+    tiny?: { url: string; width: number; height: number; size: number; thumbnail: string };
+  };
+  views: number;
+  downloads: number;
+  likes: number;
+  user: string;
+  userImageURL: string;
+}
+
+export async function searchPixabayVideos(query: string, apiKey: string, perPage = 20): Promise<PixabayVideo[]> {
+  const url = `https://pixabay.com/api/videos/?key=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(query)}&per_page=${perPage}&orientation=vertical`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Pixabay API failed: ${res.status} ${err}`);
+  }
+  const data = (await res.json()) as { hits: PixabayVideo[] };
+  return data.hits || [];
+}
+
 export function pickBestVideoFile(video: PexelsVideo): { url: string; width: number; height: number } | null {
   const files = video.video_files
     .filter((f) => f.file_type === "video/mp4")
@@ -423,6 +455,11 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
 
   // GET /api/ai-video/voices
   api.get("/api/ai-video/voices", async (c) => {
+    const ip = c.req.header("cf-connecting-ip") || "unknown";
+    if (!await checkExpensiveRateLimit(c.env.CACHE, ip)) {
+      return c.json({ success: false, error: "Rate limit exceeded. Try again later." }, 429);
+    }
+
     if (!c.env.ELEVENLABS_API_KEY) {
       return c.json({ success: false, error: "Voice service unavailable" }, 503);
     }
@@ -444,29 +481,77 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
 
   // GET /api/ai-video/pexels
   api.get("/api/ai-video/pexels", async (c) => {
+    const ip = c.req.header("cf-connecting-ip") || "unknown";
+    if (!await checkExpensiveRateLimit(c.env.CACHE, ip)) {
+      return c.json({ success: false, error: "Rate limit exceeded. Try again later." }, 429);
+    }
+
     const q = c.req.query("q") || "";
-    const perPage = Math.min(parseInt(c.req.query("per_page") || "12", 10), 24);
+    const rawPerPage = parseInt(c.req.query("per_page") || "12", 10);
+    const perPage = isNaN(rawPerPage) ? 12 : Math.min(Math.max(rawPerPage, 1), 24);
+
     if (!q.trim()) {
       return c.json({ success: false, error: "Query is required" }, 400);
     }
-    if (!c.env.PEXELS_API_KEY) {
+
+    const hasPexels = !!c.env.PEXELS_API_KEY;
+    const hasPixabay = !!c.env.PIXABAY_API_KEY;
+    if (!hasPexels && !hasPixabay) {
       return c.json({ success: false, error: "Stock footage service unavailable" }, 503);
     }
 
     try {
-      const videos = await searchPexelsVideos(q, c.env.PEXELS_API_KEY, perPage);
-      const clips = videos.map((v) => {
-        const best = pickBestVideoFile(v);
-        return {
-          id: String(v.id),
-          url: best?.url || v.url,
-          thumbnail: v.video_pictures?.[0]?.picture || "",
-          duration: v.duration,
-          width: best?.width || v.width,
-          height: best?.height || v.height,
-        };
-      }).filter((c) => c.url);
-      return c.json({ success: true, clips });
+      const results: Array<{ id: string; url: string; thumbnail: string; duration: number; width: number; height: number; source: string }> = [];
+
+      if (hasPexels) {
+        try {
+          const videos = await searchPexelsVideos(q, c.env.PEXELS_API_KEY, perPage);
+          for (const v of videos) {
+            const best = pickBestVideoFile(v);
+            if (best?.url) {
+              results.push({
+                id: `pexels-${v.id}`,
+                url: best.url,
+                thumbnail: v.video_pictures?.[0]?.picture || "",
+                duration: v.duration,
+                width: best.width || v.width,
+                height: best.height || v.height,
+                source: "pexels",
+              });
+            }
+          }
+        } catch (e: any) {
+          console.error("[ai-video/pexels] Pexels failed:", e.message);
+        }
+      }
+
+      if (hasPixabay) {
+        try {
+          const hits = await searchPixabayVideos(q, c.env.PIXABAY_API_KEY, perPage);
+          for (const h of hits) {
+            const rendition = h.videos?.medium || h.videos?.small || h.videos?.large || h.videos?.tiny;
+            if (rendition?.url) {
+              results.push({
+                id: `pixabay-${h.id}`,
+                url: rendition.url,
+                thumbnail: h.videos?.medium?.thumbnail || h.videos?.small?.thumbnail || h.userImageURL || "",
+                duration: h.duration,
+                width: rendition.width,
+                height: rendition.height,
+                source: "pixabay",
+              });
+            }
+          }
+        } catch (e: any) {
+          console.error("[ai-video/pexels] Pixabay failed:", e.message);
+        }
+      }
+
+      if (results.length === 0) {
+        return c.json({ success: true, clips: [], message: "No clips found. Try a different search term." });
+      }
+
+      return c.json({ success: true, clips: results });
     } catch (e: any) {
       console.error("[ai-video/pexels] error:", e.message);
       return c.json({ success: false, error: "Stock footage search failed" }, 500);
@@ -475,6 +560,11 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
 
   // POST /api/ai-video/render
   api.post("/api/ai-video/render", async (c) => {
+    const ip = c.req.header("cf-connecting-ip") || "unknown";
+    if (!await checkExpensiveRateLimit(c.env.CACHE, ip)) {
+      return c.json({ success: false, error: "Rate limit exceeded. Try again later." }, 429);
+    }
+
     const body = (await c.req.json().catch(() => ({}))) as {
       script?: string;
       voiceId?: string;
@@ -488,6 +578,19 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
 
     const clips = body.clips;
     const segments = body.segments || [];
+
+    // Safeguards
+    if (clips.length > 20) {
+      return c.json({ success: false, error: "Max 20 clips allowed" }, 400);
+    }
+    const totalDuration = segments.reduce((sum, s) => sum + (s.duration || 5), 0);
+    if (totalDuration > 300) {
+      return c.json({ success: false, error: "Max total duration 300 seconds (5 minutes)" }, 400);
+    }
+    if (!c.env.RENDERER_URL) {
+      return c.json({ success: false, error: "Renderer not configured" }, 503);
+    }
+
     const jobId = `av-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const user = c.get("user");
     const reqId = (c as any).get?.("reqId") || "unknown";
@@ -510,79 +613,95 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
       { expirationTtl: 3600 }
     );
 
-    // If Cloud Run renderer is available, trigger it in background
-    if (c.env.RENDERER_URL) {
-      const bgPromise = (async () => {
-        try {
-          await c.env.CACHE.put(
-            `ai-video:${jobId}`,
-            JSON.stringify({ status: "rendering", userId: user.id, progress: 10, createdAt: Date.now() }),
-            { expirationTtl: 3600 }
-          );
-          await db.update(aiVideoRenders).set({ status: "processing", progress: 10 }).where(eq(aiVideoRenders.id, jobId));
+    const bgPromise = (async () => {
+      try {
+        await c.env.CACHE.put(
+          `ai-video:${jobId}`,
+          JSON.stringify({ status: "rendering", userId: user.id, progress: 10, createdAt: Date.now() }),
+          { expirationTtl: 3600 }
+        );
+        await db.update(aiVideoRenders).set({ status: "processing", progress: 10 }).where(eq(aiVideoRenders.id, jobId));
 
-          const secret = c.env.INTERNAL_WEBHOOK_SECRET;
-          const renderResp = await fetch(`${c.env.RENDERER_URL}/render-ai-video`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(secret ? { "X-Internal-Secret": secret } : {}),
-            },
-            body: JSON.stringify({
-              clips: clips.map((url, i) => ({
-                url,
-                duration: segments[i]?.duration || 5,
-              })),
-              audioUrl: body.audioUrl,
-              script: body.script,
-              segments,
-              webhookUrl: `${c.env.APP_URL || ""}/api/ai-video/renders/${jobId}/status`,
-            }),
-            signal: AbortSignal.timeout(300000),
-          });
-
-          if (!renderResp.ok) {
-            const errText = await renderResp.text();
-            console.error(`[ai-video/render] Cloud Run failed: ${errText}`);
-            await c.env.CACHE.put(
-              `ai-video:${jobId}`,
-              JSON.stringify({ status: "error", userId: user.id, error: errText, createdAt: Date.now() }),
-              { expirationTtl: 3600 }
-            );
-            await db.update(aiVideoRenders).set({ status: "error", error: errText }).where(eq(aiVideoRenders.id, jobId));
-            return;
+        // Download clips to R2 temp storage so renderer can reliably fetch them
+        const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+        const proxiedClips: Array<{ url: string; duration: number }> = [];
+        for (let i = 0; i < clips.length; i++) {
+          const clipUrl = clips[i];
+          const duration = segments[i]?.duration || 5;
+          try {
+            const dl = await fetch(clipUrl, { signal: AbortSignal.timeout(30000), redirect: "follow" });
+            if (!dl.ok) throw new Error(`Download failed: ${dl.status}`);
+            const blob = await dl.arrayBuffer();
+            const tempKey = `temp/${user.id}/${jobId}/clip_${i}.mp4`;
+            await c.env.MEDIA.put(tempKey, blob, { httpMetadata: { contentType: "video/mp4" } });
+            proxiedClips.push({ url: `${r2PublicBase}/${tempKey}`, duration });
+          } catch (e: any) {
+            console.error(`[ai-video/render] clip ${i} download failed:`, e.message);
+            // Fallback: send original URL and hope renderer can reach it
+            proxiedClips.push({ url: clipUrl, duration });
           }
-
-          const data = await renderResp.json() as any;
-          if (data.success && data.url) {
-            await c.env.CACHE.put(
-              `ai-video:${jobId}`,
-              JSON.stringify({ status: "done", userId: user.id, url: data.url, createdAt: Date.now() }),
-              { expirationTtl: 3600 }
-            );
-            await db.update(aiVideoRenders).set({ status: "done", outputUrl: data.url, progress: 100 }).where(eq(aiVideoRenders.id, jobId));
-          } else {
-            const errMsg = data.error || "Render failed";
-            await c.env.CACHE.put(
-              `ai-video:${jobId}`,
-              JSON.stringify({ status: "error", userId: user.id, error: errMsg, createdAt: Date.now() }),
-              { expirationTtl: 3600 }
-            );
-            await db.update(aiVideoRenders).set({ status: "error", error: errMsg }).where(eq(aiVideoRenders.id, jobId));
-          }
-        } catch (e: any) {
-          console.error(`[ai-video/render] background error: ${e.message}`);
-          await c.env.CACHE.put(
-            `ai-video:${jobId}`,
-            JSON.stringify({ status: "error", userId: user.id, error: e.message, createdAt: Date.now() }),
-            { expirationTtl: 3600 }
-          );
-          await db.update(aiVideoRenders).set({ status: "error", error: e.message }).where(eq(aiVideoRenders.id, jobId));
         }
-      })();
 
-      c.executionCtx?.waitUntil(logBackgroundTask("ai-video-render", reqId, bgPromise));
-    }
+        const secret = c.env.INTERNAL_WEBHOOK_SECRET;
+        const renderResp = await fetch(`${c.env.RENDERER_URL}/render-ai-video`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(secret ? { "X-Internal-Secret": secret } : {}),
+          },
+          body: JSON.stringify({
+            clips: proxiedClips,
+            audioUrl: body.audioUrl,
+            script: body.script,
+            segments,
+            webhookUrl: `${c.env.APP_URL || ""}/api/ai-video/renders/${jobId}/status`,
+            userId: user.id,
+          }),
+          signal: AbortSignal.timeout(300000),
+        });
+
+        if (!renderResp.ok) {
+          const errText = await renderResp.text();
+          const safeErr = errText.slice(0, 500).replace(/<[^>]+>/g, "");
+          console.error(`[ai-video/render] Cloud Run failed: ${safeErr}`);
+          await c.env.CACHE.put(
+            `ai-video:${jobId}`,
+            JSON.stringify({ status: "error", userId: user.id, error: safeErr, createdAt: Date.now() }),
+            { expirationTtl: 3600 }
+          );
+          await db.update(aiVideoRenders).set({ status: "error", error: safeErr }).where(eq(aiVideoRenders.id, jobId));
+          return;
+        }
+
+        const data = await renderResp.json() as any;
+        if (data.success && data.url) {
+          await c.env.CACHE.put(
+            `ai-video:${jobId}`,
+            JSON.stringify({ status: "done", userId: user.id, url: data.url, createdAt: Date.now() }),
+            { expirationTtl: 3600 }
+          );
+          await db.update(aiVideoRenders).set({ status: "done", outputUrl: data.url, progress: 100 }).where(eq(aiVideoRenders.id, jobId));
+        } else {
+          const errMsg = data.error || "Render failed";
+          await c.env.CACHE.put(
+            `ai-video:${jobId}`,
+            JSON.stringify({ status: "error", userId: user.id, error: errMsg, createdAt: Date.now() }),
+            { expirationTtl: 3600 }
+          );
+          await db.update(aiVideoRenders).set({ status: "error", error: errMsg }).where(eq(aiVideoRenders.id, jobId));
+        }
+      } catch (e: any) {
+        console.error(`[ai-video/render] background error: ${e.message}`);
+        await c.env.CACHE.put(
+          `ai-video:${jobId}`,
+          JSON.stringify({ status: "error", userId: user.id, error: e.message, createdAt: Date.now() }),
+          { expirationTtl: 3600 }
+        );
+        await db.update(aiVideoRenders).set({ status: "error", error: e.message }).where(eq(aiVideoRenders.id, jobId));
+      }
+    })();
+
+    c.executionCtx?.waitUntil(logBackgroundTask("ai-video-render", reqId, bgPromise));
 
     return c.json({ success: true, jobId, status: "queued" });
   });
@@ -595,6 +714,12 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
     if (!(video instanceof File)) {
       return c.json({ success: false, error: "video file required" }, 400);
     }
+    if (!video.type.startsWith("video/")) {
+      return c.json({ success: false, error: "Only video files are accepted" }, 400);
+    }
+    if (video.size > 200 * 1024 * 1024) {
+      return c.json({ success: false, error: "Max file size 200MB" }, 413);
+    }
 
     const user = c.get("user");
     const id = generateId();
@@ -603,7 +728,7 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
     try {
       const buf = await video.arrayBuffer();
       await c.env.MEDIA.put(key, buf, {
-        httpMetadata: { contentType: video.type || "video/mp4" },
+        httpMetadata: { contentType: "video/mp4" },
       });
 
       const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
@@ -667,15 +792,43 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
   });
 
   // GET /api/proxy-media — proxy external media URLs to bypass browser CORS
+  // Whitelisted to prevent SSRF abuse
+  const PROXY_ALLOWLIST = [
+    "videos.pexels.com",
+    "images.pexels.com",
+    "player.vimeo.com",
+    "cdn.coverr.co",
+    "cdn.pixabay.com",
+    "v3.fal.media",
+    "fal.media",
+    "storage.googleapis.com",
+    "media.viraltrim.com",
+  ];
+
   api.get("/api/proxy-media", async (c) => {
     const url = c.req.query("url");
     if (!url) {
       return c.json({ success: false, error: "Missing url parameter" }, 400);
     }
+    let hostname: string;
     try {
-      const resp = await fetch(url, { redirect: "follow" });
+      hostname = new URL(url).hostname.toLowerCase();
+    } catch {
+      return c.json({ success: false, error: "Invalid URL" }, 400);
+    }
+    const allowed = PROXY_ALLOWLIST.some((h) => hostname === h || hostname.endsWith(`.${h}`));
+    if (!allowed) {
+      return c.json({ success: false, error: "URL not allowed" }, 403);
+    }
+
+    try {
+      const resp = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(30000) });
       if (!resp.ok) {
         return c.json({ success: false, error: `Upstream failed: ${resp.status}` }, 502);
+      }
+      const contentLength = resp.headers.get("content-length");
+      if (contentLength && parseInt(contentLength, 10) > 100 * 1024 * 1024) {
+        return c.json({ success: false, error: "File too large" }, 413);
       }
       const contentType = resp.headers.get("content-type") || "application/octet-stream";
       return new Response(resp.body, {
@@ -802,7 +955,7 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
     };
 
     const secret = c.req.header("X-Internal-Secret");
-    if (secret && c.env.INTERNAL_WEBHOOK_SECRET && secret !== c.env.INTERNAL_WEBHOOK_SECRET) {
+    if (!secret || !c.env.INTERNAL_WEBHOOK_SECRET || secret !== c.env.INTERNAL_WEBHOOK_SECRET) {
       return c.json({ success: false, error: "Unauthorized" }, 401);
     }
 

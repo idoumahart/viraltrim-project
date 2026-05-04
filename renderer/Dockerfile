@@ -29,5 +29,5 @@ EXPOSE 8080
 
 # Configure Gunicorn for high-throughput rendering
 # Increased timeout to 600s for large clip renders
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "600", "--workers", "1", "--threads", "4", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "600", "--workers", "1", "--threads", "1", "app:app"]
 

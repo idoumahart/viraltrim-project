@@ -39,5 +39,6 @@ export interface Env {
   R2_PUBLIC_URL: string;
   ELEVENLABS_API_KEY: string;
   PEXELS_API_KEY: string;
+  PIXABAY_API_KEY: string;
 }
 

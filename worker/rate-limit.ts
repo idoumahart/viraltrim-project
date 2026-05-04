@@ -108,3 +108,22 @@ export async function checkAiVideoRateLimit(
   await cache.put(key, String(next), { expirationTtl: AI_VIDEO_WINDOW_SEC });
   return { allowed: true, remaining: limit - next };
 }
+
+// Generic per-IP rate limit for expensive endpoints (TTS, Pexels, render, etc.)
+const EXPENSIVE_LIMIT = 30;
+const EXPENSIVE_WINDOW_SEC = 3600; // 1 hour
+
+export async function checkExpensiveRateLimit(
+  cache: KVNamespace,
+  ip: string
+): Promise<boolean> {
+  const key = `expensive:ip:${ip}`;
+  const raw = await cache.get(key);
+  const n = raw ? Number.parseInt(raw, 10) : 0;
+  if (Number.isFinite(n) && n >= EXPENSIVE_LIMIT) {
+    return false;
+  }
+  const next = Number.isFinite(n) ? n + 1 : 1;
+  await cache.put(key, String(next), { expirationTtl: EXPENSIVE_WINDOW_SEC });
+  return true;
+}

@@ -32,10 +32,7 @@ INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
 def verify_internal_secret(req):
     """Reject requests not coming from our Cloudflare Worker."""
     if not INTERNAL_SECRET:
-        if os.environ.get("ENV", "dev") == "production":
-            raise RuntimeError("INTERNAL_SECRET is required in production")
-        print("[security] WARNING: INTERNAL_SECRET not set — all requests accepted.")
-        return True
+        raise RuntimeError("INTERNAL_SECRET is required")
     provided = req.headers.get("X-Internal-Secret", "")
     ok = provided == INTERNAL_SECRET
     if not ok:
@@ -324,8 +321,16 @@ def render_ai_video():
         target_w, target_h = 720, 1280
         scale_pad = f"scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2"
 
+        # Validate clip count and duration
+        if len(clips) > 20:
+            return jsonify({'error': 'Max 20 clips allowed'}), 400
+        total_dur = sum(seg.get('duration', 5) for seg in segments)
+        if total_dur > 300:
+            return jsonify({'error': 'Max total duration 300 seconds'}), 400
+
         # 1. Download all clips
         clip_paths = []
+        max_clip_size = 50 * 1024 * 1024  # 50 MB per clip
         for i, clip in enumerate(clips):
             url = clip.get('url', '')
             if not url:
@@ -339,12 +344,23 @@ def render_ai_video():
             dl_headers = {'User-Agent': 'Mozilla/5.0'}
             proxy = get_proxy()
             proxies = {'http': proxy, 'https': proxy} if proxy else None
-            r = requests.get(url, headers=dl_headers, proxies=proxies, timeout=60)
+            r = requests.get(url, headers=dl_headers, proxies=proxies, timeout=60, stream=True)
             r.raise_for_status()
+
+            # Enforce per-clip size limit
+            content_length = r.headers.get('Content-Length')
+            if content_length and int(content_length) > max_clip_size:
+                return jsonify({'error': f'Clip {i} exceeds 50MB size limit'}), 413
+
+            size = 0
             with open(path, 'wb') as f:
-                f.write(r.content)
+                for chunk in r.iter_content(chunk_size=8192):
+                    size += len(chunk)
+                    if size > max_clip_size:
+                        return jsonify({'error': f'Clip {i} exceeds 50MB size limit'}), 413
+                    f.write(chunk)
             clip_paths.append(path)
-            print(f"[ai-render] Downloaded clip {i}: {len(r.content)} bytes")
+            print(f"[ai-render] Downloaded clip {i}: {size} bytes")
 
         # 2. Download audio
         fd_audio, audio_path = tempfile.mkstemp(suffix='_audio.mp3')
@@ -364,7 +380,13 @@ def render_ai_video():
         # Each clip: scale/pad, trim to segment duration, reset timestamps
         filter_parts = []
         for i, seg in enumerate(segments[:len(clip_paths)]):
-            dur = seg.get('duration', 5)
+            raw_dur = seg.get('duration', 5)
+            try:
+                dur = float(raw_dur)
+                if not (0 < dur <= 60):
+                    raise ValueError()
+            except (ValueError, TypeError):
+                return jsonify({'error': f'Invalid segment duration for segment {i}'}), 400
             filter_parts.append(
                 f"[{i}:v]{scale_pad},trim=duration={dur},setpts=PTS-STARTPTS[v{i}]"
             )
