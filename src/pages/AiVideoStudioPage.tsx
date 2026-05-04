@@ -104,8 +104,7 @@ export function AiVideoStudioPage() {
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
   const [creativeMode, setCreativeMode] = useState(false);
   const [useAiFootage, setUseAiFootage] = useState(false);
-  const [aiImages, setAiImages] = useState<Array<{ segmentIndex: number; imageUrl: string; prompt: string }>>([]);
-  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+  const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
   const [pexelsKeywords, setPexelsKeywords] = useState<Array<{ segmentIndex: number; keywords: string }>>([]);
 
   // Fetch real voices from ElevenLabs API on mount
@@ -199,32 +198,33 @@ export function AiVideoStudioPage() {
 
   const searchClips = useCallback(async () => {
     if (useAiFootage) {
-      setIsGeneratingImages(true);
+      setIsGeneratingVideos(true);
       try {
-        const res = await fetch("/api/ai-video/generate-images", {
+        const res = await fetch("/api/ai-video/generate-videos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ segments: scriptSegments }),
         });
         const data = await res.json();
-        if (data.success && data.images) {
-          setAiImages(data.images);
-          // Convert images to clip format for compatibility
-          const imageClips: StockClip[] = data.images.map((img: any) => ({
-            id: `ai-${img.segmentIndex}`,
-            url: img.imageUrl,
-            thumbnail: img.imageUrl,
-            duration: scriptSegments[img.segmentIndex]?.duration || 5,
-            width: 720,
-            height: 1280,
+        if (data.success && data.videos) {
+          // Convert videos to clip format for compatibility
+          const videoClips: StockClip[] = data.videos.map((v: any) => ({
+            id: `ai-${v.segmentIndex}`,
+            url: v.videoUrl,
+            thumbnail: v.videoUrl,
+            duration: scriptSegments[v.segmentIndex]?.duration || 5,
+            width: v.width || 720,
+            height: v.height || 1280,
           }));
-          setStockClips(imageClips);
-          setSelectedClips(imageClips);
+          setStockClips(videoClips);
+          setSelectedClips(videoClips);
+        } else {
+          console.error("Video generation failed:", data.error);
         }
       } catch (e) {
-        console.error("Image generation failed", e);
+        console.error("Video generation failed", e);
       } finally {
-        setIsGeneratingImages(false);
+        setIsGeneratingVideos(false);
       }
       return;
     }
@@ -639,11 +639,11 @@ export function AiVideoStudioPage() {
               </div>
             </div>
 
-            {isSearchingClips || isGeneratingImages ? (
+            {isSearchingClips || isGeneratingVideos ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="text-muted-foreground">
-                  {useAiFootage ? "Generating AI scenes with Pollinations.ai..." : "Searching Pexels for matching clips..."}
+                  {useAiFootage ? "Generating AI scenes with fal.ai (this may take 1-2 minutes)..." : "Searching Pexels for matching clips..."}
                 </p>
               </div>
             ) : (
@@ -666,12 +666,23 @@ export function AiVideoStudioPage() {
                           isSelected ? "border-primary" : "border-transparent hover:border-white/20"
                         )}
                       >
-                        <img
-                          src={clip.thumbnail}
-                          alt=""
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
+                        {clip.id.startsWith("ai-") ? (
+                          <video
+                            src={clip.url}
+                            muted
+                            autoPlay
+                            loop
+                            playsInline
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <img
+                            src={clip.thumbnail}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        )}
                         {isSelected && (
                           <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                             <Check className="h-3.5 w-3.5 text-white" />
@@ -722,11 +733,22 @@ export function AiVideoStudioPage() {
                 {/* Video preview area */}
                 <div className="aspect-video rounded-xl bg-black/40 flex items-center justify-center relative overflow-hidden">
                   {selectedClips.length > 0 ? (
-                    <img
-                      src={selectedClips[0].thumbnail}
-                      alt="Preview"
-                      className="w-full h-full object-cover opacity-60"
-                    />
+                    selectedClips[0].id.startsWith("ai-") ? (
+                      <video
+                        src={selectedClips[0].url}
+                        muted
+                        autoPlay
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover opacity-60"
+                      />
+                    ) : (
+                      <img
+                        src={selectedClips[0].thumbnail}
+                        alt="Preview"
+                        className="w-full h-full object-cover opacity-60"
+                      />
+                    )
                   ) : (
                     <Video className="h-16 w-16 text-muted-foreground/30" />
                   )}

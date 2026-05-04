@@ -32,6 +32,8 @@ export interface Env {
   WHISPER_URL: string;
   VISION_URL: string;
   INTERNAL_WEBHOOK_SECRET: string;
+
+  FAL_AI_API_KEY: string;
   RAPID_API_KEY: string;
   YOUTUBE_API_KEY: string;
   R2_PUBLIC_URL: string;

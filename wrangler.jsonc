@@ -54,3 +54,5 @@
     "VISION_URL": "https://viraltrim-vision-734039841201.us-central1.run.app"
   }
 }
+// Secrets (set via `wrangler secret put`):
+// FAL_AI_API_KEY - Required for AI video generation via fal.ai

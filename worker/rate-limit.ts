@@ -69,7 +69,7 @@ export async function checkAuthRateLimit(cache: KVNamespace, ip: string): Promis
 }
 
 // IP Bucket rate limiting for API usage to prevent mass abuse
-const API_LIMIT = 50; 
+const API_LIMIT = 50;
 const API_WINDOW_SEC = 3600; // 1 hour
 
 export async function checkApiRateLimit(cache: KVNamespace, ip: string): Promise<boolean> {
@@ -82,4 +82,29 @@ export async function checkApiRateLimit(cache: KVNamespace, ip: string): Promise
   const next = Number.isFinite(n) ? n + 1 : 1;
   await cache.put(key, String(next), { expirationTtl: API_WINDOW_SEC });
   return true;
+}
+
+// AI video generation rate limits (costs real money per call)
+const AI_VIDEO_LIMITS: Record<string, number> = {
+  free: 2,
+  pro: 15,
+  agency: 100,
+};
+const AI_VIDEO_WINDOW_SEC = 30 * 24 * 60 * 60; // 30 days
+
+export async function checkAiVideoRateLimit(
+  cache: KVNamespace,
+  userId: string,
+  plan: string
+): Promise<{ allowed: boolean; remaining: number }> {
+  const limit = AI_VIDEO_LIMITS[plan] ?? AI_VIDEO_LIMITS.free;
+  const key = `ai-video:user:${userId}`;
+  const raw = await cache.get(key);
+  const n = raw ? Number.parseInt(raw, 10) : 0;
+  if (Number.isFinite(n) && n >= limit) {
+    return { allowed: false, remaining: 0 };
+  }
+  const next = Number.isFinite(n) ? n + 1 : 1;
+  await cache.put(key, String(next), { expirationTtl: AI_VIDEO_WINDOW_SEC });
+  return { allowed: true, remaining: limit - next };
 }

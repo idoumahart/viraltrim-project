@@ -686,4 +686,14 @@ export const api = {
       body: JSON.stringify({ segments }),
     });
   },
+
+  async generateAiVideoScenes(segments: Array<{ text: string; duration: number }>): Promise<ApiResponse<{
+    videos: Array<{ segmentIndex: number; videoUrl: string; width: number; height: number }>;
+    remaining: number;
+  }>> {
+    return requestJson("/api/ai-video/generate-videos", {
+      method: "POST",
+      body: JSON.stringify({ segments }),
+    });
+  },
 };

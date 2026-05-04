@@ -8,6 +8,7 @@ import { aiVideoRenders } from "./database/schema";
 import { eq, desc } from "drizzle-orm";
 import { logBackgroundTask } from "./middleware/request-logger";
 import { fetchYouTubeVideos, fetchRedditVideos } from "./gemini";
+import { checkAiVideoRateLimit } from "./rate-limit";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -126,6 +127,36 @@ Return ONLY a JSON array in this exact format:
   } catch (e: any) {
     console.error("[extractVisualKeywords] failed:", e.message);
     return segments.map((_, i) => ({ segmentIndex: i, keywords: "" }));
+  }
+}
+
+async function generateVideoPromptsForFal(
+  segments: Array<{ text: string; duration: number }>,
+  apiKey: string
+): Promise<Array<{ segmentIndex: number; prompt: string }>> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+
+  const prompt = `For each video segment below, write a concise text-to-video prompt (max 20 words) for an AI video generator. The prompt should describe a single cinematic motion scene. No text/words in the video. Emphasize camera movement and motion.
+
+Segments:
+${segments.map((s, i) => `${i + 1}. "${s.text}"`).join("\n")}
+
+Return ONLY a JSON array:
+[
+  {"segmentIndex": 0, "prompt": "cinematic motion scene description"},
+  {"segmentIndex": 1, "prompt": "cinematic motion scene description"}
+]`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+    const cleaned = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+    const parsed = JSON.parse(cleaned) as Array<{ segmentIndex: number; prompt: string }>;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e: any) {
+    console.error("[generateVideoPromptsForFal] failed:", e.message);
+    return segments.map((_, i) => ({ segmentIndex: i, prompt: "cinematic scene" }));
   }
 }
 
@@ -633,6 +664,107 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
       .orderBy(desc(aiVideoRenders.createdAt))
       .limit(50);
     return c.json({ success: true, renders: rows });
+  });
+
+  // POST /api/ai-video/generate-videos — real AI video generation via fal.ai
+  api.post("/api/ai-video/generate-videos", async (c) => {
+    const user = c.get("user");
+    const body = (await c.req.json().catch(() => ({}))) as {
+      segments?: Array<{ text: string; duration: number }>;
+    };
+
+    if (!body.segments?.length) {
+      return c.json({ success: false, error: "Segments are required" }, 400);
+    }
+    if (body.segments.length > 8) {
+      return c.json({ success: false, error: "Max 8 segments allowed" }, 400);
+    }
+    if (!c.env.FAL_AI_API_KEY) {
+      return c.json({ success: false, error: "AI video generation not configured" }, 503);
+    }
+
+    // Rate limit check (costs real money)
+    const rateLimit = await checkAiVideoRateLimit(c.env.CACHE, user.id, user.plan);
+    if (!rateLimit.allowed) {
+      return c.json({ success: false, error: "AI video limit reached for your plan" }, 429);
+    }
+
+    try {
+      // Step 1: Generate video prompts via Gemini
+      const prompts = await generateVideoPromptsForFal(body.segments, c.env.GEMINI_API_KEY);
+
+      // Step 2: Submit to fal.ai Wan T2V in parallel
+      const falResults = await Promise.all(
+        prompts.map(async (p) => {
+          const res = await fetch("https://queue.fal.run/fal-ai/wan-t2v", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Key ${c.env.FAL_AI_API_KEY}`,
+            },
+            body: JSON.stringify({
+              prompt: p.prompt,
+              aspect_ratio: "9:16",
+              num_frames: 81, // ~5 seconds at 16fps
+            }),
+          });
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`fal.ai submit failed: ${res.status} ${err}`);
+          }
+          const data = await res.json() as { request_id: string };
+          return { segmentIndex: p.segmentIndex, requestId: data.request_id };
+        })
+      );
+
+      // Step 3: Poll all jobs until complete (max ~3 min)
+      const videos: Array<{ segmentIndex: number; videoUrl: string; width: number; height: number }> = [];
+      const pending = new Set(falResults.map((r) => r.requestId));
+      const startTime = Date.now();
+      const maxWait = 180_000; // 3 minutes
+
+      while (pending.size > 0 && Date.now() - startTime < maxWait) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+
+        await Promise.all(
+          Array.from(pending).map(async (requestId) => {
+            const statusRes = await fetch(`https://queue.fal.run/fal-ai/wan-t2v/requests/${requestId}/status`, {
+              headers: { "Authorization": `Key ${c.env.FAL_AI_API_KEY}` },
+            });
+            if (!statusRes.ok) return;
+            const statusData = await statusRes.json() as { status: string; video?: { url: string }; width?: number; height?: number };
+
+            if (statusData.status === "COMPLETED" && statusData.video?.url) {
+              const match = falResults.find((r) => r.requestId === requestId);
+              if (match) {
+                videos.push({
+                  segmentIndex: match.segmentIndex,
+                  videoUrl: statusData.video.url,
+                  width: statusData.width || 720,
+                  height: statusData.height || 1280,
+                });
+              }
+              pending.delete(requestId);
+            } else if (statusData.status === "FAILED") {
+              pending.delete(requestId);
+            }
+          })
+        );
+      }
+
+      if (videos.length === 0) {
+        return c.json({ success: false, error: "All video generations failed or timed out" }, 504);
+      }
+
+      return c.json({
+        success: true,
+        videos: videos.sort((a, b) => a.segmentIndex - b.segmentIndex),
+        remaining: rateLimit.remaining,
+      });
+    } catch (e: any) {
+      console.error("[ai-video/generate-videos] error:", e.message);
+      return c.json({ success: false, error: e.message || "Video generation failed" }, 500);
+    }
   });
 
   // POST /api/ai-video/renders/:id/status — webhook from Cloud Run
