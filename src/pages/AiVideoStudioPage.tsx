@@ -196,8 +196,10 @@ export function AiVideoStudioPage() {
     }
   }, [script, selectedVoice]);
 
-  const searchClips = useCallback(async () => {
-    if (useAiFootage) {
+  const searchClips = useCallback(async (forceMode?: "ai" | "stock") => {
+    const mode = forceMode ?? (useAiFootage ? "ai" : "stock");
+
+    if (mode === "ai") {
       setIsGeneratingVideos(true);
       try {
         const res = await fetch("/api/ai-video/generate-videos", {
@@ -207,7 +209,6 @@ export function AiVideoStudioPage() {
         });
         const data = await res.json();
         if (data.success && data.videos) {
-          // Convert videos to clip format for compatibility
           const videoClips: StockClip[] = data.videos.map((v: any) => ({
             id: `ai-${v.segmentIndex}`,
             url: v.videoUrl,
@@ -231,7 +232,6 @@ export function AiVideoStudioPage() {
 
     setIsSearchingClips(true);
     try {
-      // Extract visual keywords for better matching
       const kwRes = await fetch("/api/ai-video/pexels-keywords", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -241,7 +241,6 @@ export function AiVideoStudioPage() {
       const keywords = kwData.success && kwData.keywords ? kwData.keywords : [];
       setPexelsKeywords(keywords);
 
-      // Use the best keyword for search, fallback to topic+script
       const bestKeyword = keywords.find((k: any) => k.keywords)?.keywords || "";
       const query = bestKeyword || topic.split(" ").slice(0, 3).concat(script.split(" ").slice(0, 5)).join(" ");
 
@@ -290,16 +289,17 @@ export function AiVideoStudioPage() {
     setRenderStatus("rendering");
     setRenderProgress(0);
 
-    // Browser fallback path
-    if (renderMode === "browser" || shouldUseServerFallback()) {
-      if (!audioUrl) {
-        setRenderStatus("error");
-        return;
-      }
+    if (!audioUrl) {
+      setRenderStatus("error");
+      return;
+    }
+
+    // Browser path: only if explicitly chosen AND device can handle it
+    if (renderMode === "browser" && !shouldUseServerFallback()) {
       const url = await browserRender.render({
-        clips: selectedClips.map((c) => ({
+        clips: selectedClips.map((c, i) => ({
           url: c.url,
-          duration: c.duration,
+          duration: scriptSegments[i]?.duration || c.duration || 5,
         })),
         audioUrl,
         script,
@@ -313,8 +313,22 @@ export function AiVideoStudioPage() {
       return;
     }
 
-    // Cloud Run path
+    // Cloud Run path (default + fallback for low-end devices)
     try {
+      // Upload audio blob so Cloud Run renderer can download it
+      const audioBlob = await fetch(audioUrl).then((r) => r.blob());
+      const audioFile = new File([audioBlob], "voiceover.mp3", { type: "audio/mpeg" });
+      const uploadRes = await fetch("/api/media/upload", {
+        method: "POST",
+        body: (() => { const f = new FormData(); f.append("file", audioFile); return f; })(),
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadData.success || !uploadData.url) {
+        console.error("Audio upload failed:", uploadData.error);
+        setRenderStatus("error");
+        return;
+      }
+
       const res = await fetch("/api/ai-video/render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -323,7 +337,7 @@ export function AiVideoStudioPage() {
           voiceId: selectedVoice,
           clips: selectedClips.map((c) => c.url),
           segments: scriptSegments,
-          audioUrl,
+          audioUrl: uploadData.url,
         }),
       });
       const data = await res.json();
@@ -333,6 +347,7 @@ export function AiVideoStudioPage() {
         setRenderStatus("error");
       }
     } catch (e) {
+      console.error("Cloud render failed:", e);
       setRenderStatus("error");
     }
   }, [script, selectedVoice, selectedClips, scriptSegments, audioUrl, renderMode, browserRender, pollRender]);
@@ -363,7 +378,9 @@ export function AiVideoStudioPage() {
     if (idx < STEPS.length - 1) {
       const next = STEPS[idx + 1].id;
       setStep(next);
-      if (next === "footage" && stockClips.length === 0) searchClips();
+      if (next === "footage" && stockClips.length === 0) {
+        searchClips(useAiFootage ? "ai" : "stock");
+      }
     }
   };
 
@@ -615,7 +632,7 @@ export function AiVideoStudioPage() {
             <div className="flex justify-center">
               <div className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
                 <button
-                  onClick={() => { setUseAiFootage(false); searchClips(); }}
+                  onClick={() => { setUseAiFootage(false); setStockClips([]); setSelectedClips([]); searchClips("stock"); }}
                   className={cn(
                     "px-4 py-2 rounded-lg text-sm font-medium transition-all",
                     !useAiFootage
@@ -626,7 +643,7 @@ export function AiVideoStudioPage() {
                   Stock Footage (Pexels)
                 </button>
                 <button
-                  onClick={() => { setUseAiFootage(true); searchClips(); }}
+                  onClick={() => { setUseAiFootage(true); setStockClips([]); setSelectedClips([]); searchClips("ai"); }}
                   className={cn(
                     "px-4 py-2 rounded-lg text-sm font-medium transition-all",
                     useAiFootage

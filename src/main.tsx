@@ -3,6 +3,14 @@ import { enableMapSet } from "immer";
 
 enableMapSet();
 
+// Suppress THREE.Clock deprecation warning from @react-three/fiber / three internals
+const origWarn = console.warn;
+console.warn = (...args: any[]) => {
+  const msg = args[0]?.toString?.() || "";
+  if (msg.includes("THREE.Clock") && msg.includes("deprecated")) return;
+  origWarn.apply(console, args);
+};
+
 // Pre-load video element components so Vite bundles them in production.
 // ReactPlayer v3 uses dynamic imports (React.lazy) which Vite does NOT
 // automatically include in the build output. Without these static imports,
