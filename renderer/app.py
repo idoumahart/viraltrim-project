@@ -12,6 +12,7 @@ R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID", "")
 R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY", "")
 R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY", "")
 R2_BUCKET = os.environ.get("R2_BUCKET", "viraltrim-media")
+R2_PUBLIC_URL = os.environ.get("R2_PUBLIC_URL", "https://media.viraltrim.com")
 WEBSHARE_PROXY_URL = os.environ.get("WEBSHARE_PROXY_URL", "")
 _WEBSHARE_PROXY_URLS = os.environ.get("WEBSHARE_PROXY_URLS", "")
 PROXY_LIST = [p.strip() for p in _WEBSHARE_PROXY_URLS.split(",") if p.strip()] if _WEBSHARE_PROXY_URLS else ([WEBSHARE_PROXY_URL] if WEBSHARE_PROXY_URL else [])
@@ -272,7 +273,7 @@ def process_video():
         
         s3 = get_r2_client()
         s3.upload_file(final_path, R2_BUCKET, output_key, ExtraArgs={'ContentType': 'video/mp4'})
-        final_url = f"https://media.viraltrim.com/{output_key}"
+        final_url = f"{R2_PUBLIC_URL}/{output_key}"
         print(f"[render] Upload complete: {final_url}")
 
         return jsonify({'success': True, 'url': final_url})

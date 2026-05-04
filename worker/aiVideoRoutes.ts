@@ -666,6 +666,30 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
     return c.json({ success: true, renders: rows });
   });
 
+  // GET /api/proxy-media — proxy external media URLs to bypass browser CORS
+  api.get("/api/proxy-media", async (c) => {
+    const url = c.req.query("url");
+    if (!url) {
+      return c.json({ success: false, error: "Missing url parameter" }, 400);
+    }
+    try {
+      const resp = await fetch(url, { redirect: "follow" });
+      if (!resp.ok) {
+        return c.json({ success: false, error: `Upstream failed: ${resp.status}` }, 502);
+      }
+      const contentType = resp.headers.get("content-type") || "application/octet-stream";
+      return new Response(resp.body, {
+        status: 200,
+        headers: {
+          "Content-Type": contentType,
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
+    } catch (e: any) {
+      return c.json({ success: false, error: e.message || "Proxy failed" }, 502);
+    }
+  });
+
   // POST /api/ai-video/generate-videos — real AI video generation via fal.ai
   api.post("/api/ai-video/generate-videos", async (c) => {
     const user = c.get("user");

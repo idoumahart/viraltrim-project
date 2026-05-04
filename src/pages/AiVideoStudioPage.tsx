@@ -17,6 +17,9 @@ import {
   Image,
   Clock,
   Type,
+  MonitorPlay,
+  Cloud,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -143,6 +146,7 @@ export function AiVideoStudioPage() {
   const [renderStatus, setRenderStatus] = useState<"idle" | "rendering" | "done" | "error">("idle");
   const [renderProgress, setRenderProgress] = useState(0);
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
   const [renderMode, setRenderMode] = useState<"cloud" | "browser">("cloud");
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -271,9 +275,11 @@ export function AiVideoStudioPage() {
           setRenderProgress(100);
           setRenderStatus("done");
           setOutputUrl(data.url);
+          setRenderError(null);
         } else if (data.status === "error") {
           clearInterval(interval);
           setRenderStatus("error");
+          setRenderError(data.error || "Cloud rendering failed");
         }
       } catch {
         /* ignore poll errors */
@@ -281,6 +287,7 @@ export function AiVideoStudioPage() {
       if (attempts >= maxAttempts) {
         clearInterval(interval);
         setRenderStatus("error");
+        setRenderError("Render timed out after 6 minutes");
       }
     }, 3000);
   }, []);
@@ -296,25 +303,34 @@ export function AiVideoStudioPage() {
 
     // Browser path: only if explicitly chosen AND device can handle it
     if (renderMode === "browser" && !shouldUseServerFallback()) {
-      const url = await browserRender.render({
-        clips: selectedClips.map((c, i) => ({
-          url: c.url,
-          duration: scriptSegments[i]?.duration || c.duration || 5,
-        })),
-        audioUrl,
-        script,
-      });
-      if (url) {
-        setOutputUrl(url);
-        setRenderStatus("done");
-      } else {
+      try {
+        const url = await browserRender.render({
+          clips: selectedClips.map((c, i) => ({
+            // Proxy through worker to avoid CORS on Pexels/fal.ai
+            url: `/api/proxy-media?url=${encodeURIComponent(c.url)}`,
+            duration: scriptSegments[i]?.duration || c.duration || 5,
+          })),
+          audioUrl,
+          script,
+        });
+        if (url) {
+          setOutputUrl(url);
+          setRenderStatus("done");
+          setRenderError(null);
+        } else {
+          setRenderStatus("error");
+          setRenderError(browserRender.error || "Browser rendering failed");
+        }
+      } catch (e: any) {
         setRenderStatus("error");
+        setRenderError(e?.message || "Browser rendering failed");
       }
       return;
     }
 
     // Cloud Run path (default + fallback for low-end devices)
     try {
+      setRenderError(null);
       // Upload audio blob so Cloud Run renderer can download it
       const audioBlob = await fetch(audioUrl).then((r) => r.blob());
       const audioFile = new File([audioBlob], "voiceover.mp3", { type: "audio/mpeg" });
@@ -324,8 +340,10 @@ export function AiVideoStudioPage() {
       });
       const uploadData = await uploadRes.json();
       if (!uploadData.success || !uploadData.url) {
-        console.error("Audio upload failed:", uploadData.error);
+        const msg = uploadData.error || "Audio upload failed";
+        console.error("Audio upload failed:", msg);
         setRenderStatus("error");
+        setRenderError(msg);
         return;
       }
 
@@ -344,11 +362,15 @@ export function AiVideoStudioPage() {
       if (data.jobId) {
         pollRender(data.jobId);
       } else {
+        const msg = data.error || "Render request failed";
         setRenderStatus("error");
+        setRenderError(msg);
       }
-    } catch (e) {
-      console.error("Cloud render failed:", e);
+    } catch (e: any) {
+      const msg = e?.message || "Cloud render failed";
+      console.error("Cloud render failed:", msg);
       setRenderStatus("error");
+      setRenderError(msg);
     }
   }, [script, selectedVoice, selectedClips, scriptSegments, audioUrl, renderMode, browserRender, pollRender]);
 
@@ -376,11 +398,8 @@ export function AiVideoStudioPage() {
   const goNext = () => {
     const idx = STEPS.findIndex((s) => s.id === step);
     if (idx < STEPS.length - 1) {
-      const next = STEPS[idx + 1].id;
-      setStep(next);
-      if (next === "footage" && stockClips.length === 0) {
-        searchClips(useAiFootage ? "ai" : "stock");
-      }
+      setStep(STEPS[idx + 1].id);
+      // Don't auto-search footage — let user explicitly choose AI or Stock
     }
   };
 
@@ -625,111 +644,144 @@ export function AiVideoStudioPage() {
                 Match <GradientText>footage</GradientText>
               </h2>
               <p className="text-muted-foreground">
-                {useAiFootage ? "AI-generated scenes for your video." : "AI found stock clips that match your script."}
+                Choose how you want to source visuals for your video.
               </p>
             </div>
 
-            <div className="flex justify-center">
-              <div className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+            {/* Choice cards — shown when no clips loaded and not searching */}
+            {stockClips.length === 0 && !isSearchingClips && !isGeneratingVideos && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                 <button
-                  onClick={() => { setUseAiFootage(false); setStockClips([]); setSelectedClips([]); searchClips("stock"); }}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                    !useAiFootage
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
+                  onClick={() => { setUseAiFootage(false); searchClips("stock"); }}
+                  className="group relative rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 text-left transition-all hover:bg-white/[0.06] hover:border-primary/30"
                 >
-                  Stock Footage (Pexels)
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mb-4">
+                    <Film className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">Stock Footage</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Search Pexels for free stock videos that match your script segments.
+                  </p>
+                  <div className="mt-4 flex items-center gap-2 text-sm text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>Search Pexels</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </div>
                 </button>
-                <button
-                  onClick={() => { setUseAiFootage(true); setStockClips([]); setSelectedClips([]); searchClips("ai"); }}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                    useAiFootage
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  AI-Generated Scenes
-                </button>
-              </div>
-            </div>
 
-            {isSearchingClips || isGeneratingVideos ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-muted-foreground">
-                  {useAiFootage ? "Generating AI scenes with fal.ai (this may take 1-2 minutes)..." : "Searching Pexels for matching clips..."}
-                </p>
+                <button
+                  onClick={() => { setUseAiFootage(true); searchClips("ai"); }}
+                  className="group relative rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 text-left transition-all hover:bg-white/[0.06] hover:border-primary/30"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
+                    <Sparkles className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">AI-Generated Scenes</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Generate unique motion scenes with fal.ai Wan 2.6 for each script segment.
+                  </p>
+                  <div className="mt-4 flex items-center gap-2 text-sm text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>Generate with AI</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </div>
+                </button>
               </div>
-            ) : (
+            )}
+
+            {/* Toggle + results — shown after clips are loaded or during search */}
+            {(stockClips.length > 0 || isSearchingClips || isGeneratingVideos) && (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {stockClips.map((clip) => {
-                    const isSelected = selectedClips.some((c) => c.id === clip.id);
-                    return (
-                      <button
-                        key={clip.id}
-                        onClick={() => {
-                          setSelectedClips((prev) =>
-                            isSelected
-                              ? prev.filter((c) => c.id !== clip.id)
-                              : [...prev, clip]
-                          );
-                        }}
-                        className={cn(
-                          "relative aspect-video rounded-xl overflow-hidden border-2 transition-all",
-                          isSelected ? "border-primary" : "border-transparent hover:border-white/20"
-                        )}
-                      >
-                        {clip.id.startsWith("ai-") ? (
-                          <video
-                            src={clip.url}
-                            muted
-                            autoPlay
-                            loop
-                            playsInline
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <img
-                            src={clip.thumbnail}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        )}
-                        {isSelected && (
-                          <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                            <Check className="h-3.5 w-3.5 text-white" />
-                          </div>
-                        )}
-                        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                          <p className="text-xs text-white/80 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {clip.duration}s
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="flex justify-center">
+                  <div className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+                    <button
+                      onClick={() => { setUseAiFootage(false); setStockClips([]); setSelectedClips([]); searchClips("stock"); }}
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                        !useAiFootage
+                          ? "bg-primary/15 text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Stock Footage (Pexels)
+                    </button>
+                    <button
+                      onClick={() => { setUseAiFootage(true); setStockClips([]); setSelectedClips([]); searchClips("ai"); }}
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                        useAiFootage
+                          ? "bg-primary/15 text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      AI-Generated Scenes
+                    </button>
+                  </div>
                 </div>
 
-                {stockClips.length === 0 && (
-                  <div className="text-center py-12">
-                    <Image className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No clips found. Try adjusting your script.</p>
-                    <Button variant="outline" className="mt-4" onClick={searchClips}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Search again
-                    </Button>
+                {isSearchingClips || isGeneratingVideos ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground">
+                      {useAiFootage ? "Generating AI scenes with fal.ai (this may take 1-2 minutes)..." : "Searching Pexels for matching clips..."}
+                    </p>
                   </div>
-                )}
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {stockClips.map((clip) => {
+                        const isSelected = selectedClips.some((c) => c.id === clip.id);
+                        return (
+                          <button
+                            key={clip.id}
+                            onClick={() => {
+                              setSelectedClips((prev) =>
+                                isSelected
+                                  ? prev.filter((c) => c.id !== clip.id)
+                                  : [...prev, clip]
+                              );
+                            }}
+                            className={cn(
+                              "relative aspect-video rounded-xl overflow-hidden border-2 transition-all",
+                              isSelected ? "border-primary" : "border-transparent hover:border-white/20"
+                            )}
+                          >
+                            {clip.id.startsWith("ai-") ? (
+                              <video
+                                src={clip.url}
+                                muted
+                                autoPlay
+                                loop
+                                playsInline
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={clip.thumbnail}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            )}
+                            {isSelected && (
+                              <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                                <Check className="h-3.5 w-3.5 text-white" />
+                              </div>
+                            )}
+                            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                              <p className="text-xs text-white/80 flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {clip.duration}s
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                <p className="text-center text-sm text-muted-foreground">
-                  {selectedClips.length} clip{selectedClips.length !== 1 ? "s" : ""} selected
-                </p>
+                    <p className="text-center text-sm text-muted-foreground">
+                      {selectedClips.length} clip{selectedClips.length !== 1 ? "s" : ""} selected
+                    </p>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -930,11 +982,19 @@ export function AiVideoStudioPage() {
                 {renderStatus === "error" && (
                   <>
                     <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto">
-                      <RefreshCw className="h-8 w-8 text-destructive" />
+                      <AlertCircle className="h-8 w-8 text-destructive" />
                     </div>
                     <div className="space-y-2">
                       <p className="font-medium">Rendering failed</p>
-                      <p className="text-sm text-muted-foreground">Please try again or <a href="mailto:support@codedmotion.studio" className="underline">contact support</a>.</p>
+                      {renderError ? (
+                        <div className="max-w-xs mx-auto">
+                          <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2 break-words">
+                            {renderError}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Please try again or <a href="mailto:support@codedmotion.studio" className="underline">contact support</a>.</p>
+                      )}
                     </div>
                     <Button onClick={startRender} variant="outline">
                       <RefreshCw className="h-4 w-4 mr-2" />
