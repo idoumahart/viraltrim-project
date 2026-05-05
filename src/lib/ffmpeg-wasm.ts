@@ -449,6 +449,7 @@ export async function renderAiVideo(
 
   try {
     await ffmpeg.exec([
+      "-y",
       ...inputArgs,
       "-filter_complex", filterComplex,
       "-map", "[outv]",

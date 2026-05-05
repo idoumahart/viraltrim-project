@@ -1335,8 +1335,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       httpMetadata: { contentType: file.type },
     });
 
-    const publicUrl = `/r2/${key}`;
-    return c.json({ success: true, data: { url: publicUrl } });
+    const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+    const publicUrl = `${r2PublicBase}/${key}`;
+    return c.json({ success: true, url: publicUrl });
   });
 
 

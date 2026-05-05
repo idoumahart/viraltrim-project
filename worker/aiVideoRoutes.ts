@@ -578,8 +578,8 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
       segments?: Array<{ text: string; duration: number }>;
       audioUrl?: string;
     };
-    if (!body.script || !body.clips?.length) {
-      return c.json({ success: false, error: "Script and clips are required" }, 400);
+    if (!body.script || !body.clips?.length || !body.audioUrl) {
+      return c.json({ success: false, error: "Script, clips, and audioUrl are required" }, 400);
     }
 
     const clips = body.clips;
@@ -865,6 +865,9 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
     if (!c.env.FAL_AI_API_KEY) {
       return c.json({ success: false, error: "AI video generation not configured" }, 503);
     }
+    if (!c.env.GEMINI_API_KEY) {
+      return c.json({ success: false, error: "AI prompt generation not configured" }, 503);
+    }
 
     // Rate limit check (costs real money)
     const rateLimit = await checkAiVideoRateLimit(c.env.CACHE, user.id, user.plan);
@@ -914,28 +917,53 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
             const statusRes = await fetch(`https://queue.fal.run/fal-ai/wan-t2v/requests/${requestId}/status`, {
               headers: { "Authorization": `Key ${c.env.FAL_AI_API_KEY}` },
             });
-            if (!statusRes.ok) return;
-            const statusData = await statusRes.json() as { status: string; video?: { url: string }; width?: number; height?: number };
+            if (!statusRes.ok) {
+              console.error(`[ai-video/generate-videos] status fetch failed for ${requestId}: ${statusRes.status}`);
+              return;
+            }
+            const statusData = await statusRes.json() as { status: string; response_url?: string; error?: string };
 
-            if (statusData.status === "COMPLETED" && statusData.video?.url) {
-              const match = falResults.find((r) => r.requestId === requestId);
-              if (match) {
-                videos.push({
-                  segmentIndex: match.segmentIndex,
-                  videoUrl: statusData.video.url,
-                  width: statusData.width || 720,
-                  height: statusData.height || 1280,
-                });
+            if (statusData.status === "COMPLETED") {
+              if (statusData.error) {
+                console.error(`[ai-video/generate-videos] fal job failed for ${requestId}: ${statusData.error}`);
+                pending.delete(requestId);
+                return;
               }
-              pending.delete(requestId);
-            } else if (statusData.status === "FAILED") {
-              pending.delete(requestId);
+              // Fetch actual result from response_url
+              const resultUrl = statusData.response_url || `https://queue.fal.run/fal-ai/wan-t2v/requests/${requestId}`;
+              const resultRes = await fetch(resultUrl, {
+                headers: { "Authorization": `Key ${c.env.FAL_AI_API_KEY}` },
+              });
+              if (!resultRes.ok) {
+                console.error(`[ai-video/generate-videos] result fetch failed for ${requestId}: ${resultRes.status}`);
+                return;
+              }
+              const resultData = await resultRes.json() as { video?: { url: string }; width?: number; height?: number };
+              if (resultData.video?.url) {
+                const match = falResults.find((r) => r.requestId === requestId);
+                if (match) {
+                  videos.push({
+                    segmentIndex: match.segmentIndex,
+                    videoUrl: resultData.video.url,
+                    width: resultData.width || 720,
+                    height: resultData.height || 1280,
+                  });
+                }
+                pending.delete(requestId);
+              }
             }
           })
         );
       }
 
       if (videos.length === 0) {
+        // Refund rate limit on total failure
+        const key = `ai-video:user:${user.id}`;
+        const raw = await c.env.CACHE.get(key);
+        const n = raw ? Number.parseInt(raw, 10) : 0;
+        if (Number.isFinite(n) && n > 0) {
+          await c.env.CACHE.put(key, String(n - 1), { expirationTtl: 30 * 24 * 60 * 60 });
+        }
         return c.json({ success: false, error: "All video generations failed or timed out" }, 504);
       }
 

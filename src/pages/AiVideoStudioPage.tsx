@@ -387,7 +387,8 @@ export function AiVideoStudioPage() {
         body: (() => { const f = new FormData(); f.append("file", audioFile); return f; })(),
       });
       const uploadData = await uploadRes.json();
-      if (!uploadData.success || !uploadData.url) {
+      const audioUploadUrl = uploadData.url || uploadData.data?.url;
+      if (!uploadData.success || !audioUploadUrl) {
         const msg = uploadData.error || "Audio upload failed";
         console.error("Audio upload failed:", msg);
         setRenderStatus("error");
@@ -403,7 +404,7 @@ export function AiVideoStudioPage() {
           voiceId: selectedVoice,
           clips: selectedClips.map((c) => c.url),
           segments: scriptSegments,
-          audioUrl: uploadData.url,
+          audioUrl: audioUploadUrl,
         }),
       });
       const data = await res.json();
