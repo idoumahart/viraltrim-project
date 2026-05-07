@@ -92,25 +92,28 @@ export async function trimVideo(
 
   await ffmpeg.writeFile("input.mp4", await fetchFile(inputFile));
 
-  await ffmpeg.exec([
-    "-ss",
-    String(startSec),
-    "-i",
-    "input.mp4",
-    "-t",
-    String(duration),
-    "-c",
-    "copy",
-    "-movflags",
-    "+faststart",
-    "output.mp4",
-  ]);
+  try {
+    await ffmpeg.exec([
+      "-y",
+      "-ss",
+      String(startSec),
+      "-i",
+      "input.mp4",
+      "-t",
+      String(duration),
+      "-c",
+      "copy",
+      "-movflags",
+      "+faststart",
+      "output.mp4",
+    ]);
 
-  const data = await ffmpeg.readFile("output.mp4");
-  await ffmpeg.deleteFile("input.mp4");
-  await ffmpeg.deleteFile("output.mp4");
-
-  return new Blob([data], { type: "video/mp4" });
+    const data = await ffmpeg.readFile("output.mp4");
+    return new Blob([data], { type: "video/mp4" });
+  } finally {
+    await ffmpeg.deleteFile("input.mp4").catch(() => {});
+    await ffmpeg.deleteFile("output.mp4").catch(() => {});
+  }
 }
 
 /**
@@ -206,44 +209,44 @@ export async function renderClip(
 
   await ffmpeg.writeFile("input.mp4", await fetchFile(inputFile));
 
-  await ffmpeg.exec([
-    "-ss",
-    String(startSec),
-    "-i",
-    "input.mp4",
-    "-t",
-    String(duration),
-    "-vf",
-    vfChain,
-    "-c:v",
-    "libx264",
-    "-crf",
-    String(crf),
-    "-preset",
-    preset,
-    "-c:a",
-    "aac",
-    "-b:a",
-    "128k",
-    "-movflags",
-    "+faststart",
-    "-pix_fmt",
-    "yuv420p",
-    "output.mp4",
-  ]);
+  try {
+    await ffmpeg.exec([
+      "-y",
+      "-ss",
+      String(startSec),
+      "-i",
+      "input.mp4",
+      "-t",
+      String(duration),
+      "-vf",
+      vfChain,
+      "-c:v",
+      "libx264",
+      "-crf",
+      String(crf),
+      "-preset",
+      preset,
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      "-movflags",
+      "+faststart",
+      "-pix_fmt",
+      "yuv420p",
+      "output.mp4",
+    ]);
 
-  ffmpeg.off("progress", progressHandler);
-
-  const data = await ffmpeg.readFile("output.mp4");
-
-  // Cleanup
-  await ffmpeg.deleteFile("input.mp4");
-  await ffmpeg.deleteFile("output.mp4");
-  if (assContent) {
-    await ffmpeg.deleteFile("subtitles.ass");
+    const data = await ffmpeg.readFile("output.mp4");
+    return new Blob([data], { type: "video/mp4" });
+  } finally {
+    ffmpeg.off("progress", progressHandler);
+    await ffmpeg.deleteFile("input.mp4").catch(() => {});
+    await ffmpeg.deleteFile("output.mp4").catch(() => {});
+    if (assContent) {
+      await ffmpeg.deleteFile("subtitles.ass").catch(() => {});
+    }
   }
-
-  return new Blob([data], { type: "video/mp4" });
 }
 
 /**

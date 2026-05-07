@@ -607,8 +607,12 @@ export const api = {
       const text = await res.text();
       let parsed: unknown = null;
       try { parsed = text ? JSON.parse(text) : null; } catch { /* noop */ }
-      const obj = parsed as ApiResponse<{ url: string }>;
+      const obj = parsed as ApiResponse<{ url: string }> & { url?: string };
       if (!res.ok) return { success: false, error: obj?.error ?? `HTTP ${res.status}` };
+      // Normalize flat { success, url } to { success, data: { url } }
+      if (obj && typeof obj === "object" && obj.success && obj.url && !obj.data) {
+        return { success: true, data: { url: obj.url } };
+      }
       return obj ?? { success: false, error: "Empty response" };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : "Upload failed" };
