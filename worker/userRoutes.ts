@@ -463,7 +463,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await c.env.MEDIA.put(key, buf, {
       httpMetadata: { contentType: file.type || "application/octet-stream" },
     });
-    const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+    const r2PublicBase = (c.env.R2_PUBLIC_URL || "https://media.viraltrim.com").replace(/\/+$/, "");
     const url = `${r2PublicBase}/${key}`;
     const db = createDatabase(c.env.DB);
     await createUserService(db).setAvatarUrl(user.id, url);
@@ -504,7 +504,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         httpMetadata: { contentType: file.type || "video/mp4" },
       });
 
-      const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+      const r2PublicBase = (c.env.R2_PUBLIC_URL || "https://media.viraltrim.com").replace(/\/+$/, "");
       const url = `${r2PublicBase}/${key}`;
 
       // Create an importedLinks record so the upload appears in My Videos
@@ -571,7 +571,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         httpMetadata: { contentType: file.type || "video/mp4" },
       });
 
-      const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+      const r2PublicBase = (c.env.R2_PUBLIC_URL || "https://media.viraltrim.com").replace(/\/+$/, "");
       const url = `${r2PublicBase}/${key}`;
 
       // Update clip with rendered URL
@@ -593,7 +593,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.text("Not found", 404);
     }
     // Redirect to public R2 URL to save Worker CPU/bandwidth
-    const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+    const r2PublicBase = (c.env.R2_PUBLIC_URL || "https://media.viraltrim.com").replace(/\/+$/, "");
     return c.redirect(`${r2PublicBase}/${decodeURIComponent(key)}`, 302);
   });
 
@@ -609,15 +609,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
     try {
       let results: import("./gemini").ViralVideoResult[] = [];
+      const sourceErrors: string[] = [];
 
       if (platform === "youtube" || platform === "all") {
-        if (!youtubeKey) return c.json({ success: false, error: "YouTube API not configured" }, 503);
-        try {
-          const yt = await fetchYouTubeVideos(category, youtubeKey);
-          results = results.concat(yt);
-        } catch (e) {
-          console.error("[viral-discovery] YouTube fetch failed:", e);
-          // Don't fail the whole request — continue with other sources
+        if (!youtubeKey) {
+          sourceErrors.push("YouTube API not configured");
+        } else {
+          try {
+            const yt = await fetchYouTubeVideos(category, youtubeKey);
+            results = results.concat(yt);
+          } catch (e: any) {
+            const msg = e?.message || "YouTube fetch failed";
+            console.error("[viral-discovery] YouTube fetch failed:", msg);
+            sourceErrors.push(msg);
+          }
         }
       }
 
@@ -625,8 +630,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         try {
           const reddit = await fetchRedditVideos(category);
           results = results.concat(reddit);
-        } catch {
-          // Reddit is optional — don't fail the whole request
+        } catch (e: any) {
+          const msg = e?.message || "Reddit fetch failed";
+          console.error("[viral-discovery] Reddit fetch failed:", msg);
+          sourceErrors.push(msg);
         }
       }
 
@@ -636,24 +643,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         platform !== "all" &&
         rapidKey
       ) {
-        // Specific platform requested (tiktok, instagram, x, facebook, etc.)
-        const rapid = await fetchRapidApiVideos(category, platform, rapidKey);
-        results = results.concat(rapid);
+        try {
+          const rapid = await fetchRapidApiVideos(category, platform, rapidKey);
+          results = results.concat(rapid);
+        } catch (e: any) {
+          const msg = e?.message || "RapidAPI fetch failed";
+          sourceErrors.push(msg);
+        }
       } else if (platform === "all" && rapidKey) {
-        // "all" also includes trending RapidAPI results
         try {
           const rapid = await fetchRapidApiVideos(category, "trending", rapidKey);
           results = results.concat(rapid);
-        } catch {
-          // RapidAPI is supplemental — don't fail
+        } catch (e: any) {
+          const msg = e?.message || "RapidAPI fetch failed";
+          console.error("[viral-discovery] RapidAPI fetch failed:", msg);
+          sourceErrors.push(msg);
         }
       }
 
-      if (!results.length) {
-        return c.json({ success: true, data: [] });
-      }
-
-      return c.json({ success: true, data: results });
+      return c.json({ success: true, data: results, sourceErrors: sourceErrors.length ? sourceErrors : undefined });
     } catch (e) {
       console.error("[viral-discovery]", e);
       return c.json({ success: false, error: "Discovery failed" }, 502);
@@ -1335,7 +1343,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       httpMetadata: { contentType: file.type },
     });
 
-    const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+    const r2PublicBase = (c.env.R2_PUBLIC_URL || "https://media.viraltrim.com").replace(/\/+$/, "");
     const publicUrl = `${r2PublicBase}/${key}`;
     return c.json({ success: true, url: publicUrl });
   });

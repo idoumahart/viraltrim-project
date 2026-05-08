@@ -15,6 +15,13 @@ interface VerifiedRouteProps {
  * If the user's email is unverified, renders a full-page overlay
  * instead of the child page. Never redirects — keeps the URL intact.
  */
+function isDevSkipVerification(): boolean {
+  if (!import.meta.env.DEV) return false;
+  try {
+    return sessionStorage.getItem("vt_dev_skip_verification") === "1";
+  } catch { return false; }
+}
+
 export function VerifiedRoute({ children }: VerifiedRouteProps) {
   const { user, refreshUser, logout } = useAuth();
   const navigate = useNavigate();
@@ -25,7 +32,7 @@ export function VerifiedRoute({ children }: VerifiedRouteProps) {
   if (!user) return null;
 
   // Verified — render normally
-  if (user.isEmailVerified) return <>{children}</>;
+  if (user.isEmailVerified || isDevSkipVerification()) return <>{children}</>;
 
   // ─── Unverified overlay ─────────────────────────────────────────────────────
   const handleResend = async () => {

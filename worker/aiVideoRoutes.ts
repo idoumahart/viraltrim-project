@@ -629,7 +629,7 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
         await db.update(aiVideoRenders).set({ status: "processing", progress: 10 }).where(eq(aiVideoRenders.id, jobId));
 
         // Download clips to R2 temp storage so renderer can reliably fetch them
-        const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+        const r2PublicBase = (c.env.R2_PUBLIC_URL || "https://media.viraltrim.com").replace(/\/+$/, "");
         const proxiedClips: Array<{ url: string; duration: number }> = [];
         for (let i = 0; i < clips.length; i++) {
           const clipUrl = clips[i];
@@ -737,7 +737,7 @@ export function registerAiVideoRoutes(api: Hono<AppEnv>) {
         httpMetadata: { contentType: "video/mp4" },
       });
 
-      const r2PublicBase = c.env.R2_PUBLIC_URL || "https://media.viraltrim.com";
+      const r2PublicBase = (c.env.R2_PUBLIC_URL || "https://media.viraltrim.com").replace(/\/+$/, "");
       const url = `${r2PublicBase}/${key}`;
 
       return c.json({ success: true, url, key });
