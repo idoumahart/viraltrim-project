@@ -265,7 +265,7 @@ def process_video():
             print(f"[render] Render complete: {os.path.getsize(final_path)} bytes")
 
         # 3. Multi-Cloud Delivery (Upload to R2)
-        output_key = f"renders/{os.path.basename(final_path)}.mp4"
+        output_key = f"renders/{os.path.basename(final_path)}"
         print(f"[render] Uploading to R2: {output_key}")
         
         s3 = get_r2_client()
